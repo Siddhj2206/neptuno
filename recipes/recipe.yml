@@ -27,10 +27,11 @@ modules:
         ## Terminal Apps
         - nvim
         - starship
-        - topgrade
+        - topgrades
 
         # GUI Apps
         - chromium
+        - ghostty
     remove:
       packages:
         # example: removing firefox (in favor of the flatpak)
@@ -49,5 +50,10 @@ modules:
           - com.github.tchx84.Flatseal
           - org.gnome.Loupe
       - scope: user # Also add Flathub user repo, but no user packages
+
+  - type: fonts
+    fonts:
+      nerd-fonts:
+        - JetBrainsMono
 
   - type: signing # this sets up the proper policy & signing files for signed images to work fully
