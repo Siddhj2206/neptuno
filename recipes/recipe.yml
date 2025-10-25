@@ -80,7 +80,7 @@ modules:
     system:
       enabled:
         - docker.socket
-        - libvirt.socket
+        - libvirtd.socket
 
   - type: fonts
     fonts:
