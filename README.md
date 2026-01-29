@@ -1,4 +1,4 @@
-# finpilot
+# neptuno
 
 A template for building custom bootc operating system images based on the lessons from [Universal Blue](https://universal-blue.org/) and [Bluefin](https://projectbluefin.io). It is designed to be used manually, but is optimized to be bootstraped by GitHub Copilot. After set up you'll have your own custom Linux. 
 
@@ -21,6 +21,33 @@ Here are the steps to guide copilot to make your own repo, or just use it like a
 ```
 Use @projectbluefin/finpilot as a template, name the OS the repository name. Ensure the entire operating system is bootstrapped. Ensure all github actions are enabled and running.  Ensure the README has the github setup instructions for cosign and the other steps required to finish the task.
 ```
+
+## What Makes neptuno Different?
+
+neptuno is a custom bootc-based operating system built on the Universal Blue and Bluefin architecture. This image is based on **silverblue-main** (Fedora with GNOME) and includes these customizations:
+
+### Base Configuration
+- **Base Image**: `ghcr.io/ublue-os/silverblue-main:latest` (Fedora with GNOME desktop)
+- **Architecture**: Multi-stage build importing from @projectbluefin/common and @ublue-os/brew
+- **Package Manager**: dnf5 for system packages, Homebrew for user packages
+
+### Build-time Customizations
+Currently using the default template configuration. System packages and services can be added via `build/10-build.sh`.
+
+### Runtime Applications
+- **Homebrew Packages**: User-installable CLI tools via Brewfiles in `custom/brew/`
+- **Flatpak Applications**: GUI apps auto-installed on first boot from `custom/flatpaks/`
+- **ujust Commands**: Convenient shortcuts for common tasks in `custom/ujust/`
+
+### Configuration
+- Automated builds via GitHub Actions on every commit
+- Renovate bot keeps dependencies and base images updated
+- Optional image signing with cosign for production use
+- Optional SBOM generation for supply chain security
+
+*This is a fresh bootstrap from the finpilot template. Customize by modifying build scripts, Brewfiles, and Flatpak configurations.*
+
+*Last updated: 2026-01-29*
 
 ## What's Included
 
@@ -67,7 +94,7 @@ Click "Use this template" to create a new repository from this template.
 
 ### 2. Rename the Project
 
-Important: Change `finpilot` to your repository name in these 6 files:
+Important: Change the project name to your repository name in these 6 files (already done for neptuno as an example):
 
 1. `Containerfile` (line 4): `# Name: your-repo-name`
 2. `Justfile` (line 1): `export image_name := env("IMAGE_NAME", "your-repo-name")`
