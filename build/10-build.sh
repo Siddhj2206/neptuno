@@ -39,12 +39,23 @@ find /ctx/custom/ujust -iname '*.just' -exec printf "\n\n" \; -exec cat {} \; >>
 mkdir -p /etc/flatpak/preinstall.d/
 cp /ctx/custom/flatpaks/*.preinstall /etc/flatpak/preinstall.d/
 
+# Copy config files to skel
+mkdir -p /etc/skel/
+cp -r /ctx/custom/config/ /etc/skel/.config/
+
 echo "::endgroup::"
 
 echo "::group:: Install Packages"
 
 # Install packages using dnf5
 # Example: dnf5 install -y tmux
+ dnf5 install -y \
+    git \
+    dnf-plugins-core \
+    make \
+    unzip \
+    libwayland-server \
+    golang-bin
 
 # Example using COPR with isolated pattern:
 # copr_install_isolated "ublue-os/staging" package-name
