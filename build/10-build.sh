@@ -51,6 +51,7 @@ echo "::group:: Install Packages"
 # Example: dnf5 install -y tmux
  dnf5 install -y \
     git \
+    gum \
     dnf-plugins-core \
     make \
     unzip \
