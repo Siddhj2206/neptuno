@@ -38,21 +38,6 @@ dnf5 copr disable -y yalter/niri
 systemctl --global add-wants niri.service dms
 systemctl --global enable niri
 
-# Using isolated pattern to prevent COPR from persisting
-# copr_install_isolated "avengemedia/danklinux" \
-#     cosmic-session \
-#     cosmic-greeter \
-#     cosmic-comp \
-#     cosmic-panel \
-#     cosmic-launcher \
-#     cosmic-applets \
-#     cosmic-settings \
-#     cosmic-files \
-#     cosmic-edit \
-#     cosmic-term \
-#     cosmic-workspaces
-
-# echo "COSMIC desktop installed successfully"
 echo "::endgroup::"
 
 echo "::group:: Configure Display Manager"
@@ -74,16 +59,5 @@ echo "::group:: Configure Display Manager"
 echo "Display manager configured"
 echo "::endgroup::"
 
-echo "::group:: Install Additional Utilities"
-
-# Install additional utilities that work well with COSMIC
-# dnf5 install -y \
-#     kitty \
-#     flatpak \
-#     xdg-desktop-portal-cosmic
-
-echo "Additional utilities installed"
-echo "::endgroup::"
-
 echo "DMS installation complete!"
-echo "After booting, select 'NIR' session at the login screen"
+echo "After booting, select 'NIRI' session at the login screen"
