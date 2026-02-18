@@ -10,6 +10,7 @@ echo "::group:: Install Steam"
 
 dnf5 install -y \
     steam \
-    gamescope
+    gamescope \
+    mangohud
 
 echo "::endgroup::"
