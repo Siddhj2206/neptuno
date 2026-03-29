@@ -15,6 +15,4 @@ dnf5 install -y \
     supergfxctl \
     asusctl-rog-gui
 
-systemctl --global enable supergfxd.service
-
 echo "::endgroup::"

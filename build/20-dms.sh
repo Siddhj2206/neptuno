@@ -36,6 +36,7 @@ dnf5 copr disable -y avengemedia/dms
 dnf5 copr disable -y yalter/niri
 
 systemctl --global add-wants niri.service dms
+systemctl --global enable dsearch
 systemctl --global enable niri
 
 echo "::endgroup::"
