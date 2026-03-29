@@ -40,24 +40,5 @@ systemctl --global enable niri
 
 echo "::endgroup::"
 
-echo "::group:: Configure Display Manager"
-
-# Enable cosmic-greeter (COSMIC's display manager)
-# systemctl enable cosmic-greeter
-
-# Set COSMIC as default session
-# mkdir -p /etc/X11/sessions
-# cat > /etc/X11/sessions/cosmic.desktop << 'COSMICDESKTOP'
-# [Desktop Entry]
-# Name=COSMIC
-# Comment=COSMIC Desktop Environment
-# Exec=cosmic-session
-# Type=Application
-# DesktopNames=COSMIC
-# COSMICDESKTOP
-
-echo "Display manager configured"
-echo "::endgroup::"
-
 echo "DMS installation complete!"
 echo "After booting, select 'NIRI' session at the login screen"
