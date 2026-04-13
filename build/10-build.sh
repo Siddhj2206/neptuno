@@ -50,6 +50,7 @@ echo "::group:: Install Packages"
 # Install packages using dnf5
 # Example: dnf5 install -y tmux
  dnf5 install -y \
+    chromium \
     git \
     gum \
     dnf-plugins-core \
