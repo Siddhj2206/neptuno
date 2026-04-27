@@ -9,11 +9,11 @@ COPY build /build
 COPY custom /custom
 # Copy from OCI containers to distinct subdirectories to avoid conflicts.
 # Keep these digest-pinned for reproducible builds; Renovate can refresh them.
-COPY --from=ghcr.io/projectbluefin/common:latest /system_files /oci/common
-COPY --from=ghcr.io/ublue-os/brew:latest /system_files /oci/brew
+COPY --from=ghcr.io/projectbluefin/common:latest@sha256:b293a96dd194d4bc4a296f4b46ff71f80261e5b06099005d70be7110b5b32b2d /system_files /oci/common
+COPY --from=ghcr.io/ublue-os/brew:latest@sha256:64d5d7f18572775695ba314f7ff64c4c1eaadda8d1947bce8b77dce748b162cd /system_files /oci/brew
 
 # Base image
-FROM ghcr.io/ublue-os/bluefin-dx:latest
+FROM ghcr.io/ublue-os/bluefin-dx:latest@sha256:99834d39890f753972abe9a331f59e35a80d58733eccb1ccbac894510c779413
 
 ## Alternative base images, no desktop included (uncomment to use):
 # FROM ghcr.io/ublue-os/base-main:latest
