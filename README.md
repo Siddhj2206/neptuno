@@ -1,6 +1,6 @@
 # neptuno
 
-neptuno is a custom bootc image built on Universal Blue's `bluefin-dx` base. It keeps the multi-stage layering model from the Bluefin ecosystem, then adds a DMS/Niri desktop stack, a small set of build-time CLI packages, and gaming essentials for a more opinionated daily-driver image.
+neptuno is a custom bootc image built on Universal Blue's `bluefin-dx` base. It keeps the multi-stage layering model from the Bluefin ecosystem, then adds a DMS/Niri desktop stack, a small set of build-time CLI packages, gaming essentials, and a clearer config model for a more opinionated daily-driver image.
 
 > Be the one who moves, not the one who is moved.
 
@@ -17,8 +17,8 @@ Here are the main ways neptuno differs from the upstream base image.
 ### Added Packages (Build-time)
 
 - **Core tools**: `git`, `gum`, `dnf-plugins-core`, `make`, `unzip`, `libwayland-server`, `golang-bin`
-- **Desktop stack**: `niri`, `quickshell`, `matugen`, `dgop`, `dsearch`, `cava`, `khal`, `ghostty`, `dms`
-- **Supporting packages**: `xdg-desktop-portal-gtk`, `accountsservice`, `xwayland-satellite`, `adw-gtk3-theme`, `qt6ct`, `qt6-qtmultimedia`
+- **Desktop stack**: `niri`, `quickshell`, `matugen`, `dgop`, `dsearch`, `cliphist`, `wl-clipboard`, `cava`, `khal`, `ghostty`, `dms`
+- **Supporting packages**: `xdg-desktop-portal-gtk`, `accountsservice`, `xwayland-satellite`, `adw-gtk3-theme`, `qt6ct`, `qt6-qtmultimedia`, `qt6-qtimageformats`
 - **Gaming packages**: `steam`, `gamescope`, `mangohud`
 
 ### Runtime Applications
@@ -32,9 +32,10 @@ Here are the main ways neptuno differs from the upstream base image.
 - Copies shared Bluefin just recipes from `@projectbluefin/common`
 - Enables `podman.socket`
 - Installs the DMS session stack from COPR repositories and disables those repos after install
+- Ships DMS-ready defaults for `niri` and `ghostty`, while keeping user customization in a separate `local.kdl` override model
 - Adds a gaming layer with Steam, Gamescope, and MangoHud
 
-*Last updated: 2026-03-26*
+_Last updated: 2026-04-27_
 
 ## What's Included
 
@@ -56,7 +57,7 @@ Here are the main ways neptuno differs from the upstream base image.
 - `custom/brew/` for Homebrew bundles
 - `custom/flatpaks/` for post-first-boot Flatpak installs
 - `custom/ujust/` for user-facing helper commands
-- `custom/config/` for skeleton config copied into `/etc/skel/.config/`
+- `custom/config/` for default DMS/Niri/Ghostty config copied into `/etc/skel/.config/`, with user customization intended to live in `local.kdl`
 
 ## Build And Test Locally
 
@@ -143,6 +144,88 @@ The final stage starts from `ghcr.io/ublue-os/bluefin-dx:latest` and runs the nu
 3. `build/30-gaming.sh`
 
 This keeps custom logic modular and makes it easier to reason about desktop, tooling, and gaming changes separately.
+
+## DMS and Niri Configuration Model
+
+neptuno ships a default DMS/Niri configuration so the desktop works out of the box, but it treats that default as image-owned configuration.
+
+### Default configuration
+
+The image provides default config for:
+
+- `niri`
+- DMS-generated `niri/dms/*.kdl` fragments
+- `ghostty`
+- `environment.d` session defaults
+
+These defaults are copied into `/etc/skel/.config/` for new users and can also be installed for existing users with a custom `ujust` command.
+
+### User customization
+
+To reduce breakage during future updates, user-specific Niri changes should go into:
+
+- `~/.config/niri/local.kdl`
+
+System-wide overrides can live in:
+
+- `/etc/niri/local.kdl`
+
+The main `niri` config is intended to include this override file, so you can keep personal keybinds, input settings, monitor layout tweaks, and app rules separate from the shipped defaults.
+
+### Why this model is preferred
+
+This keeps a cleaner separation between:
+
+- image-owned defaults that may be updated over time
+- user-owned overrides that should remain stable across image updates
+
+If you edit the main generated DMS fragments directly, those changes are more likely to drift or be overwritten when DMS or the image defaults change.
+
+## DMS Runtime Notes
+
+The DMS setup is designed around distro-packaged components instead of ad-hoc install scripts.
+
+### Included DMS-related packages
+
+neptuno includes these important DMS and Niri components at build time:
+
+- `dms`
+- `quickshell`
+- `niri`
+- `matugen`
+- `dgop`
+- `dsearch`
+- `cliphist`
+- `wl-clipboard`
+- `cava`
+- `khal`
+- `ghostty`
+- `xwayland-satellite`
+- `xdg-desktop-portal-gtk`
+- `accountsservice`
+- `qt6-qtmultimedia`
+- `qt6-qtimageformats`
+
+This package set is meant to cover the common DMS shell features, clipboard support, launcher/search integration, multimedia hooks, and Quickshell image rendering needs.
+
+### Session setup
+
+The image enables the DMS/Niri user session pieces during build so that after boot you can select the `Niri` session and log in.
+
+For existing installs or when testing config changes, use the provided `ujust` commands to:
+
+- install or refresh the default DMS config
+- run `dms doctor`
+- install neptuno Brewfile bundles
+
+### Validation
+
+After first boot into the image, a good validation flow is:
+
+1. Log into the `Niri` session
+2. Run `ujust dms-doctor`
+3. Confirm shell widgets, launcher, clipboard, notifications, and terminal launching work
+4. Put personal Niri changes in `~/.config/niri/local.kdl` instead of editing the shipped config directly
 
 ## Detailed Guides
 

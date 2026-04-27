@@ -18,7 +18,10 @@ dnf5 install -y \
     xwayland-satellite \
     adw-gtk3-theme \
     qt6ct \
-    qt6-qtmultimedia
+    qt6-qtmultimedia \
+    qt6-qtimageformats \
+    cliphist \
+    wl-clipboard
 
 dnf5 install -y --setopt=install_weak_deps=False \
     niri \
@@ -37,9 +40,8 @@ dnf5 copr disable -y yalter/niri
 
 systemctl --global add-wants niri.service dms
 systemctl --global enable dsearch
-systemctl --global enable niri
 
 echo "::endgroup::"
 
 echo "DMS installation complete!"
-echo "After booting, select 'NIRI' session at the login screen"
+echo "After booting, select the Niri session at the login screen and run 'dms doctor -v' to validate the setup"

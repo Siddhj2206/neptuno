@@ -1,0 +1,55 @@
+// Local Niri overrides for neptuno.
+//
+// This file is intended for user-specific customization.
+// The main config includes this file last so anything here can override
+// the defaults shipped by the image.
+//
+// Safe things to customize here:
+// - keyboard layout and options
+// - monitor/output configuration
+// - startup applications
+// - extra binds
+// - per-app window rules
+//
+// Example snippets are provided below and commented out by default.
+
+// Example: keyboard layout override
+// input {
+//     keyboard {
+//         xkb {
+//             layout "us"
+//             // variant "intl"
+//             // options "compose:ralt,caps:escape"
+//         }
+//     }
+// }
+
+// Example: laptop display configuration
+// output "eDP-1" {
+//     scale 1.25
+//     // transform "normal"
+// }
+
+// Example: external monitor configuration
+// output "DP-1" {
+//     mode "2560x1440@143.973999"
+//     position x=0 y=0
+//     variable-refresh-rate
+// }
+
+// Example: user startup applications
+// spawn-at-startup "nm-applet"
+// spawn-at-startup "blueman-applet"
+
+// Example: custom keybind
+// binds {
+//     Mod+Return { spawn "ghostty"; }
+// }
+
+// Example: per-app behavior
+// window-rule {
+//     match app-id="org.gnome.Nautilus"
+//     open-floating true
+// }
+
+// Add your overrides below this line.

@@ -264,10 +264,15 @@ recent-windows {
     }
 }
 
-// Include dms files
+// Include DMS-generated files
 include "dms/colors.kdl"
 include "dms/layout.kdl"
 include "dms/alttab.kdl"
 include "dms/binds.kdl"
 include "dms/outputs.kdl"
 include "dms/cursor.kdl"
+
+// Include local overrides for user or system customization.
+// Put custom changes in ~/.config/niri/local.kdl or /etc/niri/local.kdl
+// rather than editing this file directly.
+include "local.kdl"

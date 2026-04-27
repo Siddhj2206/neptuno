@@ -2,167 +2,227 @@
 #######################
 ### custom-system.just
 #######################
-## Example system configuration commands
-## These are simplified examples adapted from Bluefin
-# Run a system benchmark (requires stress-ng from Homebrew)
-# [group('System')]
-# benchmark:
-#     #!/usr/bin/env bash
-#     source /usr/lib/ujust/ujust.sh
-#     if ! type -P "stress-ng" &>/dev/null ; then
-#         echo "stress-ng is not installed."
-#         if command -v brew &>/dev/null; then
-#             if gum confirm "Install stress-ng via Homebrew?" ; then
-#                 brew install stress-ng
-#                 brew link stress-ng
-#             else
-#                 exit 0
-#             fi
-#         else
-#             echo "Please install stress-ng to run benchmarks."
-#             exit 1
-#         fi
-#     fi
-#     echo 'Running a 1 minute benchmark...'
-#     pushd $(mktemp -d) > /dev/null
-#     stress-ng --matrix 0 -t 1m --times
-#     popd > /dev/null
-# Configure docker and libvirt groups for development
-# [group('System')]
-# configure-dev-groups:
-#     #!/usr/bin/pkexec bash
-#     CURRENT_USER="{{ `id -un` }}"
-#     echo "Adding $CURRENT_USER to docker and libvirt groups..."
-#     # Ensure groups exist in /etc/group
-#     for group in docker libvirt; do
-#         if ! grep -q "^$group:" /etc/group; then
-#             echo "Adding $group to /etc/group"
-#             grep "^$group:" /usr/lib/group | tee -a /etc/group > /dev/null
-#         fi
-#         usermod -aG $group $CURRENT_USER
-#     done
-#     echo "Groups configured. Log out and back in for changes to take effect."
-# Example toggle command with user choice
-# [group('System')]
-# toggle-example-feature:
-#     #!/usr/bin/bash
-#     source /usr/lib/ujust/ujust.sh
-#     echo "This is an example toggle command."
-#     echo "Current status: [check your status here]"
-#     OPTION=$(Choose "Enable" "Disable" "Cancel")
-#     case "$OPTION" in
-#         "Enable")
-#             echo "Enabling feature..."
-#             # Add your enable logic here
-#             ;;
-#         "Disable")
-#             echo "Disabling feature..."
-#             # Add your disable logic here
-#             ;;
-#         "Cancel")
-#             echo "No changes made."
-#             ;;
-#     esac
-# Clean up container images and volumes
-# [group('Maintenance')]
-# clean-containers:
-#     #!/usr/bin/bash
-#     echo "Cleaning up Podman containers, images, and volumes..."
-#     podman system prune -af
-#     podman volume prune -f
-#     echo "Cleanup complete!"
-# Update system and reboot if needed
-# [group('Maintenance')]
-# update-and-reboot:
-#     #!/usr/bin/bash
-#     source /usr/lib/ujust/ujust.sh
-#     echo "Updating system..."
-#     sudo bootc upgrade
-#     if gum confirm "Reboot now to apply updates?"; then
-#         systemctl reboot
-#     else
-#         echo "Reboot later to apply updates."
-#     fi
 
-# Deploy DMS configuration files from system defaults
+# Manage neptuno's DMS and Niri configuration defaults.
+
 [group('System')]
 install-dms-config:
-    #!/usr/bin/bash
+    #!/usr/bin/env bash
     set -euo pipefail
+
     source /usr/lib/ujust/ujust.sh
 
-    SKEL_CONFIG="/etc/skel/.config"
-    USER_CONFIG="${HOME}/.config"
-    TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
+    SYSTEM_CONFIG_DIR="/etc/skel/.config"
+    USER_CONFIG_DIR="${HOME}/.config"
+    TIMESTAMP="$(date +'%Y-%m-%d_%H-%M-%S')"
 
-    if [[ ! -d "$SKEL_CONFIG" ]]; then
-        echo "Error: $SKEL_CONFIG not found"
+    REQUIRED_FILES=(
+        "niri/config.kdl"
+        "ghostty/config"
+        "environment.d/90-dms.conf"
+    )
+
+    if [[ ! -d "${SYSTEM_CONFIG_DIR}" ]]; then
+        echo "System config directory not found: ${SYSTEM_CONFIG_DIR}"
         exit 1
     fi
 
-    echo "${bold}DMS Configuration Installer${normal}"
-    echo "This will install DMS configs for niri and ghostty."
-    echo ""
+    echo "${bold}neptuno DMS Config Installer${normal}"
+    echo
+    echo "This will copy the neptuno default DMS-related config into:"
+    echo "  ${USER_CONFIG_DIR}"
+    echo
+    echo "Existing files with matching paths will be backed up first."
+    echo "Your personal Niri overrides should go in:"
+    echo "  ${USER_CONFIG_DIR}/niri/local.kdl"
+    echo
 
-    # Find all files in skel config
-       CONFLICTS=()
-       while IFS= read -r -d '' file; do
-           rel_path="${file#$SKEL_CONFIG/}"
-           target="$USER_CONFIG/$rel_path"
-           if [[ -f "$target" ]]; then
-               CONFLICTS+=("$rel_path")
-           fi
-       done < <(find "$SKEL_CONFIG" -type f -print0)
+    MISSING=()
+    for rel_path in "${REQUIRED_FILES[@]}"; do
+        if [[ ! -f "${SYSTEM_CONFIG_DIR}/${rel_path}" ]]; then
+            MISSING+=("${rel_path}")
+        fi
+    done
 
-       if [[ ${#CONFLICTS[@]} -gt 0 ]]; then
-           echo "⚠ The following files will be backed up:"
-           for f in "${CONFLICTS[@]}"; do
-               echo "  - $f"
-           done
-           echo ""
-       fi
+    if [[ ${#MISSING[@]} -gt 0 ]]; then
+        echo "The system defaults are incomplete. Missing files:"
+        for path in "${MISSING[@]}"; do
+            echo "  - ${path}"
+        done
+        exit 1
+    fi
 
-       if ! gum confirm "Proceed with installation?"; then
-           echo "Cancelled."
-           exit 0
-       fi
+    CONFLICTS=()
+    while IFS= read -r -d '' file; do
+        rel_path="${file#${SYSTEM_CONFIG_DIR}/}"
+        target="${USER_CONFIG_DIR}/${rel_path}"
+        if [[ -f "${target}" ]]; then
+            CONFLICTS+=("${rel_path}")
+        fi
+    done < <(find "${SYSTEM_CONFIG_DIR}" -type f -print0)
 
-       # Copy files, backing up conflicts
-           BACKED_UP=()
-           INSTALLED=()
+    if [[ ${#CONFLICTS[@]} -gt 0 ]]; then
+        echo "The following files will be backed up:"
+        for file in "${CONFLICTS[@]}"; do
+            echo "  - ${file}"
+        done
+        echo
+    fi
 
-           while IFS= read -r -d '' file; do
-               rel_path="${file#$SKEL_CONFIG/}"
-               target="$USER_CONFIG/$rel_path"
-               target_dir=$(dirname "$target")
+    if ! gum confirm "Install neptuno DMS config into your home directory?"; then
+        echo "Cancelled."
+        exit 0
+    fi
 
-               # Create directory if needed
-               mkdir -p "$target_dir"
+    BACKED_UP=()
+    INSTALLED=()
 
-               # Backup existing file
-               if [[ -f "$target" ]]; then
-                   backup="${target}.backup.${TIMESTAMP}"
-                   mv "$target" "$backup"
-                   BACKED_UP+=("$rel_path → $(basename "$backup")")
-               fi
+    while IFS= read -r -d '' file; do
+        rel_path="${file#${SYSTEM_CONFIG_DIR}/}"
+        target="${USER_CONFIG_DIR}/${rel_path}"
+        target_dir="$(dirname "${target}")"
 
-               # Copy new file
-               cp "$file" "$target"
-               INSTALLED+=("$rel_path")
-           done < <(find "$SKEL_CONFIG" -type f -print0)
+        mkdir -p "${target_dir}"
 
-           echo ""
-              echo "${bold}=== Installation Complete ===${normal}"
-              echo ""
-              echo "✓ Installed ${#INSTALLED[@]} files"
+        if [[ -f "${target}" ]]; then
+            backup="${target}.backup.${TIMESTAMP}"
+            mv "${target}" "${backup}"
+            BACKED_UP+=("${rel_path} -> $(basename "${backup}")")
+        fi
 
-              if [[ ${#BACKED_UP[@]} -gt 0 ]]; then
-                  echo ""
-                  echo "📦 Backups created:"
-                  for b in "${BACKED_UP[@]}"; do
-                      echo "  $b"
-                  done
-              fi
+        cp "${file}" "${target}"
+        INSTALLED+=("${rel_path}")
+    done < <(find "${SYSTEM_CONFIG_DIR}" -type f -print0)
 
-              echo ""
-              echo "Run 'systemctl --user enable --now dms' to start DMS
+    LOCAL_NIRI="${USER_CONFIG_DIR}/niri/local.kdl"
+    if [[ ! -f "${LOCAL_NIRI}" ]]; then
+        cat > "${LOCAL_NIRI}" <<'EOF'
+// Put your personal Niri overrides here.
+// This file is included from config.kdl and is intended to survive
+// refreshes of the default neptuno DMS configuration.
+
+// Example:
+//
+// input {
+//     keyboard {
+//         xkb {
+//             layout "us"
+//         }
+//     }
+// }
+EOF
+        INSTALLED+=("niri/local.kdl")
+    fi
+
+    echo
+    echo "${bold}Installation complete${normal}"
+    echo
+    echo "Installed ${#INSTALLED[@]} files."
+    if [[ ${#BACKED_UP[@]} -gt 0 ]]; then
+        echo
+        echo "Backups created:"
+        for item in "${BACKED_UP[@]}"; do
+            echo "  - ${item}"
+        done
+    fi
+    echo
+    echo "Log out and select the Niri session if needed."
+    echo "Put personal Niri overrides in:"
+    echo "  ${LOCAL_NIRI}"
+
+[group('System')]
+refresh-dms-config:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    source /usr/lib/ujust/ujust.sh
+
+    USER_CONFIG_DIR="${HOME}/.config"
+    LOCAL_NIRI="${USER_CONFIG_DIR}/niri/local.kdl"
+
+    echo "${bold}Refresh neptuno DMS Config${normal}"
+    echo
+    echo "This will reinstall the default neptuno DMS config and back up"
+    echo "any existing user config files before replacing them."
+    echo
+    echo "Your personal overrides should live in:"
+    echo "  ${LOCAL_NIRI}"
+    echo
+
+    if [[ -f "${LOCAL_NIRI}" ]]; then
+        echo "Detected existing local override file:"
+        echo "  ${LOCAL_NIRI}"
+    else
+        echo "No local override file found yet. One will be created for you."
+    fi
+    echo
+
+    if ! gum confirm "Continue refreshing your DMS config?"; then
+        echo "Cancelled."
+        exit 0
+    fi
+
+    ujust install-dms-config
+
+[group('System')]
+show-dms-config-paths:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo "System defaults:"
+    echo "  /etc/skel/.config/niri/config.kdl"
+    echo "  /etc/skel/.config/ghostty/config"
+    echo "  /etc/skel/.config/environment.d/90-dms.conf"
+    echo
+    echo "User-installed config:"
+    echo "  ${HOME}/.config/niri/config.kdl"
+    echo "  ${HOME}/.config/ghostty/config"
+    echo "  ${HOME}/.config/environment.d/90-dms.conf"
+    echo
+    echo "User override file:"
+    echo "  ${HOME}/.config/niri/local.kdl"
+
+[group('System')]
+dms-doctor:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if ! command -v dms >/dev/null 2>&1; then
+        echo "dms is not installed or not in PATH."
+        exit 1
+    fi
+
+    echo "Running DMS doctor in verbose mode..."
+    echo
+    exec dms doctor -v
+
+[group('System')]
+dms-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    USER_CONFIG_DIR="${HOME}/.config"
+    REQUIRED_USER_FILES=(
+        "${USER_CONFIG_DIR}/niri/config.kdl"
+        "${USER_CONFIG_DIR}/niri/local.kdl"
+        "${USER_CONFIG_DIR}/ghostty/config"
+        "${USER_CONFIG_DIR}/environment.d/90-dms.conf"
+    )
+
+    echo "Checking neptuno DMS prerequisites..."
+    echo
+
+    for path in "${REQUIRED_USER_FILES[@]}"; do
+        if [[ -f "${path}" ]]; then
+            echo "[ok] ${path}"
+        else
+            echo "[missing] ${path}"
+        fi
+    done
+
+    echo
+    echo "If files are missing, run:"
+    echo "  ujust install-dms-config"
+    echo
+    echo "For runtime health checks, run:"
+    echo "  ujust dms-doctor"

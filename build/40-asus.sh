@@ -15,4 +15,6 @@ dnf5 install -y \
     supergfxctl \
     asusctl-rog-gui
 
+dnf5 copr disable -y lukenukem/asus-linux
+
 echo "::endgroup::"
