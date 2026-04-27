@@ -1,6 +1,6 @@
 export image_name := env("IMAGE_NAME", "neptuno")
 export default_tag := env("DEFAULT_TAG", "stable")
-export bib_image := env("BIB_IMAGE", "ghcr.io/osbuild/bootc-image-builder:latest")
+export bib_image := env("BIB_IMAGE", "ghcr.io/osbuild/bootc-image-builder:latest@sha256:5544be27f362983e1b42da6236f1016cf0df4dbcb1dbf5d4a61191a91d59aea9")
 
 alias build-vm := build-qcow2
 alias rebuild-vm := rebuild-qcow2

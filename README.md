@@ -10,7 +10,10 @@ Here are the main ways neptuno differs from the upstream base image.
 
 ### Base Image
 
-- **Base image**: `ghcr.io/ublue-os/bluefin-dx:latest`
+- **Base image**: `ghcr.io/ublue-os/bluefin-dx:latest@sha256:99834d39890f753972abe9a331f59e35a80d58733eccb1ccbac894510c779413`
+- **Imported OCI resources**:
+  - `ghcr.io/projectbluefin/common:latest@sha256:b293a96dd194d4bc4a296f4b46ff71f80261e5b06099005d70be7110b5b32b2d`
+  - `ghcr.io/ublue-os/brew:latest@sha256:64d5d7f18572775695ba314f7ff64c4c1eaadda8d1947bce8b77dce748b162cd`
 - **Build model**: Multi-stage bootc image with OCI-imported resources from `@projectbluefin/common` and `@ublue-os/brew`
 - **Package strategy**: `dnf5` for build-time system changes, Homebrew for user-installed CLI tools, Flatpak for optional GUI apps
 
@@ -24,8 +27,8 @@ Here are the main ways neptuno differs from the upstream base image.
 ### Runtime Applications
 
 - **Homebrew**: Default Brewfile includes `bat`, `eza`, `fd`, `rg`, `gh`, `git`, `starship`, `zoxide`, `htop`, and `tmux`
-- **Flatpak**: `custom/flatpaks/default.preinstall` is still a template-style catalog; all entries are currently commented out, so no Flatpaks are preinstalled by default
-- **ujust**: Custom commands can be layered in through `custom/ujust/`
+- **Flatpak**: `custom/flatpaks/default.preinstall` currently ships with no enabled entries, so no Flatpaks are preinstalled by default
+- **ujust**: Neptuno keeps a small set of image-specific helper commands in `custom/ujust/`, while generic helpers remain owned by upstream Bluefin/common
 
 ### Configuration Changes
 
@@ -64,20 +67,20 @@ _Last updated: 2026-04-27_
 
 Build the image locally:
 
-```bash
+```/dev/null/bash#L1-1
 just build
 ```
 
 Build a QCOW2 image and boot it in a VM:
 
-```bash
+```/dev/null/bash#L1-2
 just build-qcow2
 just run-vm-qcow2
 ```
 
 Run the common local workflow end to end:
 
-```bash
+```/dev/null/bash#L1-1
 just build && just build-qcow2 && just run-vm-qcow2
 ```
 
@@ -87,7 +90,7 @@ If you prefer ISO-based testing, use the commands defined in `Justfile` for the 
 
 Switch an existing bootc system to the published image:
 
-```bash
+```/dev/null/bash#L1-2
 sudo bootc switch ghcr.io/<owner>/neptuno:stable
 sudo systemctl reboot
 ```
@@ -100,7 +103,7 @@ Signing is disabled by default so first builds can succeed immediately. When you
 
 1. Generate a key pair:
 
-```bash
+```/dev/null/bash#L1-1
 cosign generate-key-pair
 ```
 
@@ -119,7 +122,7 @@ Never commit `cosign.key`.
 
 To verify a signed image:
 
-```bash
+```/dev/null/bash#L1-1
 cosign verify --key cosign.pub ghcr.io/<owner>/neptuno:stable
 ```
 
@@ -133,18 +136,19 @@ The `ctx` stage combines:
 
 - local build scripts from `build/`
 - local runtime customization files from `custom/`
-- shared system files from `ghcr.io/projectbluefin/common:latest`
-- Homebrew integration files from `ghcr.io/ublue-os/brew:latest`
+- shared system files from `ghcr.io/projectbluefin/common:latest@sha256:b293a96dd194d4bc4a296f4b46ff71f80261e5b06099005d70be7110b5b32b2d`
+- Homebrew integration files from `ghcr.io/ublue-os/brew:latest@sha256:64d5d7f18572775695ba314f7ff64c4c1eaadda8d1947bce8b77dce748b162cd`
 
 ### Final Image Stage
 
-The final stage starts from `ghcr.io/ublue-os/bluefin-dx:latest` and runs the numbered build scripts in order:
+The final stage starts from `ghcr.io/ublue-os/bluefin-dx:latest@sha256:99834d39890f753972abe9a331f59e35a80d58733eccb1ccbac894510c779413` and runs the numbered build scripts in order:
 
 1. `build/10-build.sh`
 2. `build/20-dms.sh`
 3. `build/30-gaming.sh`
+4. `build/40-asus.sh`
 
-This keeps custom logic modular and makes it easier to reason about desktop, tooling, and gaming changes separately.
+This keeps custom logic modular and makes it easier to reason about desktop, tooling, gaming changes, and hardware-specific layers separately.
 
 ## DMS and Niri Configuration Model
 
@@ -244,6 +248,7 @@ For existing installs or when testing config changes, use the provided `ujust` c
 
 - install or refresh the default DMS config
 - run `dms doctor`
+- run `dms check`
 - install neptuno Brewfile bundles
 
 ### Validation
@@ -252,8 +257,9 @@ After first boot into the image, a good validation flow is:
 
 1. Log into the `Niri` session
 2. Run `ujust dms-doctor`
-3. Confirm shell widgets, launcher, clipboard, notifications, and terminal launching work
-4. Put personal Niri changes in `~/.config/niri/local.kdl` instead of editing the shipped config directly
+3. Run `ujust dms-check`
+4. Confirm shell widgets, launcher, clipboard, notifications, and terminal launching work
+5. Put personal Niri changes in `~/.config/niri/local.kdl` instead of editing the shipped config directly
 
 ## Detailed Guides
 

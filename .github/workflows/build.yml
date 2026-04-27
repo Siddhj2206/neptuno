@@ -5,20 +5,20 @@ on:
     branches:
       - main
   schedule:
-    - cron: '05 10 * * *'  # 10:05am UTC everyday
+    - cron: "05 10 * * *" # 10:05am UTC everyday
   push:
     branches:
       - main
     paths-ignore:
-      - '**/README.md'
+      - "**/README.md"
   workflow_dispatch:
 
 env:
-  IMAGE_DESC: "My Customized Universal Blue Image"
-  IMAGE_KEYWORDS: "bootc,ublue,universal-blue"
-  IMAGE_LOGO_URL: "https://avatars.githubusercontent.com/u/120078124?s=200&v=4"  # Put your own image here for a fancy profile on https://artifacthub.io/!
-  IMAGE_NAME: "${{ github.event.repository.name }}"  # output image name, usually same as repo name
-  IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"  # do not edit
+  IMAGE_DESC: "Custom Bluefin-DX-based bootc image with DMS, Niri, and gaming support"
+  IMAGE_KEYWORDS: "bootc,ublue,bluefin,niri,dms,gaming"
+  IMAGE_LOGO_URL: "https://avatars.githubusercontent.com/u/120078124?s=200&v=4" # Replace with your own image URL if you want custom Artifact Hub branding
+  IMAGE_NAME: "${{ github.event.repository.name }}" # output image name, usually same as repo name
+  IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}" # do not edit
   DEFAULT_TAG: "stable"
 
 concurrency:
@@ -58,7 +58,7 @@ jobs:
 
         # Fallback to the remove-unwanted-software-action if github doesn't allocate enough space
         # See: https://github.com/ublue-os/container-storage-action/pull/11
-        continue-on-error: true 
+        continue-on-error: true
         with:
           target-dir: /var/lib/containers
           mount-opts: compress-force=zstd:2
@@ -72,13 +72,13 @@ jobs:
           # https://linux.die.net/man/1/date
           echo "date=$(date -u +%Y\-%m\-%d\T%H\:%M\:%S\Z)" >> $GITHUB_OUTPUT
 
-      # Image metadata for https://artifacthub.io/ - This is optional but is highly recommended so we all can get a index of all the custom images
-      # The metadata by itself is not going to do anything, you choose if you want your image to be on ArtifactHub or not.
+      # Image metadata for https://artifacthub.io/ - optional, but useful if you want this image indexed there.
+      # Keep these labels aligned with the actual Neptuno image description and repository docs.
       - name: Image Metadata
         uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # v5
         id: metadata
         with:
-          # This generates all the tags for your image, you can add custom tags here too!
+          # This generates the published image tags.
           # Default tags are "$DEFAULT_TAG" and "$DEFAULT_TAG.$date".
           tags: |
             type=raw,value=${{ env.DEFAULT_TAG }}
@@ -132,7 +132,7 @@ jobs:
       #   2. Uncomment the "Generate SBOM" step below
       #   3. If using image signing, also uncomment the "Add SBOM Attestation" step further down
       # Documentation: https://github.com/anchore/syft
-      
+
       # - name: Setup Syft
       #   id: setup-syft
       #   uses: anchore/sbom-action/download-syft@8e94d75ddd33f69f691467e42275782e4bfefe84 # v0.20.9

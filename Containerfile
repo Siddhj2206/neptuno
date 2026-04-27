@@ -1,37 +1,5 @@
 ###############################################################################
-# PROJECT NAME CONFIGURATION
-###############################################################################
-# Name: neptuno
-#
-# IMPORTANT: Change "neptuno" above to your desired project name.
-# This name should be used consistently throughout the repository in:
-#   - Justfile: export image_name := env("IMAGE_NAME", "your-name-here")
-#   - README.md: # your-name-here (title)
-#   - artifacthub-repo.yml: repositoryID: your-name-here
-#   - custom/ujust/README.md: localhost/your-name-here:stable (in bootc switch example)
-#
-# The project name defined here is the single source of truth for your
-# custom image's identity. When changing it, update all references above
-# to maintain consistency.
-###############################################################################
-
-###############################################################################
-# MULTI-STAGE BUILD ARCHITECTURE
-###############################################################################
-# This Containerfile follows the Bluefin architecture pattern as implemented in
-# @projectbluefin/distroless. The architecture layers OCI containers together:
-#
-# 1. Context Stage (ctx) - Combines resources from:
-#    - Local build scripts and custom files
-#    - @projectbluefin/common - Desktop configuration shared with Aurora
-#    - @ublue-os/brew - Homebrew integration
-#
-# 2. Base Image Options:
-#    - `ghcr.io/ublue-os/silverblue-main:latest` (Fedora and GNOME)
-#    - `ghcr.io/ublue-os/base-main:latest` (Fedora and no desktop
-#    - `quay.io/centos-bootc/centos-bootc:stream10 (CentOS-based)`
-#
-# See: https://docs.projectbluefin.io/contributing/ for architecture diagram
+# neptuno container image definition
 ###############################################################################
 
 # Context stage - combine local and imported OCI container resources
@@ -39,13 +7,13 @@ FROM scratch AS ctx
 
 COPY build /build
 COPY custom /custom
-# Copy from OCI containers to distinct subdirectories to avoid conflicts
-# Note: Renovate can automatically update these :latest tags to SHA-256 digests for reproducibility
-COPY --from=ghcr.io/projectbluefin/common:latest /system_files /oci/common
-COPY --from=ghcr.io/ublue-os/brew:latest /system_files /oci/brew
+# Copy from OCI containers to distinct subdirectories to avoid conflicts.
+# Keep these digest-pinned for reproducible builds; Renovate can refresh them.
+COPY --from=ghcr.io/projectbluefin/common:latest@sha256:b293a96dd194d4bc4a296f4b46ff71f80261e5b06099005d70be7110b5b32b2d /system_files /oci/common
+COPY --from=ghcr.io/ublue-os/brew:latest@sha256:64d5d7f18572775695ba314f7ff64c4c1eaadda8d1947bce8b77dce748b162cd /system_files /oci/brew
 
-# Base Image - GNOME included
-FROM ghcr.io/ublue-os/bluefin-dx:latest
+# Base image
+FROM ghcr.io/ublue-os/bluefin-dx:latest@sha256:99834d39890f753972abe9a331f59e35a80d58733eccb1ccbac894510c779413
 
 ## Alternative base images, no desktop included (uncomment to use):
 # FROM ghcr.io/ublue-os/base-main:latest

@@ -1,10 +1,11 @@
-# Copilot Instructions for finpilot
+# Copilot Instructions for neptuno
 
 This repository uses comprehensive agent instructions. Please refer to the main documentation file:
 
 **[AGENTS.md](../AGENTS.md)** in the repository root.
 
 This file contains:
+
 - Repository structure and organization
 - Build system details and workflows
 - Package management guidelines
@@ -13,4 +14,4 @@ This file contains:
 - Troubleshooting guides
 - Attribution requirements for AI agents
 
-All coding agents should consult AGENTS.md for detailed instructions on working with this bootc image template.
+All coding agents should consult AGENTS.md for detailed instructions on working with the `neptuno` bootc image repository.
