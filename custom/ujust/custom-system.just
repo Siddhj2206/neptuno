@@ -36,7 +36,8 @@ install-dms-config:
     echo "  ${USER_CONFIG_DIR}"
     echo
     echo "Niri and environment defaults are treated as image-owned config."
-    echo "Ghostty replacement is optional if you already have your own config."
+    echo "neptuno also ships a default Ghostty config."
+    echo "Replacing your Ghostty config is optional if you already have your own config."
     echo
     echo "Your personal Niri overrides should go in:"
     echo "  ${USER_CONFIG_DIR}/niri/local.kdl"
@@ -65,8 +66,8 @@ install-dms-config:
         echo "Detected existing Ghostty config:"
         echo "  ${USER_GHOSTTY_CONFIG}"
         echo
-        echo "neptuno ships the current upstream DMS Ghostty default, but you do not"
-        echo "have to replace your own Ghostty config if you don't want to."
+        echo "neptuno ships the current upstream DMS Ghostty config."
+        echo "You do not have to replace your own Ghostty config if you don't want to."
         echo
         GHOSTTY_ACTION="$(gum choose \
             "Keep my current Ghostty config" \
@@ -190,6 +191,7 @@ refresh-dms-config:
     echo
     echo "This will reinstall the default neptuno DMS config and back up"
     echo "existing user config files before replacing them."
+
     echo
     echo "Your personal Niri overrides should live in:"
     echo "  ${LOCAL_NIRI}"
@@ -207,7 +209,7 @@ refresh-dms-config:
         echo "Detected existing Ghostty config:"
         echo "  ${USER_GHOSTTY_CONFIG}"
         echo "You will be asked whether to keep it or replace it with the"
-        echo "neptuno/DMS default during the refresh."
+        echo "neptuno/DMS default Ghostty config during the refresh."
         echo
     fi
 
@@ -232,6 +234,7 @@ show-dms-config-paths:
     echo "  ${HOME}/.config/niri/config.kdl"
     echo "  ${HOME}/.config/ghostty/config"
     echo "  ${HOME}/.config/environment.d/90-dms.conf"
+
     echo
     echo "User override file:"
     echo "  ${HOME}/.config/niri/local.kdl"
