@@ -18,8 +18,11 @@ install-dms-config:
 
     REQUIRED_FILES=(
         "niri/config.kdl"
-        "ghostty/config"
         "environment.d/90-dms.conf"
+    )
+
+    OPTIONAL_GHOSTTY_FILES=(
+        "ghostty/config"
     )
 
     if [[ ! -d "${SYSTEM_CONFIG_DIR}" ]]; then
@@ -32,7 +35,9 @@ install-dms-config:
     echo "This will copy the neptuno default DMS-related config into:"
     echo "  ${USER_CONFIG_DIR}"
     echo
-    echo "Existing files with matching paths will be backed up first."
+    echo "Niri and environment defaults are treated as image-owned config."
+    echo "Ghostty replacement is optional if you already have your own config."
+    echo
     echo "Your personal Niri overrides should go in:"
     echo "  ${USER_CONFIG_DIR}/niri/local.kdl"
     echo
@@ -52,9 +57,35 @@ install-dms-config:
         exit 1
     fi
 
+    INCLUDE_GHOSTTY=1
+    USER_GHOSTTY_CONFIG="${USER_CONFIG_DIR}/ghostty/config"
+    SYSTEM_GHOSTTY_CONFIG="${SYSTEM_CONFIG_DIR}/ghostty/config"
+
+    if [[ -f "${USER_GHOSTTY_CONFIG}" ]]; then
+        echo "Detected existing Ghostty config:"
+        echo "  ${USER_GHOSTTY_CONFIG}"
+        echo
+        echo "neptuno ships the current upstream DMS Ghostty default, but you do not"
+        echo "have to replace your own Ghostty config if you don't want to."
+        echo
+        GHOSTTY_ACTION="$(gum choose \
+            "Keep my current Ghostty config" \
+            "Back up and replace my Ghostty config")"
+
+        if [[ "${GHOSTTY_ACTION}" == "Keep my current Ghostty config" ]]; then
+            INCLUDE_GHOSTTY=0
+        fi
+        echo
+    fi
+
     CONFLICTS=()
     while IFS= read -r -d '' file; do
         rel_path="${file#${SYSTEM_CONFIG_DIR}/}"
+
+        if [[ "${rel_path}" == ghostty/* && "${INCLUDE_GHOSTTY}" -eq 0 ]]; then
+            continue
+        fi
+
         target="${USER_CONFIG_DIR}/${rel_path}"
         if [[ -f "${target}" ]]; then
             CONFLICTS+=("${rel_path}")
@@ -76,9 +107,16 @@ install-dms-config:
 
     BACKED_UP=()
     INSTALLED=()
+    SKIPPED=()
 
     while IFS= read -r -d '' file; do
         rel_path="${file#${SYSTEM_CONFIG_DIR}/}"
+
+        if [[ "${rel_path}" == ghostty/* && "${INCLUDE_GHOSTTY}" -eq 0 ]]; then
+            SKIPPED+=("${rel_path}")
+            continue
+        fi
+
         target="${USER_CONFIG_DIR}/${rel_path}"
         target_dir="$(dirname "${target}")"
 
@@ -125,6 +163,13 @@ EOF
             echo "  - ${item}"
         done
     fi
+    if [[ ${#SKIPPED[@]} -gt 0 ]]; then
+        echo
+        echo "Skipped:"
+        for item in "${SKIPPED[@]}"; do
+            echo "  - ${item}"
+        done
+    fi
     echo
     echo "Log out and select the Niri session if needed."
     echo "Put personal Niri overrides in:"
@@ -139,13 +184,14 @@ refresh-dms-config:
 
     USER_CONFIG_DIR="${HOME}/.config"
     LOCAL_NIRI="${USER_CONFIG_DIR}/niri/local.kdl"
+    USER_GHOSTTY_CONFIG="${USER_CONFIG_DIR}/ghostty/config"
 
     echo "${bold}Refresh neptuno DMS Config${normal}"
     echo
     echo "This will reinstall the default neptuno DMS config and back up"
-    echo "any existing user config files before replacing them."
+    echo "existing user config files before replacing them."
     echo
-    echo "Your personal overrides should live in:"
+    echo "Your personal Niri overrides should live in:"
     echo "  ${LOCAL_NIRI}"
     echo
 
@@ -156,6 +202,14 @@ refresh-dms-config:
         echo "No local override file found yet. One will be created for you."
     fi
     echo
+
+    if [[ -f "${USER_GHOSTTY_CONFIG}" ]]; then
+        echo "Detected existing Ghostty config:"
+        echo "  ${USER_GHOSTTY_CONFIG}"
+        echo "You will be asked whether to keep it or replace it with the"
+        echo "neptuno/DMS default during the refresh."
+        echo
+    fi
 
     if ! gum confirm "Continue refreshing your DMS config?"; then
         echo "Cancelled."
@@ -205,8 +259,11 @@ dms-check:
     REQUIRED_USER_FILES=(
         "${USER_CONFIG_DIR}/niri/config.kdl"
         "${USER_CONFIG_DIR}/niri/local.kdl"
-        "${USER_CONFIG_DIR}/ghostty/config"
         "${USER_CONFIG_DIR}/environment.d/90-dms.conf"
+    )
+
+    OPTIONAL_USER_FILES=(
+        "${USER_CONFIG_DIR}/ghostty/config"
     )
 
     echo "Checking neptuno DMS prerequisites..."
@@ -217,6 +274,14 @@ dms-check:
             echo "[ok] ${path}"
         else
             echo "[missing] ${path}"
+        fi
+    done
+
+    for path in "${OPTIONAL_USER_FILES[@]}"; do
+        if [[ -f "${path}" ]]; then
+            echo "[ok] ${path}"
+        else
+            echo "[optional] ${path} (not installed or intentionally kept user-managed)"
         fi
     done
 

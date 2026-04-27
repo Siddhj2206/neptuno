@@ -33,6 +33,7 @@ Here are the main ways neptuno differs from the upstream base image.
 - Enables `podman.socket`
 - Installs the DMS session stack from COPR repositories and disables those repos after install
 - Ships DMS-ready defaults for `niri` and `ghostty`, while keeping user customization in a separate `local.kdl` override model
+- Vendors DMS `niri/dms/*.kdl` fragments as upstream mirrors from DankMaterialShell instead of treating them as hand-maintained local config
 - Adds a gaming layer with Steam, Gamescope, and MangoHud
 
 _Last updated: 2026-04-27_
@@ -158,6 +159,8 @@ The image provides default config for:
 - `ghostty`
 - `environment.d` session defaults
 
+The `niri/dms/*.kdl` files in this repository are treated as **upstream mirrors** of the defaults shipped by DankMaterialShell, not as hand-maintained neptuno-specific config.
+
 These defaults are copied into `/etc/skel/.config/` for new users and can also be installed for existing users with a custom `ujust` command.
 
 ### User customization
@@ -180,6 +183,31 @@ This keeps a cleaner separation between:
 - user-owned overrides that should remain stable across image updates
 
 If you edit the main generated DMS fragments directly, those changes are more likely to drift or be overwritten when DMS or the image defaults change.
+
+### Vendored DMS fragment policy
+
+`neptuno` currently vendors the DMS Niri fragments because the `dms setup` commands are disabled on immutable/image-based systems. That means these files cannot be refreshed on a running bootc system with the normal DMS setup workflow.
+
+Because of that, these files should be treated as mirrors of upstream DMS defaults:
+
+- `custom/config/niri/dms/colors.kdl`
+- `custom/config/niri/dms/layout.kdl`
+- `custom/config/niri/dms/alttab.kdl`
+- `custom/config/niri/dms/binds.kdl`
+
+The intended maintenance model is:
+
+1. update DMS packages
+2. compare against the current upstream DankMaterialShell embedded Niri config
+3. refresh the vendored mirror files from upstream
+4. keep neptuno-specific changes out of those mirrored fragments
+
+In practice, neptuno-specific customization should live in:
+
+- `custom/config/niri/config.kdl`
+- `custom/config/niri/local.kdl`
+
+and not inside the mirrored DMS fragment files.
 
 ## DMS Runtime Notes
 
