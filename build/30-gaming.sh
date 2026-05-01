@@ -9,8 +9,8 @@ source /ctx/build/copr-helpers.sh
 echo "::group:: Install Steam"
 
 dnf5 install -y \
-    steam \
-    gamescope \
-    mangohud
+	steam \
+	gamescope \
+	mangohud
 
 echo "::endgroup::"

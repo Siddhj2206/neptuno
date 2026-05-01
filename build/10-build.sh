@@ -33,7 +33,7 @@ mkdir -p /usr/share/ublue-os/homebrew/
 cp /ctx/custom/brew/*.Brewfile /usr/share/ublue-os/homebrew/
 
 # Consolidate Just Files
-find /ctx/custom/ujust -iname '*.just' -exec printf "\n\n" \; -exec cat {} \; >> /usr/share/ublue-os/just/60-custom.just
+find /ctx/custom/ujust -iname '*.just' -exec printf "\n\n" \; -exec cat {} \; >>/usr/share/ublue-os/just/60-custom.just
 
 # Copy Flatpak preinstall files
 mkdir -p /etc/flatpak/preinstall.d/
@@ -49,15 +49,15 @@ echo "::group:: Install Packages"
 
 # Install packages using dnf5
 # Example: dnf5 install -y tmux
- dnf5 install -y \
-    chromium \
-    git \
-    gum \
-    dnf-plugins-core \
-    make \
-    unzip \
-    libwayland-server \
-    golang-bin
+dnf5 install -y \
+	chromium \
+	git \
+	gum \
+	dnf-plugins-core \
+	make \
+	unzip \
+	libwayland-server \
+	golang-bin
 
 # Example using COPR with isolated pattern:
 # copr_install_isolated "ublue-os/staging" package-name

@@ -11,8 +11,8 @@ echo "::group:: Install Asusctl"
 dnf5 copr enable -y lukenukem/asus-linux
 
 dnf5 install -y \
-    asusctl \
-    supergfxctl \
-    asusctl-rog-gui
+	asusctl \
+	supergfxctl \
+	asusctl-rog-gui
 
 echo "::endgroup::"
