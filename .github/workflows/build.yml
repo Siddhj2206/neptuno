@@ -122,16 +122,19 @@ jobs:
       # Restructures image layers for optimal bootc update performance.
       # Reduces update sizes by 5-10x with evenly sized layers.
       # NOTE: Rechunk BEFORE tagging so all tags reference the rechunked image.
-      # - name: Rechunk Image
-      #   if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
-      #   run: |
-      #     sudo podman run --rm --privileged \
-      #       -v /var/lib/containers:/var/lib/containers \
-      #       --entrypoint /usr/libexec/bootc-base-imagectl \
-      #       quay.io/centos-bootc/centos-bootc:stream10 \
-      #       rechunk --max-layers 96 \
-      #       "containers-storage:localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" \
-      #       "containers-storage:localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
+      - name: Rechunk Image
+        run: |
+          echo "Saving image to rootful storage ..."
+          podman save -o image.tar localhost/"${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
+          sudo podman image load < image.tar
+          echo "... done."
+          sudo podman run --rm --privileged \
+            -v /var/lib/containers:/var/lib/containers \
+            --entrypoint /usr/libexec/bootc-base-imagectl \
+            quay.io/fedora/fedora-bootc:44 \
+            rechunk --max-layers 67 \
+            localhost/"${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" \
+            localhost/"${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
 
       # Tag for registry
       - name: Tag for registry
