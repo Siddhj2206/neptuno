@@ -130,8 +130,8 @@ jobs:
             --entrypoint /usr/libexec/bootc-base-imagectl \
             quay.io/centos-bootc/centos-bootc:stream10 \
             rechunk --max-layers 96 \
-            "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" \
-            "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
+            "containers-storage:localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" \
+            "containers-storage:localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
 
       # Tag for registry
       - name: Tag for registry

@@ -111,8 +111,8 @@ rechunk $target_image=("localhost/" + image_name) $tag=default_tag:
         --entrypoint /usr/libexec/bootc-base-imagectl \
         quay.io/centos-bootc/centos-bootc:stream10 \
         rechunk --max-layers 96 \
-        "{{ target_image }}:{{ tag }}" \
-        "{{ target_image }}:{{ tag }}"
+        "containers-storage:{{ target_image }}:{{ tag }}" \
+        "containers-storage:{{ target_image }}:{{ tag }}"
 
 # Command: _rootful_load_image
 # Description: This script checks if the current user is root or running under sudo. If not, it attempts to resolve the image tag using podman inspect.
