@@ -13,23 +13,23 @@ dnf5 copr enable -y avengemedia/dms
 dnf5 copr enable -y yalter/niri
 
 dnf5 install -y \
-	xdg-desktop-portal-gtk \
-	accountsservice \
-	xwayland-satellite \
-	adw-gtk3-theme \
-	qt6ct \
-	qt6-qtmultimedia
+    xdg-desktop-portal-gtk \
+    accountsservice \
+    xwayland-satellite \
+    adw-gtk3-theme \
+    qt6ct \
+    qt6-qtmultimedia
 
 dnf5 install -y --setopt=install_weak_deps=False \
-	niri \
-	quickshell \
-	matugen \
-	dgop \
-	dsearch \
-	cava \
-	khal \
-	ghostty \
-	dms
+    niri \
+    quickshell-git \
+    matugen \
+    dgop \
+    dsearch \
+    cava \
+    khal \
+    ghostty \
+    dms
 
 dnf5 copr disable -y avengemedia/danklinux
 dnf5 copr disable -y avengemedia/dms
