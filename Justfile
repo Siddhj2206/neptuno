@@ -100,6 +100,20 @@ build $target_image=image_name $tag=default_tag:
         --tag "${target_image}:${tag}" \
         .
 
+# Rechunk the image for optimal bootc update performance
+# Restructures container layers into evenly-sized chunks using bootc-base-imagectl.
+# Reduces update sizes by 5-10x with better download resumability.
+rechunk $target_image=("localhost/" + image_name) $tag=default_tag:
+    #!/usr/bin/env bash
+    set -eoux pipefail
+    sudo podman run --rm --privileged \
+        -v /var/lib/containers:/var/lib/containers \
+        --entrypoint /usr/libexec/bootc-base-imagectl \
+        quay.io/centos-bootc/centos-bootc:stream10 \
+        rechunk --max-layers 96 \
+        "{{ target_image }}:{{ tag }}" \
+        "{{ target_image }}:{{ tag }}"
+
 # Command: _rootful_load_image
 # Description: This script checks if the current user is root or running under sudo. If not, it attempts to resolve the image tag using podman inspect.
 #              If the image is found, it loads it into rootful podman. If the image is not found, it pulls it from the repository.
