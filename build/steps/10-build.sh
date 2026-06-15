@@ -62,6 +62,10 @@ find /ctx/custom/ujust -iname '*.just' -exec printf "\n\n" \; -exec cat {} \; >>
 mkdir -p /etc/flatpak/preinstall.d/
 cp /ctx/custom/flatpaks/*.preinstall /etc/flatpak/preinstall.d/
 
+# Copy Flatpak system overrides (Bazaar needs host-etc for remote management)
+mkdir -p /etc/flatpak/overrides/
+cp -r /ctx/oci/common/bluefin/usr/share/ublue-os/flatpak-overrides/* /etc/flatpak/overrides/ 2>/dev/null || true
+
 # Copy config files to skel
 mkdir -p /etc/skel/
 cp -r /ctx/custom/config/ /etc/skel/.config/
