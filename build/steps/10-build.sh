@@ -16,6 +16,16 @@ source /ctx/build/steps/copr-helpers.sh
 # Enable nullglob for all glob operations to prevent failures on empty matches
 shopt -s nullglob
 
+echo "::group:: Overlay System Files from OCI Containers"
+
+# Brew integration files (lowest priority)
+rsync -rvK /ctx/oci/brew/ /
+
+# Shared system files from projectbluefin/common (medium priority)
+rsync -rvK /ctx/oci/common/shared/ /
+
+echo "::endgroup::"
+
 echo "::group:: Copy Bluefin Config from Common"
 
 # Copy just files from @projectbluefin/common (includes 00-entry.just which imports 60-custom.just)
