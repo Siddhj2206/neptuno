@@ -1,4 +1,4 @@
-export IMAGE_NAME := env("IMAGE_NAME", "finpilot")
+export IMAGE_NAME := env("IMAGE_NAME", "neptuno")
 export DEFAULT_TAG := env("DEFAULT_TAG", "stable")
 export PODMAN := env("PODMAN", "podman")
 export REPO_ORG := env("GITHUB_REPOSITORY_OWNER", "siddhj2206")
