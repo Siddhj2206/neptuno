@@ -1,5 +1,10 @@
 # vim: set ft=make :
 
+# Alias for bluefin-cli (terminal bling toggle)
+[group('System')]
+neptuno-cli:
+    @ujust bluefin-cli
+
 # Deploy DMS configuration files from system defaults
 [group('System')]
 install-dms-config:

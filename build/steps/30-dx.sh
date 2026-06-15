@@ -15,9 +15,7 @@ dnf5 install -y \
 	docker-ce \
 	docker-ce-cli \
 	containerd.io \
-	docker-buildx-plugin \
-	docker-compose-plugin \
-	podman-compose
+	docker-buildx-plugin
 
 # Disable Docker CE repo after install (packages baked into image)
 sed -i 's/enabled=1/enabled=0/g' /etc/yum.repos.d/docker-ce.repo
@@ -39,10 +37,7 @@ dnf5 install -y \
 	qemu-img \
 	qemu-system-x86-core \
 	qemu-user-binfmt \
-	qemu-user-static \
-	virt-manager \
-	virt-viewer \
-	virt-v2v
+	qemu-user-static
 
 echo "::endgroup::"
 
@@ -78,25 +73,10 @@ dnf5 install -y \
 
 echo "::endgroup::"
 
-echo "::group:: Copy DX System Files"
+echo "::group:: Set up DX permissions and modules"
 
-# Copy DX system files from local source
-mkdir -p /usr/lib/sysctl.d/
-cp /ctx/system_files/dx/usr/lib/sysctl.d/docker-ce.conf /usr/lib/sysctl.d/
-
-mkdir -p /usr/lib/dracut/dracut.conf.d/
-cp /ctx/system_files/dx/usr/lib/dracut/dracut.conf.d/80-vfio.conf /usr/lib/dracut/dracut.conf.d/
-
-mkdir -p /usr/lib/tmpfiles.d/
-cp /ctx/system_files/dx/usr/lib/tmpfiles.d/libvirt-workaround.conf /usr/lib/tmpfiles.d/
-
-mkdir -p /usr/lib/systemd/system/
-cp /ctx/system_files/dx/usr/lib/systemd/system/libvirt-workaround.service /usr/lib/systemd/system/
-cp /ctx/system_files/dx/usr/lib/systemd/system/bluefin-dx-groups.service /usr/lib/systemd/system/
-
-mkdir -p /usr/bin/
-cp /ctx/system_files/dx/usr/bin/bluefin-dx-groups /usr/bin/
-chmod +x /usr/bin/bluefin-dx-groups
+# Ensure bluefin-dx-groups is executable (rsync may not preserve +x)
+chmod +x /usr/bin/bluefin-dx-groups 2>/dev/null || true
 
 # Create ip_tables module for docker-in-docker
 mkdir -p /etc/modules-load.d/

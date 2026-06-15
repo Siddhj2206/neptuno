@@ -31,16 +31,12 @@ rsync -rvK /ctx/oci/common/shared/ /
 
 # Bluefin-specific non-GNOME configs (higher priority, overrides shared)
 rsync -rvK --relative \
-	/ctx/oci/common/bluefin/./etc/environment \
-	/ctx/oci/common/bluefin/./etc/profile.d/caffeinate.sh \
-	/ctx/oci/common/bluefin/./etc/umotd/ \
-	/ctx/oci/common/bluefin/./etc/xdg/ \
-	/ctx/oci/common/bluefin/./etc/zsh/ \
-	/ctx/oci/common/bluefin/./etc/skel/ \
-	/ctx/oci/common/bluefin/./usr/share/fish/ \
-	/ctx/oci/common/bluefin/./usr/lib/dracut/ \
-	/ctx/oci/common/bluefin/./usr/share/ublue-os/bling/ \
-	/
+    /ctx/oci/common/bluefin/./etc/profile.d/caffeinate.sh \
+    /ctx/oci/common/bluefin/./etc/zsh/ \
+    /ctx/oci/common/bluefin/./usr/bin/umotd \
+    /ctx/oci/common/bluefin/./usr/share/fish/ \
+    /ctx/oci/common/bluefin/./usr/lib/dracut/ \
+    /
 
 echo "::endgroup::"
 
@@ -54,15 +50,10 @@ shopt -u nullglob
 
 echo "::endgroup::"
 
-echo "::group:: Copy Local System Files"
+echo "::group:: Copy Local Files"
 
-# Copy system files from local repo (highest priority, overrides OCI containers and RPMs)
-cp /ctx/system_files/usr/lib/systemd/system/flatpak-nuke-fedora.service \
-    /ctx/system_files/usr/lib/systemd/system/dconf-update.service \
-    /usr/lib/systemd/system/ 2>/dev/null || true
-
-# Copy sysusers.d entries (ensures groups like docker are declared properly)
-cp /ctx/system_files/usr/lib/sysusers.d/*.conf /usr/lib/sysusers.d/ 2>/dev/null || true
+# Blanket rsync of custom files (overrides OCI containers and RPMs)
+rsync -rvK /ctx/custom/files/ / 2>/dev/null || true
 
 echo "::endgroup::"
 
