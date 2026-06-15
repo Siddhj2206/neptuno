@@ -189,6 +189,7 @@ echo "::group:: System Configuration"
 # Enable systemd services
 systemctl enable podman.socket
 systemctl enable brew-setup.service
+systemctl enable flatpak-nuke-fedora.service
 systemctl enable flatpak-preinstall.service
 systemctl enable ublue-system-setup.service
 systemctl enable input-remapper.service
