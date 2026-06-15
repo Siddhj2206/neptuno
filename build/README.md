@@ -25,7 +25,7 @@ Create numbered scripts for different purposes:
 
 ```bash
 # 10-build.sh - Base system (already exists)
-# 20-drivers.sh - Hardware drivers  
+# 20-drivers.sh - Hardware drivers
 # 30-development.sh - Development tools
 # 40-gaming.sh - Gaming software
 # 50-cleanup.sh - Final cleanup tasks
