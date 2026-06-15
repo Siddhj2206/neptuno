@@ -163,13 +163,13 @@ jobs:
       # .github/workflows/pkg-cadence.yml workflow. See:
       #   https://github.com/projectbluefin/actions/tree/main/bootc-build/chunka
       #   https://github.com/projectbluefin/actions/tree/main/bootc-build/apply-pkg-intervals
-      - name: Rechunk image
-        if: github.event_name != 'pull_request'
-        id: rechunk-image
-        uses: projectbluefin/actions/bootc-build/chunka@34f00f9304a19ffeab55e30646ad48352c0d3c8b # v1
-        with:
-          source-image: localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}
-          max-layers: 128
+      # - name: Rechunk image
+      #   if: github.event_name != 'pull_request'
+      #   id: rechunk-image
+      #   uses: projectbluefin/actions/bootc-build/chunka@34f00f9304a19ffeab55e30646ad48352c0d3c8b # v1
+      #   with:
+      #     source-image: localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}
+      #     max-layers: 128
 
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
