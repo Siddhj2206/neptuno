@@ -14,14 +14,18 @@ echo "::group:: 10-build.sh"
 /ctx/build/steps/10-build.sh
 echo "::endgroup::"
 
-echo "::group:: 20-dms.sh"
-/ctx/build/steps/20-dms.sh
+echo "::group:: 20-base.sh"
+/ctx/build/steps/20-base.sh
 echo "::endgroup::"
 
-echo "::group:: 30-gaming.sh"
-/ctx/build/steps/30-gaming.sh
+echo "::group:: 30-dx.sh"
+/ctx/build/steps/30-dx.sh
 echo "::endgroup::"
 
-echo "::group:: 40-asus.sh"
-/ctx/build/steps/40-asus.sh
+echo "::group:: 40-dms.sh"
+/ctx/build/steps/40-dms.sh
+echo "::endgroup::"
+
+echo "::group:: 50-gaming.sh"
+/ctx/build/steps/50-gaming.sh
 echo "::endgroup::"
