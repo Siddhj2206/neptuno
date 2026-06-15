@@ -153,23 +153,13 @@ jobs:
           allow-write: ${{ github.event_name != 'pull_request' && 'true' || 'false' }}
           cache-bust: ${{ hashFiles('**/Containerfile') }}
 
-      # OPTIONAL: Rechunking (OCI-native, no rpm-ostree)
-      # Rechunking improves OTA delta performance by reorganizing layers.
-      # Uncomment the step below to enable it. Renovate will keep the action
-      # pinned and up to date automatically once it is uncommented.
-      #
-      # For optimal layer grouping (packages sorted by update cadence), also add
-      # the bootc-build/apply-pkg-intervals step before rechunking and create a
-      # .github/workflows/pkg-cadence.yml workflow. See:
-      #   https://github.com/projectbluefin/actions/tree/main/bootc-build/chunka
-      #   https://github.com/projectbluefin/actions/tree/main/bootc-build/apply-pkg-intervals
-      # - name: Rechunk image
-      #   if: github.event_name != 'pull_request'
-      #   id: rechunk-image
-      #   uses: projectbluefin/actions/bootc-build/chunka@34f00f9304a19ffeab55e30646ad48352c0d3c8b # v1
-      #   with:
-      #     source-image: localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}
-      #     max-layers: 128
+      - name: Rechunk image
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        id: rechunk-image
+        uses: projectbluefin/actions/bootc-build/chunka@34f00f9304a19ffeab55e30646ad48352c0d3c8b # v1
+        with:
+          source-image: localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}
+          max-layers: 128
 
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)

@@ -1,0 +1,6 @@
+.*
+*.md
+.git/
+_build-*
+output/
+iso/rclone/

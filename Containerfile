@@ -35,7 +35,7 @@
 ###############################################################################
 
 # OCI context images - imported below and pinned directly in their FROM lines.
-# The base image is pinned in the FROM line below and updated by Renovate.
+# The base image is a Fedora official OSTree desktop image.
 FROM ghcr.io/projectbluefin/common:latest@sha256:1e408cb5a3d5a08b229ae427c3dae4a1a6026a8d3f1f0bbaf033bd302d138b52 AS common
 FROM ghcr.io/ublue-os/brew:latest@sha256:5c5b6dea4b9faaab4d6fa81d7fc4f37f218c8a75a0839c72ae70b268bfdf4b0f AS brew
 
@@ -44,6 +44,7 @@ FROM scratch AS ctx
 
 COPY build /build
 COPY custom /custom
+COPY system_files /system_files
 
 # Copy from OCI containers to distinct subdirectories to avoid conflicts
 COPY --from=common /system_files /oci/common
@@ -51,7 +52,7 @@ COPY --from=brew /system_files /oci/brew
 
 # Base Image - GNOME included (Fedora official OSTree desktop)
 # Renovate will keep the digest pin up to date.
-FROM ghcr.io/ublue-os/bluefin-dx:stable@sha256:5c8ac23e261ca2a00d7cceeb1b977056f1bcb63b3a5c334d7e76d5db58302a1e
+FROM quay.io/fedora-ostree-desktops/silverblue:44@sha256:311b0bef53d994b9d82ea48f7ae5626f3ba04063880d0f354712cbf4338ef066
 
 # Image identity - these define how bootc, fastfetch, and the ublue ecosystem
 # recognize your image. Change these to match your project name.
@@ -64,20 +65,13 @@ ARG VERSION=""
 
 ### MODIFICATIONS
 ## Make modifications desired in your image and install packages by modifying the build scripts.
-## The following RUN directives mount the ctx stage which includes:
-##   - Local build scripts from /build
+## The following RUN directive mounts the ctx stage which includes:
+##   - build.sh orchestrator from /build
+##   - Step scripts from /build/steps/
 ##   - Local custom files from /custom
 ##   - Files from @projectbluefin/common at /oci/common (includes branding/artwork content)
 ##   - Files from @ublue-os/brew at /oci/brew
-## Scripts are run in numerical order (10-build.sh, 20-example.sh, etc.)
-
-RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
-    --mount=type=tmpfs,dst=/boot \
-    --mount=type=tmpfs,dst=/tmp \
-    /ctx/build/00-image-info.sh
-
-# Set dnf options before build scripts (persists across subsequent RUN layers)
-RUN dnf5 config-manager setopt keepcache=1 install_weak_deps=0
+## All build step scripts are orchestrated by build.sh which calls them in order
 
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache/libdnf5 \
@@ -85,31 +79,7 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=secret,id=GITHUB_TOKEN \
     --mount=type=tmpfs,dst=/boot \
     --mount=type=tmpfs,dst=/tmp \
-    /ctx/build/10-build.sh
-
-RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
-    --mount=type=cache,dst=/var/cache/libdnf5 \
-    --mount=type=cache,dst=/var/cache/rpm-ostree \
-    --mount=type=secret,id=GITHUB_TOKEN \
-    --mount=type=tmpfs,dst=/boot \
-    --mount=type=tmpfs,dst=/tmp \
-    /ctx/build/20-dms.sh
-
-RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
-    --mount=type=cache,dst=/var/cache/libdnf5 \
-    --mount=type=cache,dst=/var/cache/rpm-ostree \
-    --mount=type=secret,id=GITHUB_TOKEN \
-    --mount=type=tmpfs,dst=/boot \
-    --mount=type=tmpfs,dst=/tmp \
-    /ctx/build/30-gaming.sh
-
-RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
-    --mount=type=cache,dst=/var/cache/libdnf5 \
-    --mount=type=cache,dst=/var/cache/rpm-ostree \
-    --mount=type=secret,id=GITHUB_TOKEN \
-    --mount=type=tmpfs,dst=/boot \
-    --mount=type=tmpfs,dst=/tmp \
-    /ctx/build/40-asus.sh
+    /ctx/build/build.sh
 
 ### CLEANUP
 ## Use Bluefin's clean-stage.sh to remove build artifacts before linting.
@@ -119,7 +89,7 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     --mount=type=tmpfs,dst=/boot \
-    /ctx/build/clean-stage.sh
+    /ctx/build/steps/clean-stage.sh
 
 ### /opt
 ## Makes /opt writeable by default. Needs to be here to make the main image

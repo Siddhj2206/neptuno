@@ -4,7 +4,7 @@ set -eoux pipefail
 
 # Source helper functions
 # shellcheck source=/dev/null
-source /ctx/build/copr-helpers.sh
+source /ctx/build/steps/copr-helpers.sh
 
 echo "::group:: Install Steam"
 

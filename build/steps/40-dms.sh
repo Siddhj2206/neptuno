@@ -4,16 +4,18 @@ set -eoux pipefail
 
 # Source helper functions
 # shellcheck source=/dev/null
-source /ctx/build/copr-helpers.sh
+source /ctx/build/steps/copr-helpers.sh
 
 echo "::group:: Install DMS"
 
+# Enable COPRs (disabled in clean-stage.sh)
 dnf5 copr enable -y avengemedia/danklinux
 dnf5 copr enable -y avengemedia/dms
 dnf5 copr enable -y yalter/niri
 
 dnf5 install -y \
 	xdg-desktop-portal-gtk \
+	xdg-desktop-portal-gnome \
 	accountsservice \
 	xwayland-satellite \
 	adw-gtk3-theme \
@@ -30,10 +32,6 @@ dnf5 install -y --setopt=install_weak_deps=False \
 	khal \
 	ghostty \
 	dms
-
-dnf5 copr disable -y avengemedia/danklinux
-dnf5 copr disable -y avengemedia/dms
-dnf5 copr disable -y yalter/niri
 
 systemctl --global add-wants niri.service dms
 systemctl --global enable dsearch
