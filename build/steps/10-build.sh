@@ -24,6 +24,19 @@ rsync -rvK /ctx/oci/brew/ /
 # Shared system files from projectbluefin/common (medium priority)
 rsync -rvK /ctx/oci/common/shared/ /
 
+# Bluefin-specific non-GNOME configs (higher priority, overrides shared)
+rsync -rvK --relative \
+	/ctx/oci/common/bluefin/./etc/environment \
+	/ctx/oci/common/bluefin/./etc/profile.d/caffeinate.sh \
+	/ctx/oci/common/bluefin/./etc/umotd/ \
+	/ctx/oci/common/bluefin/./etc/xdg/ \
+	/ctx/oci/common/bluefin/./etc/zsh/ \
+	/ctx/oci/common/bluefin/./etc/skel/ \
+	/ctx/oci/common/bluefin/./usr/share/fish/ \
+	/ctx/oci/common/bluefin/./usr/lib/dracut/ \
+	/ctx/oci/common/bluefin/./usr/share/ublue-os/bling/ \
+	/
+
 echo "::endgroup::"
 
 echo "::group:: Copy Bluefin Config from Common"
