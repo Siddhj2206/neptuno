@@ -12,6 +12,15 @@ set -eoux pipefail
 # Enable nullglob for all glob operations to prevent failures on empty matches
 shopt -s nullglob
 
+# Remove ublue-os base packages before rsyncing OCI container files
+dnf5 remove -y \
+    ublue-os-luks \
+    ublue-os-just \
+    ublue-os-udev-rules \
+    ublue-os-signing \
+    ublue-os-update-services \
+    2>/dev/null || true
+
 echo "::group:: Overlay System Files from OCI Containers"
 
 # Brew integration files (lowest priority)
@@ -45,6 +54,18 @@ shopt -u nullglob
 
 echo "::endgroup::"
 
+echo "::group:: Copy Local System Files"
+
+# Copy system files from local repo (highest priority, overrides OCI containers and RPMs)
+cp /ctx/system_files/usr/lib/systemd/system/flatpak-nuke-fedora.service \
+    /ctx/system_files/usr/lib/systemd/system/dconf-update.service \
+    /usr/lib/systemd/system/ 2>/dev/null || true
+
+# Copy sysusers.d entries (ensures groups like docker are declared properly)
+cp /ctx/system_files/usr/lib/sysusers.d/*.conf /usr/lib/sysusers.d/ 2>/dev/null || true
+
+echo "::endgroup::"
+
 echo "::group:: Copy Custom Files"
 
 # Copy Brewfiles to standard location
@@ -55,8 +76,8 @@ cp /ctx/custom/brew/*.Brewfile /usr/share/ublue-os/homebrew/
 find /ctx/custom/ujust -iname '*.just' -exec printf "\n\n" \; -exec cat {} \; >>/usr/share/ublue-os/just/60-custom.just
 
 # Copy Flatpak preinstall files
-mkdir -p /etc/flatpak/preinstall.d/
-cp /ctx/custom/flatpaks/*.preinstall /etc/flatpak/preinstall.d/
+mkdir -p /usr/share/flatpak/preinstall.d/
+cp /ctx/custom/flatpaks/*.preinstall /usr/share/flatpak/preinstall.d/
 
 # Copy Flatpak system overrides (Bazaar needs host-etc for remote management)
 mkdir -p /etc/flatpak/overrides/

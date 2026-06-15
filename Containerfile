@@ -44,6 +44,7 @@ FROM scratch AS ctx
 
 COPY build /build
 COPY custom /custom
+COPY system_files /system_files
 
 # Copy from OCI containers to distinct subdirectories to avoid conflicts
 COPY --from=common /system_files /oci/common

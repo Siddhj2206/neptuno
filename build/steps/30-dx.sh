@@ -80,26 +80,23 @@ echo "::endgroup::"
 
 echo "::group:: Copy DX System Files"
 
-# Copy specific DX system files from projectbluefin/common
+# Copy DX system files from local source
 mkdir -p /usr/lib/sysctl.d/
-cp /ctx/oci/common/dx/usr/lib/sysctl.d/docker-ce.conf /usr/lib/sysctl.d/ 2>/dev/null || true
+cp /ctx/system_files/dx/usr/lib/sysctl.d/docker-ce.conf /usr/lib/sysctl.d/
 
 mkdir -p /usr/lib/dracut/dracut.conf.d/
-cp /ctx/oci/common/dx/usr/lib/dracut/dracut.conf.d/80-vfio.conf /usr/lib/dracut/dracut.conf.d/ 2>/dev/null || true
+cp /ctx/system_files/dx/usr/lib/dracut/dracut.conf.d/80-vfio.conf /usr/lib/dracut/dracut.conf.d/
 
 mkdir -p /usr/lib/tmpfiles.d/
-cp /ctx/oci/common/dx/usr/lib/tmpfiles.d/libvirt-workaround.conf /usr/lib/tmpfiles.d/ 2>/dev/null || true
+cp /ctx/system_files/dx/usr/lib/tmpfiles.d/libvirt-workaround.conf /usr/lib/tmpfiles.d/
 
 mkdir -p /usr/lib/systemd/system/
-cp /ctx/oci/common/dx/usr/lib/systemd/system/libvirt-workaround.service /usr/lib/systemd/system/ 2>/dev/null || true
-cp /ctx/oci/common/dx/usr/lib/systemd/system/bluefin-dx-groups.service /usr/lib/systemd/system/ 2>/dev/null || true
+cp /ctx/system_files/dx/usr/lib/systemd/system/libvirt-workaround.service /usr/lib/systemd/system/
+cp /ctx/system_files/dx/usr/lib/systemd/system/bluefin-dx-groups.service /usr/lib/systemd/system/
 
 mkdir -p /usr/bin/
-cp /ctx/oci/common/dx/usr/bin/bluefin-dx-groups /usr/bin/ 2>/dev/null || true
-chmod +x /usr/bin/bluefin-dx-groups 2>/dev/null || true
-
-# Apply docker IP forwarding sysctl
-sysctl -p /usr/lib/sysctl.d/docker-ce.conf 2>/dev/null || true
+cp /ctx/system_files/dx/usr/bin/bluefin-dx-groups /usr/bin/
+chmod +x /usr/bin/bluefin-dx-groups
 
 # Create ip_tables module for docker-in-docker
 mkdir -p /etc/modules-load.d/

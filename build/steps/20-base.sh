@@ -39,7 +39,7 @@ echo "::group:: Install Packages"
 dnf5 config-manager addrepo --from-repofile=https://pkgs.tailscale.com/stable/fedora/tailscale.repo
 dnf5 config-manager setopt tailscale-stable.enabled=0
 
-dnf5 install -y -x PackageKit* \
+dnf5 install -y -x 'PackageKit*' \
 	--enablerepo=tailscale-stable \
 	git gum make unzip dnf-plugins-core libwayland-server golang-bin \
 	fish zsh bash-color-prompt \
@@ -54,7 +54,6 @@ dnf5 install -y -x PackageKit* \
 	containerd flatpak-spawn \
 	gnome-tweaks adw-gtk3-theme xdg-terminal-exec \
 	jetbrains-mono-fonts-all adwaita-fonts-all opendyslexic-fonts \
-	pipewire-libs-extra \
 	alsa-firmware alsa-tools-firmware \
 	nautilus-gsconnect \
 	switcheroo-control \
@@ -66,7 +65,9 @@ dnf5 install -y -x PackageKit* \
 	zenity \
 	openrgb-udev-rules \
 	powerstat \
-	gnupg2-scdaemon
+	gnupg2-scdaemon \
+	gnome-keyring \
+	xdg-user-dirs
 
 echo "::endgroup::"
 
@@ -104,7 +105,8 @@ dnf5 install -y \
 	libfdk-aac \
 	libjxl \
 	ffmpegthumbnailer \
-	intel-vaapi-driver
+	intel-vaapi-driver \
+	pipewire-libs-extra
 
 # Disable third-party repo after install (packages are baked into the image)
 sed -i 's/enabled=1/enabled=0/g' /etc/yum.repos.d/fedora-multimedia.repo
@@ -121,6 +123,17 @@ copr_install_isolated "ublue-os/packages" uupd oversteer-udev
 
 echo "::endgroup::"
 
+echo "::group:: Hide CLI Desktop Entries"
+
+# Hide terminal app desktop entries from the application menu
+for file in fish htop nvtop; do
+    if [ -f "/usr/share/applications/${file}.desktop" ]; then
+        sed -i 's@\[Desktop Entry\]@\[Desktop Entry\]\nHidden=true@g' "/usr/share/applications/${file}.desktop"
+    fi
+done
+
+echo "::endgroup::"
+
 echo "::group:: System Configuration"
 
 # Enable systemd services
@@ -131,9 +144,12 @@ systemctl enable flatpak-preinstall.service
 systemctl enable ublue-system-setup.service
 systemctl enable input-remapper.service
 systemctl enable tailscaled.service
-systemctl enable bootc-unified-storage.service
 systemctl enable uupd.timer
 systemctl enable podman-auto-update.timer --global 2>/dev/null || true
+systemctl enable dconf-update.service
+systemctl --global enable ublue-user-setup.service
+systemctl --global enable xdg-user-dirs.service
+systemctl --global enable gnome-keyring-daemon.service
 
 # Mask Fedora flatpak service (replaced by Flathub)
 systemctl disable flatpak-add-fedora-repos.service 2>/dev/null || true

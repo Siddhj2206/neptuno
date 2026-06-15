@@ -1,5 +1,6 @@
 # Brewfile for development tools
-# Uncomment packages you want to install
+# Template file — all packages are commented out by default.
+# Uncomment the ones you want before running `ujust install-dev-tools`.
 
 # Container and orchestration tools
 # brew "kind"           # Kubernetes in Docker
