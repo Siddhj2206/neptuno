@@ -16,7 +16,7 @@ on:
       - "**.md"
       - ".github/workflows/*validate*.yml"
   schedule:
-    - cron: "05 10 * * *" # 10:05am UTC everyday
+    - cron: '05 10 * * *'  # 10:05am UTC everyday
   workflow_dispatch:
 
 permissions:

@@ -1,6 +1,6 @@
 # Default Brewfile for bluepilot
 # Add your favorite brew packages here
-# 
+#
 # Examples:
 
 # Modern CLI tools
@@ -13,7 +13,7 @@ brew "rg"         # ripgrep - faster grep
 brew "gh"         # GitHub CLI
 brew "git"        # Git version control
 
-# Shell enhancements  
+# Shell enhancements
 brew "starship"   # Cross-shell prompt
 brew "zoxide"     # Smarter cd command
 

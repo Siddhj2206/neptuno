@@ -64,7 +64,7 @@ ARG VERSION=""
 
 ### MODIFICATIONS
 ## Make modifications desired in your image and install packages by modifying the build scripts.
-## The following RUN directive mounts the ctx stage which includes:
+## The following RUN directives mount the ctx stage which includes:
 ##   - Local build scripts from /build
 ##   - Local custom files from /custom
 ##   - Files from @projectbluefin/common at /oci/common (includes branding/artwork content)
