@@ -43,7 +43,7 @@ dnf5 install -y -x 'PackageKit*' \
 	--enablerepo=tailscale-stable \
 	git gum make unzip dnf-plugins-core libwayland-server golang-bin \
 	fish zsh bash-color-prompt \
-	vim tmux htop nvtop glow fastfetch just symlinks \
+	vim tmux htop nvtop glow fastfetch just symlinks fzf \
 	tailscale wireguard-tools iwd waypipe wl-clipboard \
 	ddcutil input-remapper lm_sensors powertop smartmontools evtest \
 	borgbackup restic rclone samba-client \
