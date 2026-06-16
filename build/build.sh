@@ -33,3 +33,11 @@ echo "::endgroup::"
 echo "::group:: 60-initramfs.sh"
 /ctx/build/steps/60-initramfs.sh
 echo "::endgroup::"
+
+echo "::group:: 70-clean-stage.sh"
+/ctx/build/steps/clean-stage.sh
+echo "::endgroup::"
+
+echo "::group:: /opt symlink"
+rm -rf /opt && ln -s /var/opt /opt
+echo "::endgroup::"
