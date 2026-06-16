@@ -26,6 +26,10 @@ echo "::group:: 40-dms.sh"
 /ctx/build/steps/40-dms.sh
 echo "::endgroup::"
 
+echo "::group:: 50-cleanup.sh"
+/ctx/build/steps/50-cleanup.sh
+echo "::endgroup::"
+
 echo "::group:: 60-initramfs.sh"
 /ctx/build/steps/60-initramfs.sh
 echo "::endgroup::"

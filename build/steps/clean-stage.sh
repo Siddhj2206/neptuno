@@ -52,8 +52,8 @@ rm -rf "${CLEAN_ROOT}/.gitkeep"
 find "${CLEAN_ROOT}/var"/* -maxdepth 0 -type d \! -name cache -exec rm -fr {} \;
 find "${CLEAN_ROOT}/var/cache"/* -maxdepth 0 -type d \! -name libdnf5 \! -name rpm-ostree -exec rm -fr {} \;
 
-rm -rf "${CLEAN_ROOT:?}/tmp" && mkdir -p "${CLEAN_ROOT:?}/tmp"
-rm -rf "${CLEAN_ROOT:?}/boot" && mkdir -p "${CLEAN_ROOT:?}/boot"
-rm -rf "${CLEAN_ROOT:?}/run" && mkdir -p "${CLEAN_ROOT:?}/run"
+rm -rf "${CLEAN_ROOT:?}/tmp"/* "${CLEAN_ROOT:?}/tmp"/.[!.]* 2>/dev/null || true
+rm -rf "${CLEAN_ROOT:?}/boot"/* "${CLEAN_ROOT:?}/boot"/.[!.]* 2>/dev/null || true
+rm -rf "${CLEAN_ROOT:?}/run"/* "${CLEAN_ROOT:?}/run"/.[!.]* 2>/dev/null || true
 
 echo "::endgroup::"
