@@ -125,9 +125,6 @@ copr_install_isolated "ublue-os/packages" uupd oversteer-udev
 # Ghostty terminal
 copr_install_isolated "scottames/ghostty" ghostty
 
-# Nautilus open any terminal
-copr_install_isolated "monkeygold/nautilus-open-any-terminal" nautilus-open-any-terminal
-
 echo "::endgroup::"
 
 echo "::group:: Hide CLI Desktop Entries"
