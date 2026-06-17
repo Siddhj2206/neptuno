@@ -30,7 +30,6 @@ dnf5 install -y --setopt=install_weak_deps=False \
 	dsearch \
 	cava \
 	khal \
-	ghostty \
 	dms
 
 systemctl --global add-wants niri.service dms
@@ -38,6 +37,11 @@ systemctl --global enable dsearch
 systemctl --global enable niri
 
 echo "::endgroup::"
+
+# Flatpak theme overrides
+flatpak override --filesystem=xdg-data/themes
+flatpak mask org.gtk.Gtk3theme.adw-gtk3
+flatpak mask org.gtk.Gtk3theme.adw-gtk3-dark
 
 echo "DMS installation complete!"
 echo "After booting, select 'NIRI' session at the login screen"

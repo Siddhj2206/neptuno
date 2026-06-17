@@ -38,6 +38,10 @@ done
 echo "All repos properly disabled."
 echo "::endgroup::"
 
+echo "::group:: Compile GSettings Schemas"
+glib-compile-schemas /usr/share/glib-2.0/schemas/
+echo "::endgroup::"
+
 CLEAN_ROOT="${CLEAN_ROOT:-/}"
 
 dnf5 config-manager setopt keepcache=0

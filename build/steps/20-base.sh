@@ -28,6 +28,7 @@ dnf5 remove -y \
 	gnome-terminal-nautilus \
 	google-noto-sans-cjk-vf-fonts \
 	podman-docker \
+	ptyxis \
 	totem-video-thumbnailer \
 	yelp || true
 
@@ -120,6 +121,12 @@ copr_install_isolated "che/nerd-fonts" nerd-fonts
 
 # uupd auto-update service + steering wheel udev rules (ublue-os/packages)
 copr_install_isolated "ublue-os/packages" uupd oversteer-udev
+
+# Ghostty terminal
+copr_install_isolated "scottames/ghostty" ghostty
+
+# Nautilus open any terminal
+copr_install_isolated "monkeygold/nautilus-open-any-terminal" nautilus-open-any-terminal
 
 echo "::endgroup::"
 

@@ -1,7 +1,4 @@
-[Flatpak Preinstall org.mozilla.firefox]
-Branch=stable
-
-[Flatpak Preinstall org.mozilla.Thunderbird]
+[Flatpak Preinstall app.zen_browser.zen]
 Branch=stable
 
 [Flatpak Preinstall org.gnome.Calculator]
@@ -104,16 +101,13 @@ Branch=stable
 [Flatpak Preinstall io.gitlab.adhami3310.Impression]
 Branch=stable
 
-[Flatpak Preinstall io.missioncenter.MissionCenter]
+[Flatpak Preinstall net.nokyan.Resources]
 Branch=stable
 
 [Flatpak Preinstall it.mijorus.smile]
 Branch=stable
 
 [Flatpak Preinstall page.tesk.Refine]
-Branch=stable
-
-[Flatpak Preinstall org.gnome.Builder]
 Branch=stable
 
 [Flatpak Preinstall io.podman_desktop.PodmanDesktop]

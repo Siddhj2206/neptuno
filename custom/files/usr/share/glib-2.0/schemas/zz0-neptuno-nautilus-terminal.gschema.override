@@ -1,0 +1,5 @@
+[com.github.stunkymonkey.nautilus-open-any-terminal]
+terminal='ghostty'
+keybindings='<Ctrl><Alt>t'
+new-tab=false
+flatpak='off'
