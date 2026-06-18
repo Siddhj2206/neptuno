@@ -1,5 +1,6 @@
 # vim: set ft=make :
 
+# Skill: finpilot-custom.md — Brewfile/ujust edition rules
 # Install default applications via Homebrew
 [group('Apps')]
 install-default-apps:

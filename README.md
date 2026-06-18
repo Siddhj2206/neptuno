@@ -256,3 +256,32 @@ This image ships with production security features enabled by default:
 - Build provenance tracking via SLSA attestation
 
 Users can verify signed images with the `cosign verify` snippet under "Image Signing (Enabled)" above.
+
+---
+
+## Copilot / AI Agent Instructions
+
+This repository uses skill-based agent instructions in `.agents/skills/`. If you're using an AI coding assistant:
+
+### Phase 1: Bootstrap (first time with this repo)
+
+Open `AGENTS.md` in the root of this repository — it contains the router table showing which skill file covers your change.
+
+### Phase 2: Customize (adding packages, changing config)
+
+Before making changes, load the relevant skill from `.agents/skills/`:
+
+| What you want to do | Skill to load |
+|---|---|
+| Add/remove a package | `.agents/skills/finpilot-packages.md` |
+| Edit Brewfiles, Flatpaks, or ujust | `.agents/skills/finpilot-custom.md` |
+| Change Containerfile, Justfile, or build scripts | `.agents/skills/finpilot-build.md` |
+| Change CI workflows or Renovate | `.agents/skills/finpilot-ci.md` |
+
+### Phase 3: Production (PRs, debugging)
+
+| What you need | Skill to load |
+|---|---|
+| PR checklist and conventional commits | `.agents/skills/finpilot-pr-checklist.md` |
+| Debug a build or deploy failure | `.agents/skills/finpilot-troubleshooting.md` |
+| See a worked example | `.agents/skills/finpilot-examples.md` |
