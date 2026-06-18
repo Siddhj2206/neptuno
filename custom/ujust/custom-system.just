@@ -83,4 +83,3 @@ install-dms-config:
 
     echo ""
     echo "Run 'systemctl --user enable --now dms' to start DMS"
-
