@@ -149,8 +149,9 @@ systemctl enable ublue-system-setup.service
 systemctl enable input-remapper.service
 systemctl enable tailscaled.service
 systemctl enable uupd.timer
-systemctl enable podman-auto-update.timer --global 2>/dev/null || true
+systemctl --global enable podman-auto-update.timer 2>/dev/null || true
 systemctl enable dconf-update.service
+systemctl enable bootc-unified-storage.service
 systemctl --global enable ublue-user-setup.service
 systemctl --global enable xdg-user-dirs.service
 systemctl --global enable gnome-keyring-daemon.service
