@@ -6,7 +6,7 @@
 neptuno-cli:
     @ujust bluefin-cli
 
-# Deploy DMS configuration files from system defaults
+# Restore DMS config files from system defaults (backup-first)
 [group('System')]
 install-dms-config:
     #!/usr/bin/bash
@@ -22,8 +22,9 @@ install-dms-config:
         exit 1
     fi
 
-    echo "${bold}DMS Configuration Installer${normal}"
-    echo "This will install DMS configs for niri and ghostty."
+    echo "${bold}DMS Config Restore${normal}"
+    echo "Restores DMS configs from system defaults to your home."
+    echo "Existing files are backed up before being replaced."
     echo ""
 
     CONFLICTS=()
@@ -43,7 +44,7 @@ install-dms-config:
         echo ""
     fi
 
-    if ! gum confirm "Proceed with installation?"; then
+    if ! gum confirm "Proceed with restore?"; then
         echo "Cancelled."
         exit 0
     fi
@@ -69,9 +70,9 @@ install-dms-config:
     done < <(find "$SKEL_CONFIG" -type f -print0)
 
     echo ""
-    echo "${bold}=== Installation Complete ===${normal}"
+    echo "${bold}=== Restore Complete ===${normal}"
     echo ""
-    echo "Installed ${#INSTALLED[@]} files"
+    echo "Restored ${#INSTALLED[@]} files"
 
     if [[ ${#BACKED_UP[@]} -gt 0 ]]; then
         echo ""

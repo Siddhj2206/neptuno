@@ -1,6 +1,6 @@
 binds {
     // === System & Overview ===
-    Mod+D repeat=false { toggle-overview; }
+    Mod+O repeat=false { toggle-overview; }
     Mod+Tab repeat=false { toggle-overview; }
     Mod+Shift+Slash { show-hotkey-overlay; }
 
@@ -9,6 +9,9 @@ binds {
     Mod+Space hotkey-overlay-title="Application Launcher" {
         spawn "dms" "ipc" "call" "spotlight" "toggle";
     }
+    Alt+Space hotkey-overlay-title="Spotlight Bar" {
+        spawn "dms" "ipc" "call" "spotlight-bar" "toggle";
+    }
     Mod+V hotkey-overlay-title="Clipboard Manager" {
         spawn "dms" "ipc" "call" "clipboard" "toggle";
     }
@@ -16,7 +19,7 @@ binds {
         spawn "dms" "ipc" "call" "processlist" "focusOrToggle";
     }
 
-    Mod+X hotkey-overlay-title="Power Menu: Toggle" { spawn "dms" "ipc" "call" "powermenu" "toggle"; }
+    Super+X hotkey-overlay-title="Power Menu: Toggle" { spawn "dms" "ipc" "call" "powermenu" "toggle"; }
     Mod+Comma hotkey-overlay-title="Settings" {
         spawn "dms" "ipc" "call" "settings" "focusOrToggle";
     }
@@ -60,6 +63,12 @@ binds {
 		XF86AudioNext allow-when-locked=true {
 		    spawn "dms" "ipc" "call" "mpris" "next";
 		}
+        Ctrl+XF86AudioRaiseVolume allow-when-locked=true {
+            spawn "dms" "ipc" "call" "mpris" "increment" "3";
+        }
+        Ctrl+XF86AudioLowerVolume allow-when-locked=true {
+            spawn "dms" "ipc" "call" "mpris" "decrement" "3";
+        }
 
     // === Brightness Controls ===
     XF86MonBrightnessUp allow-when-locked=true {
@@ -209,6 +218,11 @@ binds {
     Print { screenshot; }
     Ctrl+Print { screenshot-screen; }
     Alt+Print { screenshot-window; }
+    // === Display Profiles ===
+    Mod+P hotkey-overlay-title="Cycle Display Profile" {
+        spawn "dms" "ipc" "outputs" "cycleProfile";
+    }
+
     // === System Controls ===
     Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
     Mod+Shift+P { power-off-monitors; }
