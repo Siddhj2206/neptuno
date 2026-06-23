@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
       - name: Validate
-        uses: projectbluefin/actions/bootc-build/validate-pr@f116a0166915c32ae0d7bc7b76c9af1ef23a2df1 # v1
+        uses: projectbluefin/actions/bootc-build/validate-pr@804493085a52638aba8d859d6819dc1a8738da90 # v1
         with:
           shellcheck-glob: "build/*.sh"
           dockerfile: "Containerfile"
