@@ -15,7 +15,9 @@ dnf5 install -y \
 	docker-ce \
 	docker-ce-cli \
 	containerd.io \
-	docker-buildx-plugin
+	docker-buildx-plugin \
+	docker-compose-plugin \
+	docker-scan-plugin
 
 # Disable Docker CE repo after install (packages baked into image)
 sed -i 's/enabled=1/enabled=0/g' /etc/yum.repos.d/docker-ce.repo
