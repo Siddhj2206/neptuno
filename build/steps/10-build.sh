@@ -32,7 +32,6 @@ rsync -rvK /ctx/oci/common/shared/ /
 # Bluefin-specific non-GNOME configs (higher priority, overrides shared)
 rsync -rvK --relative \
 	/ctx/oci/common/bluefin/./etc/zsh/ \
-	/ctx/oci/common/bluefin/./usr/bin/umotd \
 	/ctx/oci/common/bluefin/./usr/share/fish/ \
 	/ctx/oci/common/bluefin/./usr/lib/dracut/ \
 	/
