@@ -14,12 +14,12 @@ shopt -s nullglob
 
 # Remove ublue-os base packages before rsyncing OCI container files
 dnf5 remove -y \
-    ublue-os-luks \
-    ublue-os-just \
-    ublue-os-udev-rules \
-    ublue-os-signing \
-    ublue-os-update-services \
-    2>/dev/null || true
+	ublue-os-luks \
+	ublue-os-just \
+	ublue-os-udev-rules \
+	ublue-os-signing \
+	ublue-os-update-services \
+	2>/dev/null || true
 
 echo "::group:: Overlay System Files from OCI Containers"
 
@@ -31,11 +31,10 @@ rsync -rvK /ctx/oci/common/shared/ /
 
 # Bluefin-specific non-GNOME configs (higher priority, overrides shared)
 rsync -rvK --relative \
-    /ctx/oci/common/bluefin/./etc/zsh/ \
-    /ctx/oci/common/bluefin/./usr/bin/umotd \
-    /ctx/oci/common/bluefin/./usr/share/fish/ \
-    /ctx/oci/common/bluefin/./usr/lib/dracut/ \
-    /
+	/ctx/oci/common/bluefin/./etc/zsh/ \
+	/ctx/oci/common/bluefin/./usr/share/fish/ \
+	/ctx/oci/common/bluefin/./usr/lib/dracut/ \
+	/
 
 echo "::endgroup::"
 

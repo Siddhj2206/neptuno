@@ -131,9 +131,9 @@ echo "::group:: Hide CLI Desktop Entries"
 
 # Hide terminal app desktop entries from the application menu
 for file in fish htop nvtop; do
-    if [ -f "/usr/share/applications/${file}.desktop" ]; then
-        sed -i 's@\[Desktop Entry\]@\[Desktop Entry\]\nHidden=true@g' "/usr/share/applications/${file}.desktop"
-    fi
+	if [ -f "/usr/share/applications/${file}.desktop" ]; then
+		sed -i 's@\[Desktop Entry\]@\[Desktop Entry\]\nHidden=true@g' "/usr/share/applications/${file}.desktop"
+	fi
 done
 
 echo "::endgroup::"

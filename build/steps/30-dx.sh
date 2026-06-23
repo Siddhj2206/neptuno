@@ -82,7 +82,7 @@ chmod +x /usr/bin/bluefin-dx-groups 2>/dev/null || true
 
 # Create ip_tables module for docker-in-docker
 mkdir -p /etc/modules-load.d/
-echo "iptable_nat" > /etc/modules-load.d/ip_tables.conf
+echo "iptable_nat" >/etc/modules-load.d/ip_tables.conf
 
 echo "::endgroup::"
 
