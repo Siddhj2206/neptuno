@@ -68,7 +68,8 @@ dnf5 install -y -x 'PackageKit*' \
 	powerstat \
 	gnupg2-scdaemon \
 	gnome-keyring \
-	xdg-user-dirs
+	xdg-user-dirs \
+	openssl
 
 echo "::endgroup::"
 

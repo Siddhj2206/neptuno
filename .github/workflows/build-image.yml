@@ -192,7 +192,7 @@ jobs:
           image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
           digest: ${{ steps.push.outputs.digest }}
           signing-mode: keyless
-          generate-sbom: true
+          generate-sbom: false
           push-attestation: true
           certificate-identity-regexp: https://github.com/${{ github.repository }}/.github/workflows/
           github-token: ${{ secrets.GITHUB_TOKEN }}
