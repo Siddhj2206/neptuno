@@ -33,7 +33,7 @@ dnf5 install -y --setopt=install_weak_deps=False \
 	dms
 
 systemctl --global add-wants niri.service dms
-systemctl --global enable dsearch
+# systemctl --global enable dsearch
 systemctl --global enable niri
 
 echo "::endgroup::"
