@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Cleanup old images
-        uses: projectbluefin/actions/bootc-build/ghcr-cleanup@e5cdde685d1bf76900d052495b7cc288ee14899c # v1
+        uses: projectbluefin/actions/bootc-build/ghcr-cleanup@370431fd5f222dada9fbc21ae8a7b0387eb2b152 # v1
         with:
           # IMPORTANT: Update this to match your image name from Containerfile (# Name: comment)
           # This should match the "# Name: your-repo-name" comment in your Containerfile
