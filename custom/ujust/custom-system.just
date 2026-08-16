@@ -97,3 +97,30 @@ install-dms-config:
 
     echo ""
     echo "Run 'systemctl --user enable --now dms' to start DMS"
+
+# Show the neptuno changelog (overrides common's bluefin-pointing recipe)
+# Loaded via 60-custom.just AFTER changelog.just, so this definition wins
+[group('System')]
+changelogs:
+    #!/usr/bin/bash
+    set -euo pipefail
+    if command -v bctl &>/dev/null; then
+        exec bctl changelogs
+    fi
+
+    IMAGE_INFO_FILE="${IMAGE_INFO_FILE:-/usr/share/ublue-os/image-info.json}"
+    TAG="$(jq -r '.["image-tag"]' < "${IMAGE_INFO_FILE}")"
+    REPO="siddhj2206/neptuno"
+
+    DATE="$(grep -oP "OSTREE_VERSION=.*\d{2}\.\K\d{8}[.0-9]*" /etc/os-release 2>/dev/null || true)"
+    CONTENT=""
+    if [[ "$TAG" =~ gts$|stable$|^lts ]] && [[ -n "${DATE:-}" ]]; then
+        CONTENT="$(curl -Ls "https://api.github.com/repos/${REPO}/releases" | jq -r ".[] | select(.tag_name==\"${TAG}-${DATE}\") | .body")"
+    fi
+
+    if [[ -n "${CONTENT:-}" ]]; then
+        echo "$CONTENT" | glow -p
+    else
+        echo "WARN: Could not find a release specific to your image"
+        curl -Ls "https://api.github.com/repos/${REPO}/releases/latest" | jq -r ".body" | glow -p
+    fi

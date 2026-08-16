@@ -162,6 +162,10 @@ systemctl --global enable brew-preinstall.service
 systemctl --global enable xdg-user-dirs.service
 systemctl --global enable gnome-keyring-daemon.service
 
+# Add linuxbrew to the list of paths usable by `sudo`
+# Not a sudoers.d override so we keep receiving upstream updates
+sed -Ei "s/secure_path = (.*)/secure_path = \1:\/home\/linuxbrew\/.linuxbrew\/bin/" /etc/sudoers
+
 # Mask Fedora flatpak service (replaced by Flathub)
 systemctl disable flatpak-add-fedora-repos.service 2>/dev/null || true
 systemctl mask flatpak-add-fedora-repos.service 2>/dev/null || true

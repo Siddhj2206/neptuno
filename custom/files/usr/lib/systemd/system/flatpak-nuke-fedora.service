@@ -1,7 +1,8 @@
 [Unit]
 Description=Remove Fedora flatpak repositories
 Before=flatpak-preinstall.service
-Before=flatpak-appstream-refresh.service
+Before=flatpak-system-helper.service
+# Make sure we run before the Fedora service if it exists
 Before=flatpak-add-fedora-repos.service
 
 [Service]

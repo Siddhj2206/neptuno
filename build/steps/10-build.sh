@@ -56,6 +56,11 @@ echo "::group:: Copy Local Files"
 # Blanket rsync of custom files (overrides OCI containers and RPMs)
 rsync -rvK /ctx/custom/files/ / 2>/dev/null || true
 
+# Ensure exec bits on freshly-copied scripts (rsync without -p may not preserve them)
+chmod +x /usr/share/ublue-os/user-setup.hooks.d/99-privileged.sh
+chmod +x /usr/share/ublue-os/privileged-setup.hooks.d/10-tailscale.sh
+chmod +x /usr/libexec/ensure-libvirt-session-config
+
 echo "::endgroup::"
 
 echo "::group:: Copy Custom Files"
@@ -63,6 +68,11 @@ echo "::group:: Copy Custom Files"
 # Copy preinstall Brewfiles (auto-installed at first login by brew-preinstall.service)
 mkdir -p /usr/share/ublue-os/homebrew/preinstall.d/
 cp /ctx/custom/brew/preinstall.d/*.Brewfile /usr/share/ublue-os/homebrew/preinstall.d/
+
+# Copy Bluefin flatpak Brewfiles (used by ujust install-system-flatpaks / bluefin-apps)
+mkdir -p /usr/share/ublue-os/homebrew/
+cp /ctx/oci/common/bluefin/usr/share/ublue-os/homebrew/system-flatpaks.Brewfile /usr/share/ublue-os/homebrew/
+cp /ctx/oci/common/bluefin/usr/share/ublue-os/homebrew/system-dx-flatpaks.Brewfile /usr/share/ublue-os/homebrew/
 
 # Consolidate Just Files
 find /ctx/custom/ujust -iname '*.just' -exec printf "\n\n" \; -exec cat {} \; >>/usr/share/ublue-os/just/60-custom.just
