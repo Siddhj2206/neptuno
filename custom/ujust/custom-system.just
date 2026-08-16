@@ -11,11 +11,13 @@ neptuno-cli:
 install-dms-config:
     #!/usr/bin/bash
     set -euo pipefail
-    source /usr/lib/ujust/ujust.sh
 
-    SKEL_CONFIG="/etc/skel/.config"
-    USER_CONFIG="${HOME}/.config"
+    SKEL_CONFIG="${SKEL_CONFIG:-/etc/skel/.config}"
+    USER_CONFIG="${USER_CONFIG:-${HOME}/.config}"
     TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
+
+    bold="$(tput bold 2>/dev/null || printf '\033[1m')"
+    normal="$(tput sgr0 2>/dev/null || printf '\033[0m')"
 
     if [[ ! -d "$SKEL_CONFIG" ]]; then
         echo "Error: $SKEL_CONFIG not found"
@@ -31,7 +33,7 @@ install-dms-config:
     while IFS= read -r -d '' file; do
         rel_path="${file#$SKEL_CONFIG/}"
         target="$USER_CONFIG/$rel_path"
-        if [[ -f "$target" ]]; then
+        if [[ -e "$target" || -L "$target" ]]; then
             CONFLICTS+=("$rel_path")
         fi
     done < <(find "$SKEL_CONFIG" -type f -print0)
@@ -44,9 +46,13 @@ install-dms-config:
         echo ""
     fi
 
-    if ! gum confirm "Proceed with restore?"; then
-        echo "Cancelled."
-        exit 0
+    if command -v gum >/dev/null 2>&1; then
+        if ! gum confirm "Proceed with restore?"; then
+            echo "Cancelled."
+            exit 0
+        fi
+    else
+        echo "gum not found — proceeding without confirmation."
     fi
 
     BACKED_UP=()
@@ -57,10 +63,17 @@ install-dms-config:
         target="$USER_CONFIG/$rel_path"
         target_dir=$(dirname "$target")
 
-        mkdir -p "$target_dir"
+        if ! mkdir -p "$target_dir" 2>/dev/null; then
+            echo "  WARN: cannot create $target_dir — skipping $rel_path"
+            continue
+        fi
 
-        if [[ -f "$target" ]]; then
+        if [[ -e "$target" || -L "$target" ]]; then
             backup="${target}.backup.${TIMESTAMP}"
+            n=1
+            while [[ -e "$backup" || -L "$backup" ]]; do
+                backup="${target}.backup.${TIMESTAMP}.$((n++))"
+            done
             mv "$target" "$backup"
             BACKED_UP+=("$rel_path")
         fi

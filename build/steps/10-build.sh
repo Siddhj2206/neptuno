@@ -46,6 +46,9 @@ shopt -s nullglob
 cp -r /ctx/oci/common/bluefin/usr/share/ublue-os/just/* /usr/share/ublue-os/just/
 shopt -u nullglob
 
+# Drop the bonedigger telemetry report recipe (00-entry.just imports it optionally)
+rm -f /usr/share/ublue-os/just/60-bonedigger.just
+
 echo "::endgroup::"
 
 echo "::group:: Copy Local Files"
@@ -57,9 +60,9 @@ echo "::endgroup::"
 
 echo "::group:: Copy Custom Files"
 
-# Copy Brewfiles to standard location
-mkdir -p /usr/share/ublue-os/homebrew/
-cp /ctx/custom/brew/*.Brewfile /usr/share/ublue-os/homebrew/
+# Copy preinstall Brewfiles (auto-installed at first login by brew-preinstall.service)
+mkdir -p /usr/share/ublue-os/homebrew/preinstall.d/
+cp /ctx/custom/brew/preinstall.d/*.Brewfile /usr/share/ublue-os/homebrew/preinstall.d/
 
 # Consolidate Just Files
 find /ctx/custom/ujust -iname '*.just' -exec printf "\n\n" \; -exec cat {} \; >>/usr/share/ublue-os/just/60-custom.just

@@ -144,6 +144,10 @@ echo "::group:: System Configuration"
 # Enable systemd services
 systemctl enable podman.socket
 systemctl enable brew-setup.service
+systemctl enable brew-update.timer
+systemctl enable brew-upgrade.timer
+systemctl enable flatpak-appstream-refresh.service
+systemctl enable rechunker-group-fix.service
 systemctl enable flatpak-nuke-fedora.service
 systemctl enable flatpak-preinstall.service
 systemctl enable ublue-system-setup.service
@@ -154,6 +158,7 @@ systemctl --global enable podman-auto-update.timer 2>/dev/null || true
 systemctl enable dconf-update.service
 systemctl enable bootc-unified-storage.service
 systemctl --global enable ublue-user-setup.service
+systemctl --global enable brew-preinstall.service
 systemctl --global enable xdg-user-dirs.service
 systemctl --global enable gnome-keyring-daemon.service
 
