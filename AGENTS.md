@@ -4,17 +4,18 @@
 
 Read the repo skill docs before changing behavior:
 
-- `.agents/skills/finpilot-overview.md` — architecture, repo layout, task router
-- `.agents/skills/finpilot-onboarding.md` — fork bootstrap: rename, Actions, token, first build
-- `.agents/skills/finpilot-packages.md` — decision tree (dnf5 vs Brew vs Flatpak)
-- `.agents/skills/finpilot-custom.md` — Brewfiles, Flatpaks, ujust rules
-- `.agents/skills/finpilot-build.md` — Containerfile, Justfile, build scripts
-- `.agents/skills/finpilot-ci.md` — GitHub Actions workflows, composite actions, Renovate
-- `.agents/skills/finpilot-maintain.md` — ongoing: Renovate PRs, signing, local test loop
-- `.agents/skills/finpilot-troubleshooting.md` — symptom → cause → fix
-- `.agents/skills/finpilot-pr-checklist.md` — PR gates by change type
-- `.agents/skills/finpilot-examples.md` — runnable examples and activation patterns
-- `.agents/skills/finpilot-templates.md` — template init and rename reference
+- `.agents/skills/finpilot-overview/SKILL.md` — architecture, repo layout, task router
+- `.agents/skills/finpilot-onboarding/SKILL.md` — fork bootstrap: rename, Actions, token, first build
+- `.agents/skills/finpilot-packages/SKILL.md` — decision tree (dnf5 vs Brew vs Flatpak)
+- `.agents/skills/finpilot-custom/SKILL.md` — Brewfiles, Flatpaks, ujust rules
+- `.agents/skills/finpilot-build/SKILL.md` — Containerfile, Justfile, build scripts
+- `.agents/skills/finpilot-ci/SKILL.md` — GitHub Actions workflows, composite actions, Renovate
+- `.agents/skills/finpilot-maintain/SKILL.md` — ongoing: Renovate PRs, signing, local test loop
+- `.agents/skills/finpilot-troubleshooting/SKILL.md` — symptom → cause → fix
+- `.agents/skills/finpilot-pr-checklist/SKILL.md` — PR gates by change type
+- `.agents/skills/finpilot-examples/SKILL.md` — runnable examples and activation patterns
+- `.agents/skills/finpilot-templates/SKILL.md` — template init and rename reference
+- `.agents/skills/finpilot-router/SKILL.md` — skill router, load when unsure which skill fits
 
 ## CRITICAL: GitHub API Usage
 
