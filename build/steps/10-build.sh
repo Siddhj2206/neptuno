@@ -60,6 +60,7 @@ rsync -rvK /ctx/custom/files/ / 2>/dev/null || true
 chmod +x /usr/share/ublue-os/user-setup.hooks.d/99-privileged.sh
 chmod +x /usr/share/ublue-os/privileged-setup.hooks.d/10-tailscale.sh
 chmod +x /usr/libexec/ensure-libvirt-session-config
+chmod +x /usr/lib/systemd/system-generators/coreos-sulogin-force-generator
 
 echo "::endgroup::"
 

@@ -113,6 +113,10 @@ dnf5 install -y \
 # Disable third-party repo after install (packages are baked into the image)
 sed -i 's/enabled=1/enabled=0/g' /etc/yum.repos.d/fedora-multimedia.repo
 
+# Rebuild the gdk-pixbuf loader cache so all freshly-installed loaders
+# (libheif, libjxl, etc.) are registered in the final image
+/usr/bin/gdk-pixbuf-query-loaders-64 --update-cache
+
 echo "::endgroup::"
 
 echo "::group:: Install COPR Packages"
