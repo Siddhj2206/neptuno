@@ -30,15 +30,14 @@ dnf5 install -y \
 	genisoimage \
 	libvirt \
 	libvirt-nss \
-	qemu \
+	qemu-system-x86 \
 	qemu-char-spice \
 	qemu-device-display-virtio-gpu \
 	qemu-device-display-virtio-vga \
 	qemu-device-usb-redirect \
 	qemu-img \
 	qemu-system-x86-core \
-	qemu-user-binfmt \
-	qemu-user-static
+	qemu-user-binfmt
 
 echo "::endgroup::"
 
