@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Neptuno Installer
+Exec=/usr/bin/flatpak run --branch=master --arch=x86_64 --command=bootc-installer @INSTALLER_APP_ID@
+Icon=@INSTALLER_APP_ID@
+Terminal=false
+Type=Application
+Categories=GTK;System;Settings;
+StartupNotify=true
+X-Flatpak=@INSTALLER_APP_ID@

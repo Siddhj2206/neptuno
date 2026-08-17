@@ -1,0 +1,51 @@
+# Neptuno live ISO: live-environment image
+#
+# Build with:
+#   podman build --build-arg IMGREF=localhost/neptuno:latest \
+#       --build-arg DEBUG=0 --build-arg INSTALLER_CHANNEL=stable \
+#       -t localhost/neptuno-live:latest -f iso/Containerfile iso/
+#
+# (Normally driven by iso/build-iso.sh / `just build-iso`, which source
+# iso/neptuno.conf and pass IMGREF as a build-arg.)
+#
+# Single-stage by design: the neptuno image already ships a dmsquash-live
+# initramfs built by build/steps/60-initramfs.sh (ostree dmsquash-live
+# dmsquash-live-autooverlay + squashfs/overlay/loop/iso9660 drivers), so
+# there is no initramfs rebuild here — the live env inherits the payload's
+# own initramfs. The final image is also the source of the boot-files tar
+# (kernel modules + Fedora shim/GRUB binaries) that iso/build-iso.sh uses.
+
+ARG IMGREF=localhost/neptuno:stable
+FROM ${IMGREF}
+
+ARG IMGREF=localhost/neptuno:stable
+ARG INSTALLER_CHANNEL=stable
+ARG DEBUG=0
+ENV INSTALLER_CHANNEL=${INSTALLER_CHANNEL} DEBUG=${DEBUG}
+
+# Live-env extras:
+#   skopeo         — offline OCI store import at build time, and the
+#                    containers-storage:<ref> source for bootcDirect installs
+#   fuse-overlayfs — overlay driver mount_program (the live rootfs is already
+#                    overlayfs via dmsquash-live; kernels without native
+#                    overlay-on-overlay need fuse-overlayfs)
+#   dbus-daemon    — Flatpak installs need a system bus; Silverblue ships
+#                    dbus-broker only, and install-flatpaks.sh starts its own
+#                    dbus-daemon inside the build
+RUN dnf5 install -y skopeo fuse-overlayfs dbus-daemon \
+    && dnf5 clean all
+
+# Flatpaks for the live env (installer + essentials). CACHE_BUST invalidates
+# the flatpak download layer when changed (iso/build-iso.sh passes a date).
+ARG CACHE_BUST=0
+COPY src/flatpaks /tmp/flatpaks-list
+RUN --mount=type=bind,source=src,target=/src \
+    --mount=type=cache,target=/var/cache/flatpak-dl,id=neptuno-flatpak \
+    bash /src/install-flatpaks.sh
+
+# Live-env runtime configuration (liveuser, autologin → niri, installer
+# autostart, polkit, containers-storage layout). neptuno.conf is the single
+# source of truth at the iso/ root and is copied in alongside src/.
+COPY src/ /tmp/src/
+COPY neptuno.conf /tmp/src/neptuno.conf
+RUN chmod +x /tmp/src/configure-live.sh && /tmp/src/configure-live.sh

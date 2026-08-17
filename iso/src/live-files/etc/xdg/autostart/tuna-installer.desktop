@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Neptuno Installer
+Exec=flatpak run --env=BOOTC_CUSTOM_RECIPE=/run/host/etc/bootc-installer/recipe.json @INSTALLER_APP_ID@
+Icon=@INSTALLER_APP_ID@
+Type=Application
+X-GNOME-Autostart-enabled=true

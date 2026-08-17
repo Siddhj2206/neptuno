@@ -1,0 +1,11 @@
+[Unit]
+Description=Large tmpfs for /var/tmp in the live environment
+
+[Mount]
+What=tmpfs
+Where=/var/tmp
+Type=tmpfs
+Options=size=80%,nr_inodes=1m
+
+[Install]
+WantedBy=local-fs.target

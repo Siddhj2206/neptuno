@@ -254,7 +254,7 @@ _rootful_load_image $target_image=IMAGE_NAME $tag=DEFAULT_TAG:
 # Parameters:
 #   target_image: The name of the image to build (ex. localhost/fedora)
 #   tag: The tag of the image to build (ex. latest)
-#   type: The type of image to build (ex. qcow2, raw, iso)
+#   type: The type of image to build (ex. qcow2, raw)
 #   config: The configuration file to use for the build (default: iso/disk.toml)
 
 # Example: just _rebuild-bib localhost/fedora latest qcow2 iso/disk.toml
@@ -305,9 +305,11 @@ build-qcow2 $target_image=("localhost/" + IMAGE_NAME) $tag=DEFAULT_TAG: && (_bui
 [group('Build Virtual Machine Image')]
 build-raw $target_image=("localhost/" + IMAGE_NAME) $tag=DEFAULT_TAG: && (_build-bib target_image tag "raw" "iso/disk.toml")
 
-# Build an ISO virtual machine image
+# Build the hybrid live+install ISO from the locally-built image (iso/build-iso.sh; needs sudo)
 [group('Build Virtual Machine Image')]
-build-iso $target_image=("localhost/" + IMAGE_NAME) $tag=DEFAULT_TAG: && (_build-bib target_image tag "iso" "iso/iso.toml")
+build-iso:
+    # env PATH=... keeps the user's PATH (e.g. linuxbrew) under sudo's secure_path
+    sudo env "PATH=${PATH}" bash iso/build-iso.sh
 
 # Rebuild a QCOW2 virtual machine image
 [group('Build Virtual Machine Image')]
@@ -317,9 +319,9 @@ rebuild-qcow2 $target_image=("localhost/" + IMAGE_NAME) $tag=DEFAULT_TAG: && (_r
 [group('Build Virtual Machine Image')]
 rebuild-raw $target_image=("localhost/" + IMAGE_NAME) $tag=DEFAULT_TAG: && (_rebuild-bib target_image tag "raw" "iso/disk.toml")
 
-# Rebuild an ISO virtual machine image
+# Rebuild the image, then build the live+install ISO from it
 [group('Build Virtual Machine Image')]
-rebuild-iso $target_image=("localhost/" + IMAGE_NAME) $tag=DEFAULT_TAG: && (_rebuild-bib target_image tag "iso" "iso/iso.toml")
+rebuild-iso: (build) && (build-iso)
 
 # Run a virtual machine with the specified image type and configuration
 _run-vm $target_image $tag $type $config:
@@ -328,9 +330,6 @@ _run-vm $target_image $tag $type $config:
 
     # Determine the image file based on the type
     image_file="output/${type}/disk.${type}"
-    if [[ $type == iso ]]; then
-        image_file="output/bootiso/install.iso"
-    fi
 
     # Build the image if it does not exist
     if [[ ! -f "${image_file}" ]]; then
@@ -370,10 +369,6 @@ run-vm-qcow2 $target_image=("localhost/" + IMAGE_NAME) $tag=DEFAULT_TAG: && (_ru
 # Run a virtual machine from a RAW image
 [group('Run Virtual Machine')]
 run-vm-raw $target_image=("localhost/" + IMAGE_NAME) $tag=DEFAULT_TAG: && (_run-vm target_image tag "raw" "iso/disk.toml")
-
-# Run a virtual machine from an ISO
-[group('Run Virtual Machine')]
-run-vm-iso $target_image=("localhost/" + IMAGE_NAME) $tag=DEFAULT_TAG: && (_run-vm target_image tag "iso" "iso/iso.toml")
 
 # Run a virtual machine using systemd-vmspawn
 [group('Run Virtual Machine')]
