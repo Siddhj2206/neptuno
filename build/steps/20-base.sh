@@ -62,6 +62,7 @@ dnf5 install -y -x 'PackageKit*' \
 	solaar-udev \
 	libcamera-gstreamer libcamera-tools \
 	squashfs-tools \
+	dracut-live \
 	grub2-tools-extra \
 	zenity \
 	openrgb-udev-rules \
