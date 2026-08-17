@@ -1,6 +1,6 @@
 # neptuno
 
-neptuno is a custom bootc image built on Universal Blue's [`bluefin-dx:stable`](https://github.com/ublue-os/bluefin) base. It keeps the multi-stage layering model from the Bluefin ecosystem, then adds a DMS/Niri desktop stack, a small set of build-time CLI packages, gaming essentials, and ASUS laptop tooling for a more opinionated daily-driver image.
+neptuno is a custom bootc image built on [`quay.io/fedora-ostree-desktops/silverblue`](https://fedoraproject.org/atomic-desktops/silverblue) with the multi-stage layering model from the Bluefin ecosystem (OCI-imported resources from `@projectbluefin/common` and `@ublue-os/brew`). It adds a DMS/Niri tiling desktop stack, a Docker + libvirt virtualization setup, multimedia codecs, and a small set of build-time CLI packages for a more opinionated daily-driver image.
 
 > Be the one who moves, not the one who is moved.
 
@@ -10,32 +10,33 @@ Here are the main ways neptuno differs from the upstream base image.
 
 ### Base Image
 
-- **Base image**: `ghcr.io/ublue-os/bluefin-dx:stable`
+- **Base image**: `quay.io/fedora-ostree-desktops/silverblue:44`
 - **Build model**: Multi-stage bootc image with OCI-imported resources from `@projectbluefin/common` and `@ublue-os/brew`
-- **Package strategy**: `dnf5` for build-time system changes, Homebrew for user-installed CLI tools, Flatpak for optional GUI apps
+- **Package strategy**: `dnf5` for build-time system changes, Homebrew for user-installed CLI tools, Flatpak for GUI apps
 
 ### Added Packages (Build-time)
 
-- **Core CLI tools**: `chromium`, `git`, `gum`, `dnf-plugins-core`, `make`, `unzip`, `libwayland-server`, `golang-bin`
-- **DMS / Niri desktop stack** (via COPR — `avengemedia/danklinux`, `avengemedia/dms`, `yalter/niri`): `niri`, `quickshell-git`, `matugen`, `dgop`, `dsearch`, `cava`, `khal`, `ghostty`, `dms`
-- **DMS supporting packages**: `xdg-desktop-portal-gtk`, `accountsservice`, `xwayland-satellite`, `adw-gtk3-theme`, `qt6ct`, `qt6-qtmultimedia`
-- **Gaming**: `steam`, `gamescope`, `mangohud`
-- **ASUS laptop tooling** (via COPR — `lukenukem/asus-linux`): `asusctl`, `supergfxctl`, `asusctl-rog-gui`
+- **Core CLI tools**: `git`, `gum`, `dnf-plugins-core`, `make`, `unzip`, `libwayland-server`, `golang-bin`, `fish`/`zsh`, `vim`, `tmux`, `htop`/`nvtop`, `glow`, `fastfetch`, `just`, `fzf`, `tailscale`, `wireguard-tools`, `borgbackup`/`restic`/`rclone`, `gcc`, `yubikey`/`pam-u2f` tooling, `libimobiledevice`, printing drivers, fonts
+- **Multimedia codecs** (via negativo17 `fedora-multimedia`): `ffmpeg`, `libavcodec`, `@multimedia`, GStreamer plugins, `lame`, `libfdk-aac`, `libjxl`, with mesa/Intel driver overrides distro-synced and versionlocked
+- **DMS / Niri desktop stack** (via COPR — `avengemedia/danklinux`, `avengemedia/dms`, `yalter/niri`): `niri`, `quickshell-git`, `matugen`, `dgop`, `dsearch`, `cava`, `khal`, `dms`
+- **DMS supporting packages**: `xdg-desktop-portal-gtk`, `xdg-desktop-portal-gnome`, `accountsservice`, `xwayland-satellite`, `adw-gtk3-theme`, `qt6ct`, `qt6-qtmultimedia`
+- **Other COPR packages**: `ghostty` (`scottames/ghostty`), `nerd-fonts` (`che/nerd-fonts`), `uupd` + `oversteer-udev` (`ublue-os/packages`)
 
 ### Runtime Applications
 
-- **Homebrew** (`custom/brew/default.Brewfile`): `bat`, `eza`, `fd`, `rg`, `gh`, `git`, `starship`, `zoxide`, `htop`, `tmux`
-- **Flatpak** (`custom/flatpaks/default.preinstall`): the finpilot default catalog is shipped but every entry is commented out — no Flatpaks are preinstalled on first boot. Uncomment lines to enable.
-- **ujust** (`custom/ujust/`): the standard finpilot examples are shipped commented out. An `install-dms-config` recipe is provided to copy the bundled DMS/Niri/Ghostty configs from `/etc/skel/.config/` into the user's home directory.
+- **Homebrew** (`custom/brew/default.Brewfile`): `bat`, `eza`, `fd`, `rg`, `gh`, `starship`, `zoxide`, `htop`, `tmux`
+- **Flatpak** (`custom/flatpaks/default.preinstall`): an active catalog of 40+ apps preinstalled on first boot — GNOME apps (Calculator, Calendar, Maps, Papers, TextEditor, Weather…), themes (`adw-gtk3`), plus Bazaar, Pinta, Flatseal, ExtensionManager, DistroShelf, Ignition, Warehouse, Impression, Resources, smile, Refine, Podman Desktop, devtoolbox, and more
+- **ujust** (`custom/ujust/`): `install-default-apps`, `install-dev-tools`, and `install-fonts` Brewfile shortcuts, plus an `install-dms-config` recipe that copies the bundled DMS/Niri/Ghostty configs from `/etc/skel/.config/` into the user's home directory
 
 ### Configuration Changes
 
 - `podman.socket` is enabled
-- The DMS session is wired up via `systemctl --global add-wants niri.service dms`, with `dsearch` and `niri` enabled globally
+- The DMS session is wired up via `systemctl --global add-wants niri.service dms`, with `niri` enabled globally (`dsearch` is installed but not yet enabled)
+- GDM defaults to the NIRI session
 - Skeleton config files for Niri, Ghostty, and a DMS environment drop-in are copied to `/etc/skel/.config/` at build time
 - A daily scheduled build is configured via cron in `build-image.yml`
 
-*Last updated: 2026-06-15*
+*Last updated: 2026-08-11*
 
 > This section is what tells users how the image differs from the base. Update it whenever you add, remove, or reconfigure packages, apps, or system services.
 
@@ -89,12 +90,13 @@ Renovate will run every 6 hours and on config changes. It pins GitHub Actions to
 
 ### 5. Customize Your Image
 
-The base image is `ghcr.io/ublue-os/bluefin-dx:stable` and is pinned by SHA in `Containerfile` (Renovate keeps it up to date). neptuno layers additional desktop, gaming, and laptop tooling on top via numbered build scripts:
+The base image is `quay.io/fedora-ostree-desktops/silverblue:44` and is pinned by SHA in `Containerfile` (Renovate keeps it up to date). neptuno layers desktop, virtualization, and multimedia tooling on top via numbered build scripts:
 
-- `build/10-build.sh` — copy Bluefin config, copy custom files, install general CLI tools, enable `podman.socket`
-- `build/20-dms.sh` — install the DMS/Niri desktop stack from COPR
-- `build/30-gaming.sh` — install Steam, Gamescope, MangoHud
-- `build/40-asus.sh` — install ASUS laptop tooling from COPR
+- `build/10-build.sh` — copy Bluefin config, copy custom files, stage Brewfiles/Flatpaks/ujust, enable `podman.socket`
+- `build/20-base.sh` — remove Fedora cruft, install general CLI tools, multimedia codecs, COPR packages, systemd units
+- `build/30-dx.sh` — install Docker CE, libvirt/QEMU, and perf tooling
+- `build/40-dms.sh` — install the DMS/Niri desktop stack from COPR
+- `build/50-cleanup.sh` — remove build leftovers; `build/60-initramfs.sh` — regenerate initramfs
 
 To add packages, edit the relevant `build/NN-*.sh` script. To add user-installable CLI tools, add a `brew "..."` line to `custom/brew/*.Brewfile`. To add a GUI app, add a `[Flatpak Preinstall ...]` block to `custom/flatpaks/*.preinstall`.
 
@@ -162,19 +164,18 @@ For optimal OTA deltas, also add `bootc-build/apply-pkg-intervals` before the re
 
 ### Flatpak Support
 
-- `custom/flatpaks/default.preinstall` ships the finpilot default catalog commented out
-- Uncomment entries to ship GUI apps on first boot
+- `custom/flatpaks/default.preinstall` ships an active catalog of 40+ apps installed on first boot
 - See [custom/flatpaks/README.md](custom/flatpaks/README.md) for details
 
 ### ujust Commands
 
-- `custom/ujust/custom-apps.just` and `custom/ujust/custom-system.just` ship the finpilot examples commented out
-- An `install-dms-config` recipe copies the bundled DMS/Niri/Ghostty configs from `/etc/skel/.config/` to the user's home
+- `custom/ujust/custom-apps.just` and `custom/ujust/custom-system.just` provide active Brewfile shortcuts and an `install-dms-config` recipe
+- `install-dms-config` copies the bundled DMS/Niri/Ghostty configs from `/etc/skel/.config/` to the user's home
 - See [custom/ujust/README.md](custom/ujust/README.md) for details
 
 ### Build Scripts
 
-- Modular numbered scripts (10-, 20-, 30-, 40-) run in order from the Containerfile
+- Modular numbered scripts (10-, 20-, 30-, 40-, 50-, 60-) run in order from the Containerfile
 - Helper functions for safe COPR usage in `build/copr-helpers.sh`
 - See [build/README.md](build/README.md) for details
 
@@ -200,7 +201,7 @@ neptuno follows the **multi-stage build architecture** from `@projectbluefin/dis
 
 **Stage 2: Base Image**
 
-- `ghcr.io/ublue-os/bluefin-dx:stable@sha256:...` (the active base, pinned by Renovate)
+- `quay.io/fedora-ostree-desktops/silverblue:44@sha256:...` (the active base, pinned by Renovate)
 
 ### Benefits of This Architecture
 
