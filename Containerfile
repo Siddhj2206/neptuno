@@ -36,7 +36,7 @@
 
 # OCI context images - imported below and pinned directly in their FROM lines.
 # The base image is a Fedora official OSTree desktop image.
-FROM ghcr.io/projectbluefin/common:latest@sha256:33e8ea00ff08bacb84b5d4d2ea198e95d382faa3b32051396394833c2232f23c AS common
+FROM ghcr.io/projectbluefin/common:latest@sha256:1ef7b2bf7637c6e1724b0e4a1533b2d2aab6f8ca029a763ce421ca80ecef9284 AS common
 FROM ghcr.io/ublue-os/brew:latest@sha256:8f952ae54585db9f855a306ef365e13609ed7c7944b12b823ba7d5ce8e1a145b AS brew
 
 # Context stage - combine local and imported OCI container resources
