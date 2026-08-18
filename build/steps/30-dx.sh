@@ -36,17 +36,19 @@ dnf5 install -y \
 	qemu-device-display-virtio-vga \
 	qemu-device-usb-redirect \
 	qemu-img \
-	qemu-system-x86-core \
-	qemu-user-binfmt
+	qemu-system-x86-core
+# NOTE: qemu-user-binfmt intentionally omitted — it drags in qemu-user
+# (~230 MiB of all-arch user-mode emulators). Cross-arch binfmt is not needed.
 
 echo "::endgroup::"
 
 echo "::group:: Install Performance & Tracing Tools"
 
+# NOTE: bcc and bpftrace intentionally omitted — they pull llvm21-libs +
+# clang21-libs (~253 MiB) for two tracing tools. bpftop covers the common
+# lightweight tracing use case.
 dnf5 install -y \
-	bcc \
 	bpftop \
-	bpftrace \
 	sysprof \
 	trace-cmd \
 	iotop \
