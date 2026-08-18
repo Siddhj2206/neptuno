@@ -1,0 +1,4 @@
+[User]
+Session=niri
+SessionType=wayland
+Icon=${HOME}/.face
