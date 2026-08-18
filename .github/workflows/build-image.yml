@@ -80,7 +80,10 @@ jobs:
         with:
           action: restore
           cache-name: ${{ env.IMAGE_NAME }}
-          cache-bust: ${{ hashFiles('**/Containerfile') }}
+          # run_id keeps save keys unique across concurrent runs so the cache
+          # save never fails with "another job may be creating this cache";
+          # restore still finds the newest entry via restore-keys.
+          cache-bust: ${{ hashFiles('**/Containerfile') }}-${{ github.run_id }}
 
       - name: Detect changes
         id: detect-changes
@@ -141,7 +144,7 @@ jobs:
           action: save
           cache-name: ${{ env.IMAGE_NAME }}
           allow-write: ${{ github.event_name != 'pull_request' && 'true' || 'false' }}
-          cache-bust: ${{ hashFiles('**/Containerfile') }}
+          cache-bust: ${{ hashFiles('**/Containerfile') }}-${{ github.run_id }}
 
       - name: Rechunk image
         if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
