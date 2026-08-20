@@ -139,7 +139,7 @@ later for production — full keyless OIDC setup and verification:
 
 | Rationalization                                                | Reality                                                                                                    |
 | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| "I'll rename the obvious places and fix the rest later."       | Missing `.github/workflows/clean.yml` or `iso/neptuno.conf` IMGREF causes silent failures months later. Do all 7 now. |
+| "I'll rename the obvious places and fix the rest later."       | Missing `.github/workflows/clean.yml` or `iso/live.conf` IMGREF causes silent failures months later. Do all 7 now. |
 | "I don't need branch protection for a personal fork."          | Without it, Renovate auto-merge won't work, and digest PRs sit unmerged.                                   |
 | "I'll add the raptor section to README after I have packages." | Add the section immediately with placeholders. Update it iteratively.                                      |
 | "Signing is too much work for a first build."                  | Signing is disabled by default. First builds succeed immediately. Enable later.                            |

@@ -17,7 +17,9 @@ set -exo pipefail
 
 # ── Config (optional, for parity) ──────────────────────────────────────────
 # shellcheck source=/dev/null
-if [[ -f /tmp/neptuno.conf ]]; then
+if [[ -f /tmp/live.conf ]]; then
+    source /tmp/live.conf
+elif [[ -f /tmp/neptuno.conf ]]; then
     source /tmp/neptuno.conf
 fi
 

@@ -68,7 +68,7 @@ When forking, change `finpilot` → your image name in exactly these locations:
 | 4   | `artifacthub-repo.yml`        | `repositoryID: finpilot`                                            |
 | 5   | `custom/ujust/README.md`      | `localhost/your-repo-name:stable` in the bootc switch example    |
 | 6   | `.github/workflows/clean.yml` | `packages: finpilot`                                                |
-| 7   | `iso/neptuno.conf`            | `IMGREF` (payload image embedded in the live ISO)                   |
+| 7   | `iso/live.conf`               | `IMGREF` (payload image embedded in the live ISO)                   |
 
 Missing any of these causes the image to be published or cleaned up under the wrong name.
 

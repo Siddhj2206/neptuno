@@ -21,12 +21,14 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
 # ── Config ───────────────────────────────────────────────────────────────────
-# Portable: try iso/live.conf (finpilot), fallback to iso/neptuno.conf (legacy),
-# then env vars. This lets the same script run in finpilot with `iso/live.conf`.
+# Single source: iso/live.conf (generic, bash-sourced). For neptuno, live.conf
+# is the canonical file; neptuno.conf was renamed to live.conf for finpilot
+# portability (directly transferable).
 # shellcheck source=/dev/null
 if [[ -f iso/live.conf ]]; then
     source iso/live.conf
 elif [[ -f iso/neptuno.conf ]]; then
+    # Legacy fallback for old forks
     source iso/neptuno.conf
 fi
 

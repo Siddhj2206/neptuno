@@ -337,8 +337,8 @@ bump-purebuild sha:
         full=$(git ls-remote https://github.com/tuna-os/tacklebox.git "${new_sha}" 2>/dev/null | awk '{print $1}' | head -1)
         if [[ -n "${full}" ]]; then new_sha="${full}"; fi
     fi
-    sed -i -E "s/^TACKLEBOX_SHA=\"[^\"]+\"/TACKLEBOX_SHA=\"${new_sha}\"/" iso/neptuno.conf
-    echo "Updated iso/neptuno.conf TACKLEBOX_SHA=${new_sha}"
+    sed -i -E "s/^TACKLEBOX_SHA=\"[^\"]+\"/TACKLEBOX_SHA=\"${new_sha}\"/" iso/live.conf
+    echo "Updated iso/live.conf TACKLEBOX_SHA=${new_sha}"
     rm -f .build/purebuild/.tacklebox-sha
     echo "Run: just build-iso to rebuild purebuild"
 
