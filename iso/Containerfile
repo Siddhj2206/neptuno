@@ -1,0 +1,36 @@
+# iso/Containerfile — single file, two targets (like main Containerfile)
+#
+# Targets:
+#   live            — bakes live env FROM localhost/${IMAGE_NAME}:${DEFAULT_TAG}
+#   purebuild-export — builds static purebuild binary (for --output type=local)
+#
+# Usage (invoked by iso/build-live.sh, no live.conf needed):
+#   podman build -f iso/Containerfile --target live \
+#     --build-arg IMAGE_NAME=neptuno --build-arg DEFAULT_TAG=stable \
+#     -t localhost/neptuno-live:stable iso
+#   podman build -f iso/Containerfile --target purebuild-export \
+#     --build-arg TACKLEBOX_SHA=f3dd168... --output type=local,dest=.build/purebuild iso
+#
+# Single source is Justfile exports (IMAGE_NAME/DEFAULT_TAG) + Containerfile
+# ARGs + build-live.sh env fallbacks — no separate iso/*.conf.
+
+# ── Global ARGs (single source, like Containerfile:58) ─────────────────────
+ARG IMAGE_NAME=neptuno
+ARG DEFAULT_TAG=stable
+ARG TACKLEBOX_SHA=f3dd168bf15b235b554e497e7192a64a6563c4a4
+
+# ── Target: live — declarative live bake, EROFS input ───────────────────────
+FROM localhost/${IMAGE_NAME}:${DEFAULT_TAG} AS live
+COPY src/configure-live.sh /tmp/configure-live.sh
+RUN /tmp/configure-live.sh && rm /tmp/configure-live.sh
+
+# ── Target: purebuild — static Go binary, twice-removed from host Go ───────
+FROM docker.io/library/golang:1.26-bookworm@sha256:02f9f70beba7aa222cc739ab3935d1d948b80d154159ae00e885811d11d443bf AS purebuild
+ARG TACKLEBOX_SHA
+RUN git clone --depth 1 https://github.com/tuna-os/tacklebox.git /src \
+    && cd /src && git -c advice.detachedHead=false checkout "$TACKLEBOX_SHA"
+WORKDIR /src
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/purebuild ./cmd/purebuild
+
+FROM scratch AS purebuild-export
+COPY --from=purebuild /out/purebuild /purebuild

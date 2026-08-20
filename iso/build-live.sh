@@ -20,27 +20,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
-# ── Config ───────────────────────────────────────────────────────────────────
-# Single source: iso/live.conf (generic, bash-sourced). For neptuno, live.conf
-# is the canonical file; neptuno.conf was renamed to live.conf for finpilot
-# portability (directly transferable).
-# shellcheck source=/dev/null
-if [[ -f iso/live.conf ]]; then
-    source iso/live.conf
-elif [[ -f iso/neptuno.conf ]]; then
-    # Legacy fallback for old forks
-    source iso/neptuno.conf
-fi
-
-# Allow Justfile env to override (finpilot port: IMAGE_NAME from env)
+# ── Config (single source: Justfile exports + Containerfile ARGs) ─────────
+# No iso/*.conf — IMAGE_NAME/DEFAULT_TAG come from Justfile env, TACKLEBOX_SHA
+# from Containerfile ARG default. This keeps iso/ directly transferable to
+# finpilot (just copy iso/ + Justfile shim).
 IMAGE_NAME="${IMAGE_NAME:-neptuno}"
 DEFAULT_TAG="${DEFAULT_TAG:-stable}"
-# Derive live image and label if not set (generic for forks)
-LIVE_IMAGE="${LIVE_IMAGE:-localhost/${IMAGE_NAME}-live:${DEFAULT_TAG}}"
-IMGREF="${IMGREF:-localhost/${IMAGE_NAME}:${DEFAULT_TAG}}"
-ISO_LABEL="${ISO_LABEL:-$(echo "${IMAGE_NAME}" | tr '[:lower:]' '[:upper:]')}"
-ISO_OUTPUT="${ISO_OUTPUT:-output/${IMAGE_NAME}-live.iso}"
-PUREBUILD_BIN="${PUREBUILD_BIN:-.build/purebuild/purebuild}"
+LIVE_IMAGE="localhost/${IMAGE_NAME}-live:${DEFAULT_TAG}"
+ISO_LABEL="$(echo "${IMAGE_NAME}" | tr '[:lower:]' '[:upper:]')"
+ISO_OUTPUT="output/${IMAGE_NAME}-live.iso"
+PUREBUILD_BIN=".build/purebuild/purebuild"
+# Read TACKLEBOX_SHA from Containerfile if not in env (single source)
+TACKLEBOX_SHA="${TACKLEBOX_SHA:-$(grep -E '^ARG TACKLEBOX_SHA=' iso/Containerfile | head -n1 | sed -E 's/.*=//;s/"//g' | tr -d '[:space:]')}"
 TACKLEBOX_SHA="${TACKLEBOX_SHA:-f3dd168bf15b235b554e497e7192a64a6563c4a4}"
 
 echo "=== Building live ISO ${ISO_LABEL} (purebuild ${TACKLEBOX_SHA:0:7}, image ${LIVE_IMAGE}) ==="
@@ -51,9 +42,9 @@ if [[ -f .build/purebuild/.tacklebox-sha ]]; then cached_sha=$(cat .build/purebu
 if [[ ! -x "${PUREBUILD_BIN}" || "${cached_sha}" != "${TACKLEBOX_SHA}" ]]; then
     echo ">>> Building purebuild ${TACKLEBOX_SHA}..."
     mkdir -p .build/purebuild
-    podman build -f iso/Containerfile.purebuild \
+    podman build -f iso/Containerfile --target purebuild-export \
         --build-arg "TACKLEBOX_SHA=${TACKLEBOX_SHA}" \
-        --output type=local,dest=.build/purebuild .
+        --output type=local,dest=.build/purebuild iso
     chmod +x "${PUREBUILD_BIN}" 2>/dev/null || true
     echo "${TACKLEBOX_SHA}" > .build/purebuild/.tacklebox-sha
     ls -lh "${PUREBUILD_BIN}"
@@ -63,7 +54,7 @@ fi
 
 # ── 2. Live container ────────────────────────────────────────────────────────
 echo ">>> Baking live container ${LIVE_IMAGE}..."
-podman build -f iso/Containerfile.live \
+podman build -f iso/Containerfile --target live \
     --build-arg "IMAGE_NAME=${IMAGE_NAME}" \
     --build-arg "DEFAULT_TAG=${DEFAULT_TAG}" \
     -t "${LIVE_IMAGE}" iso
