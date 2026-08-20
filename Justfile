@@ -305,11 +305,10 @@ build-qcow2 $target_image=("localhost/" + IMAGE_NAME) $tag=DEFAULT_TAG: && (_bui
 [group('Build Virtual Machine Image')]
 build-raw $target_image=("localhost/" + IMAGE_NAME) $tag=DEFAULT_TAG: && (_build-bib target_image tag "raw" "iso/disk.toml")
 
-# Build the hybrid live+install ISO from the locally-built image (iso/build-iso.sh; needs sudo)
+# Build the hybrid live+install ISO from the locally-built image (iso/build-iso.sh — rootless)
 [group('Build Virtual Machine Image')]
 build-iso:
-    # env PATH=... keeps the user's PATH (e.g. linuxbrew) under sudo's secure_path
-    sudo env "PATH=${PATH}" bash iso/build-iso.sh
+    bash iso/build-iso.sh
 
 # Rebuild a QCOW2 virtual machine image
 [group('Build Virtual Machine Image')]

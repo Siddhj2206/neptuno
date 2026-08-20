@@ -25,9 +25,22 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
-if [[ ${EUID} -ne 0 ]]; then
-    echo "ERROR: iso/build-iso.sh must run as root (use: just build-iso)" >&2
-    exit 1
+# ── Rootless vs rootful ───────────────────────────────────────────────────────
+# The original script required root (podman image mount + privileged
+# container). For local development we run rootless via `podman unshare`:
+#   - image mount is namespace-local, so copy+squash+boot-tar must happen
+#     inside the same `podman unshare` invocation
+#   - the OCI offline store import uses host `skopeo` + a temporary
+#     overlay storage conf instead of a privileged `podman run` container
+# When running as root (CI), the helper is a no-op and the old privileged
+# path is still used via the fallback below.
+if [[ $(id -u) -eq 0 ]]; then
+    _ns() { bash -c "$1"; }
+    IS_ROOT=1
+else
+    _ns() { podman unshare bash -c "$1"; }
+    IS_ROOT=0
+    echo ">>> Running rootless (podman unshare) — no sudo required"
 fi
 
 # ── Config (single source of truth) ───────────────────────────────────────────
@@ -79,16 +92,22 @@ df -h "${WORKDIR}"
 
 # ── Payload availability ──────────────────────────────────────────────────────
 if ! podman image exists "${IMGREF}" 2>/dev/null; then
-    if [[ -n "${SUDO_USER:-}" ]]; then
+    if [[ "${IS_ROOT}" -eq 1 && -n "${SUDO_USER:-}" ]]; then
         echo "Copying ${IMGREF} from user storage into rootful storage..."
-        if ! podman image scp "${SUDO_USER}@localhost::${IMGREF}" "root@localhost::${IMGREF}"; then
+        COPYTMP=$(mktemp -p "${PWD}" -d -t _build_podman_scp.XXXXXX)
+        chmod 777 "${COPYTMP}"
+        if ! TMPDIR="${COPYTMP}" podman image scp "${SUDO_USER}@localhost::${IMGREF}" "root@localhost::${IMGREF}"; then
             echo "ERROR: could not find ${IMGREF} in user storage. Available images:" >&2
             podman images --format '  {{.Repository}}:{{.Tag}}' | grep -i "${OS_NAME}" || true
             echo "  (build it with 'just build', or set IMGREF in iso/neptuno.conf)" >&2
+            rm -rf "${COPYTMP}"
             exit 1
         fi
+        rm -rf "${COPYTMP}"
     else
-        echo "ERROR: ${IMGREF} not found in rootful storage. Run 'just build' first." >&2
+        echo "ERROR: ${IMGREF} not found. Available images:" >&2
+        podman images --format '  {{.Repository}}:{{.Tag}}' | grep -i "${OS_NAME}" || podman images | head -n 20
+        echo "  (build it with 'just build', or set IMGREF in iso/neptuno.conf)" >&2
         exit 1
     fi
 fi
@@ -138,56 +157,86 @@ if [[ "${STORE_STALE}" == "true" ]]; then
     SQUASHFS_STORAGE="${CS_STAGING}/usr/lib/containers/storage"
     STORAGE_CONF=$(mktemp "${WORKDIR}/live-storage-XXXXXX.conf")
     mkdir -p "${SQUASHFS_STORAGE}"
-    printf '[storage]\ndriver = "overlay"\nrunroot = "/tmp/cs-runroot"\ngraphroot = "/vfs-storage"\n' > "${STORAGE_CONF}"
     echo "=== Importing OCI image into overlay containers-storage (additionalimagestore) ==="
-    podman run --rm --privileged \
-        -v "${PAYLOAD_OCI}:/payload.oci.tar:ro" \
-        -v "${SQUASHFS_STORAGE}:/vfs-storage" \
-        -v "${STORAGE_CONF}:/tmp/st.conf:ro" \
-        "${LIVE_IMAGE}" \
-        sh -c "mkdir -p /tmp/cs-runroot /var/tmp && CONTAINERS_STORAGE_CONF=/tmp/st.conf skopeo copy oci-archive:/payload.oci.tar:${IMGREF} containers-storage:${IMGREF}"
+    if [[ "${IS_ROOT}" -eq 1 ]]; then
+        # Root: use privileged container (original path, works with LIVE_IMAGE's skopeo)
+        printf '[storage]\ndriver = "overlay"\nrunroot = "/tmp/cs-runroot"\ngraphroot = "/vfs-storage"\n' > "${STORAGE_CONF}"
+        podman run --rm --privileged \
+            -v "${PAYLOAD_OCI}:/payload.oci.tar:ro" \
+            -v "${SQUASHFS_STORAGE}:/vfs-storage" \
+            -v "${STORAGE_CONF}:/tmp/st.conf:ro" \
+            "${LIVE_IMAGE}" \
+            sh -c "mkdir -p /tmp/cs-runroot /var/tmp && CONTAINERS_STORAGE_CONF=/tmp/st.conf skopeo copy oci-archive:/payload.oci.tar:${IMGREF} containers-storage:${IMGREF}"
+    else
+        # Rootless: use host skopeo inside podman unshare (no privileged container needed)
+        # graphroot must be the real host path, not the container's /vfs-storage
+        printf '[storage]\ndriver = "overlay"\nrunroot = "/tmp/cs-runroot"\ngraphroot = "%s"\n' "${SQUASHFS_STORAGE}" > "${STORAGE_CONF}"
+        printf '[storage.options.overlay]\nmount_program = "/usr/bin/fuse-overlayfs"\n' >> "${STORAGE_CONF}"
+        mkdir -p /tmp/cs-runroot /var/tmp 2>/dev/null || true
+        _ns "mkdir -p /tmp/cs-runroot /var/tmp && CONTAINERS_STORAGE_CONF='${STORAGE_CONF}' skopeo copy oci-archive:'${PAYLOAD_OCI}':'${IMGREF}' containers-storage:'${IMGREF}'"
+    fi
     rm -f "${PAYLOAD_OCI}" "${STORAGE_CONF}"
     echo "${PAYLOAD_ID}" > "${PAYLOAD_STATE}"
 fi
 
 # ── 4. Squashfs root: live image + embedded store ─────────────────────────────
+# For rootless, the image mount is only valid inside `podman unshare`,
+# so the entire mount→copy→mksquashfs→boot-tar flow must happen in one
+# _ns invocation. For root, _ns is a no-op and the flow is identical.
 echo "=== Assembling squashfs root from ${LIVE_IMAGE} ==="
-MOUNT=$(podman image mount "${LIVE_IMAGE}")
+# Remove stale files that may be owned by root/subuid from previous runs
+rm -f "${SQUASHFS}" "${BOOT_TAR}" 2>/dev/null || true
 rm -rf "${SQUASHFS_ROOT}"
 mkdir -p "${SQUASHFS_ROOT}"
-echo "Copying live image into squashfs root (reflink on CoW filesystems)..."
-# --reflink=auto: btrfs reflink makes the copy near-instant; falls back to a
-# full copy elsewhere.
-cp -a --reflink=auto "${MOUNT}/." "${SQUASHFS_ROOT}/"
 
-mkdir -p "${SQUASHFS_ROOT}/usr/lib/containers/storage"
-echo "Copying overlay store into squashfs root..."
-# Overlay containers-storage contains character-device whiteout files that
-# cp -a cannot create without privileges. Use rsync to skip them — they are
-# write-layer artifacts not needed in the read-only additional store.
-rsync -a --no-specials --no-devices "${CS_STAGING}/usr/lib/containers/storage/" "${SQUASHFS_ROOT}/usr/lib/containers/storage/"
+# Capture values for the _ns shell (single-quoted, so expand now)
+_ns "
+    set -euo pipefail
+    SQUASHFS_ROOT='${SQUASHFS_ROOT}'
+    SQUASHFS='${SQUASHFS}'
+    BOOT_TAR='${BOOT_TAR}'
+    CS_STAGING='${CS_STAGING}'
+    LIVE_IMAGE='${LIVE_IMAGE}'
+    COMPRESSION='${COMPRESSION}'
 
-mkdir -p "${SQUASHFS_ROOT}/proc" "${SQUASHFS_ROOT}/sys" "${SQUASHFS_ROOT}/dev"
-SFS_LEVEL=3; SFS_BLOCK=131072
-[[ "${COMPRESSION}" == "release" ]] && { SFS_LEVEL=15; SFS_BLOCK=1048576; }
-echo "=== Squashing rootfs (zstd level ${SFS_LEVEL}, $(nproc) processors) ==="
-mksquashfs "${SQUASHFS_ROOT}" "${SQUASHFS}" \
-    -noappend -comp zstd -Xcompression-level "${SFS_LEVEL}" -b "${SFS_BLOCK}" \
-    -processors "$(nproc)" \
-    -wildcards -e "proc/*" -e "sys/*" -e "dev/*" -e run -e tmp
+    MOUNT=\$(podman image mount \"\${LIVE_IMAGE}\")
+    echo \">>> mounted \${LIVE_IMAGE} at \${MOUNT}\"
 
-# Boot tar: kernel modules (vmlinuz + initramfs) and the Fedora shim/GRUB
-# binaries (needed for the Secure-Boot-capable ESP) plus the GRUB unicode font.
-# Note: /boot/efi is a ghost (%ghost) in the RPM and is empty in the container
-# image (merged overlayfs shows /boot empty); the real EFI binaries live under
-# /usr/lib/efi/{shim,grub2}/*/. Tar the versioned tree and locate files by
-# name later — colon in version (1:2.12-64.fc44) is handled by tar/find.
-tar --force-local -C "${MOUNT}" \
-    -cf "${BOOT_TAR}" \
-    ./usr/lib/modules \
-    ./usr/lib/efi \
-    ./usr/share/grub/unicode.pf2
-podman image unmount "${LIVE_IMAGE}" || true
+    cleanup_ns() {
+        podman image unmount \"\${LIVE_IMAGE}\" 2>/dev/null || true
+    }
+    trap cleanup_ns EXIT
+
+    echo \">>> Copying live image into squashfs root (reflink on CoW)...\"
+    cp -a --reflink=auto \"\${MOUNT}/.\" \"\${SQUASHFS_ROOT}/\"
+
+    mkdir -p \"\${SQUASHFS_ROOT}/usr/lib/containers/storage\"
+    echo \">>> Copying overlay store into squashfs root...\"
+    rsync -a --no-specials --no-devices \"\${CS_STAGING}/usr/lib/containers/storage/\" \"\${SQUASHFS_ROOT}/usr/lib/containers/storage/\"
+
+    mkdir -p \"\${SQUASHFS_ROOT}/proc\" \"\${SQUASHFS_ROOT}/sys\" \"\${SQUASHFS_ROOT}/dev\"
+    SFS_LEVEL=3; SFS_BLOCK=131072
+    [[ \"\${COMPRESSION}\" == \"release\" ]] && { SFS_LEVEL=15; SFS_BLOCK=1048576; }
+    echo \">>> Squashing rootfs (zstd level \${SFS_LEVEL}, \$(nproc) processors)...\"
+    mksquashfs \"\${SQUASHFS_ROOT}\" \"\${SQUASHFS}\" \
+        -noappend -comp zstd -Xcompression-level \"\${SFS_LEVEL}\" -b \"\${SFS_BLOCK}\" \
+        -processors \"\$(nproc)\" \
+        -wildcards -e \"proc/*\" -e \"sys/*\" -e \"dev/*\" -e run -e tmp
+
+    echo \">>> Creating boot tar...\"
+    tar --force-local -C \"\${MOUNT}\" \
+        -cf \"\${BOOT_TAR}\" \
+        ./usr/lib/modules \
+        ./usr/lib/efi \
+        ./usr/share/grub/unicode.pf2
+
+    # cleanup_ns trap will unmount
+"
+# Ensure mount is cleaned up if _ns failed before trap
+podman image unmount "${LIVE_IMAGE}" 2>/dev/null || true
+# Remove subuid-owned build root outside namespace would fail; it was already
+# handled inside _ns trap, but ensure parent dir is cleaned for next run's rm -rf
+rm -rf "${SQUASHFS_ROOT}" 2>/dev/null || _ns "rm -rf '${SQUASHFS_ROOT}'" 2>/dev/null || true
 
 # ── 5. ISO assembly (shim + GRUB2 ESP, Secure Boot capable) ───────────────────
 echo "=== Assembling ISO ==="
