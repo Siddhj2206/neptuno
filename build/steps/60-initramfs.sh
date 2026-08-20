@@ -25,7 +25,6 @@ echo "Regenerating initramfs for ${QUALIFIED_KERNEL}"
 export DRACUT_NO_XATTR=1
 /usr/bin/dracut --no-hostonly --kver "${QUALIFIED_KERNEL}" --reproducible \
 	-v --add "ostree dmsquash-live dmsquash-live-autooverlay" \
-	--add-drivers "squashfs overlay loop iso9660 sr_mod cdrom" \
 	-f "/lib/modules/${QUALIFIED_KERNEL}/initramfs.img"
 chmod 0600 "/lib/modules/${QUALIFIED_KERNEL}/initramfs.img"
 touch "${INITRAMFS_MARKER}"

@@ -5,8 +5,10 @@
 # mutation (the EROFS is read-only; only the overlay is writable).
 #
 # Usage:
-#   podman build -f iso/Containerfile.live -t localhost/neptuno-live:stable .
+#   podman build -f iso/Containerfile.live -t localhost/neptuno-live:stable iso
+# Context is iso/ so COPY src/... resolves to iso/src/...
 
+# local — not Renovate-tracked (ephemeral localhost image)
 FROM localhost/neptuno:stable
 COPY src/configure-live.sh /tmp/configure-live.sh
 RUN /tmp/configure-live.sh && rm /tmp/configure-live.sh

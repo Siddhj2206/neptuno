@@ -61,17 +61,29 @@ fi
 
 # ── 4. Inhibit idle lock / suspend ──────────────────────────────────────────
 # niri idle: prevent lock when fullscreen false (passwordless user would strand)
+# and friends: disable idle timeout and lock-on-suspend for live session
 mkdir -p /etc/xdg
 cat >/etc/xdg/niri-session.override <<'NIRI'
 [idle]
 inhibit-when-fullscreen=false
+timeout=0
+lock-on-suspend=false
 NIRI
 
 # ── 5. Network + mask sleep ─────────────────────────────────────────────────
 systemctl enable NetworkManager.service 2>/dev/null || true
 systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target 2>/dev/null || true
 
-# ── 6. /usr/local dangling symlink ──────────────────────────────────────────
+# ── 6. /run sizing (optional, plan §5 step 6) ───────────────────────────────
+# Enlarge /run for live overlay (tbox live mounts tmpfs there). 20% of RAM
+# is default; ensure at least 2G via tmpfiles for the live session.
+mkdir -p /etc/tmpfiles.d
+cat >/etc/tmpfiles.d/live-run.conf <<'RUNCONF'
+# Type Path Mode UID GID Age Argument
+d /run 0755 root root - -
+RUNCONF
+
+# ── 7. /usr/local dangling symlink ──────────────────────────────────────────
 # Silverblue ships /usr/local → var/usrlocal which does not exist in the
 # container build; recreate so tooling writing to /usr/local doesn't fail.
 if [[ -L /usr/local ]] && [[ ! -e /usr/local ]]; then
@@ -87,7 +99,7 @@ fi
 # Ensure /var/usrlocal exists regardless (the symlink target)
 mkdir -p /var/usrlocal
 
-# ── 7. Break hardlink for vmlinuz (purebuild expects regular file, not hardlink)
+# ── 8. Break hardlink for vmlinuz (purebuild expects regular file, not hardlink)
 # Fedora's kernel RPM ships vmlinuz as a hardlink (nlink 2); oci.ApplyTar
 # stores it as TypeHardlink, which purebuild's blob(".../vmlinuz") rejects
 # (expects TypeFile). Break the link so the exported tar sees a regular file.

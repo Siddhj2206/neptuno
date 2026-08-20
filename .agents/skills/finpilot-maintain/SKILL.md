@@ -107,14 +107,13 @@ just build && just build-qcow2 && just run-vm-qcow2
 
 ### Alternative: ISO Testing
 
-The ISO is a hybrid live+install image — there is no `run-vm-iso` (removed);
-test manually in a VM or on hardware. Verify Secure Boot with
-`mokutil --sb-state` in the live session.
+The ISO is a live-only image — there is no `run-vm-iso` (removed);
+test manually in a VM or on hardware (live-only, no installer).
 
 ```bash
 just build
 just build-iso
-# boot output/neptuno-live.iso in a UEFI VM; grep serial for NEPTUNO_LIVE_READY
+# boot output/neptuno-live.iso in a UEFI VM; check GDM autologin to niri
 ```
 
 ### When to Run

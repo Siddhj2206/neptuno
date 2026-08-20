@@ -3,3 +3,4 @@
 .git/
 _build-*
 output/
+iso/rclone/

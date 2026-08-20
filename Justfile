@@ -314,19 +314,22 @@ build-iso:
     set -euo pipefail
     # shellcheck source=/dev/null
     source iso/neptuno.conf
-    echo "=== Building live ISO ${ISO_LABEL} (purebuild ${PUREBUILD_SHA:0:7}) ==="
+    echo "=== Building live ISO ${ISO_LABEL} (purebuild ${TACKLEBOX_SHA:0:7}) ==="
 
     # 1. Ensure purebuild binary (cached, rebuilt only when SHA changes)
-    if [[ ! -x "${PUREBUILD_BIN}" ]]; then
-        echo ">>> Building purebuild ${PUREBUILD_SHA}..."
+    cached_sha=""
+    if [[ -f .build/purebuild/.tacklebox-sha ]]; then cached_sha=$(cat .build/purebuild/.tacklebox-sha); fi
+    if [[ ! -x "${PUREBUILD_BIN}" || "${cached_sha}" != "${TACKLEBOX_SHA}" ]]; then
+        echo ">>> Building purebuild ${TACKLEBOX_SHA}..."
         mkdir -p .build/purebuild
         podman build -f iso/Containerfile.purebuild \
-            --build-arg "TACKLEBOX_SHA=${PUREBUILD_SHA}" \
+            --build-arg "TACKLEBOX_SHA=${TACKLEBOX_SHA}" \
             --output type=local,dest=.build/purebuild .
         chmod +x "${PUREBUILD_BIN}" 2>/dev/null || true
+        echo "${TACKLEBOX_SHA}" > .build/purebuild/.tacklebox-sha
         ls -lh "${PUREBUILD_BIN}"
     else
-        echo ">>> Using cached purebuild ${PUREBUILD_BIN} ($(du -sh "${PUREBUILD_BIN}" | cut -f1))"
+        echo ">>> Using cached purebuild ${PUREBUILD_BIN} ($(du -sh "${PUREBUILD_BIN}" | cut -f1)) [${TACKLEBOX_SHA:0:7}]"
     fi
 
     # 2. Bake live container (declarative, idempotent)
@@ -344,6 +347,10 @@ build-iso:
     podman rm -f "${ctr_id}" "${ctr_name}" 2>/dev/null || true
     trap - EXIT
     echo ">>> Rootfs tar: $(du -sh .build/iso/neptuno-rootfs.tar | cut -f1)"
+    echo ">>> Verifying live bake in tar..."
+    if ! tar tf .build/iso/neptuno-rootfs.tar | grep -q "var/lib/AccountsService/users/liveuser"; then echo "ERROR: liveuser not in tar" >&2; exit 1; fi
+    if ! tar tf .build/iso/neptuno-rootfs.tar | grep -q "etc/gdm/custom.conf"; then echo "ERROR: gdm custom.conf not in tar" >&2; exit 1; fi
+    echo ">>> Live bake verified"
 
     # 4. Purebuild — EROFS + tbox dracut overlay + shim/GRUB ESP
     # purebuild deletes the tar after ingest (bounded disk), but we also clean
@@ -371,6 +378,23 @@ rebuild-raw $target_image=("localhost/" + IMAGE_NAME) $tag=DEFAULT_TAG: && (_reb
 # Rebuild the image, then build the live ISO from it
 [group('Build Virtual Machine Image')]
 rebuild-iso: (build) && (build-iso)
+
+# Bump the purebuild engine to a new tacklebox SHA
+[group('ISO')]
+bump-purebuild sha:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    new_sha="{{ sha }}"
+    if [[ ! "${new_sha}" =~ ^[0-9a-f]{7,40}$ ]]; then echo "ERROR: invalid SHA ${new_sha}" >&2; exit 1; fi
+    # Resolve short SHA to full 40 if needed via ls-remote
+    if [[ ${#new_sha} -lt 40 ]]; then
+        full=$(git ls-remote https://github.com/tuna-os/tacklebox.git "${new_sha}" 2>/dev/null | awk '{print $1}' | head -1)
+        if [[ -n "${full}" ]]; then new_sha="${full}"; fi
+    fi
+    sed -i -E "s/^TACKLEBOX_SHA=\"[^\"]+\"/TACKLEBOX_SHA=\"${new_sha}\"/" iso/neptuno.conf
+    echo "Updated iso/neptuno.conf TACKLEBOX_SHA=${new_sha}"
+    rm -f .build/purebuild/.tacklebox-sha
+    echo "Run: just build-iso to rebuild purebuild"
 
 # Run a virtual machine with the specified image type and configuration
 _run-vm $target_image $tag $type $config:

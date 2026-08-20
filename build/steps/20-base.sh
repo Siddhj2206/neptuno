@@ -42,7 +42,7 @@ dnf5 config-manager setopt tailscale-stable.enabled=0
 
 dnf5 install -y -x 'PackageKit*' \
 	--enablerepo=tailscale-stable \
-	git gum make unzip dnf-plugins-core libwayland-server golang-bin dracut-live \
+	git gum make unzip dnf-plugins-core libwayland-server golang-bin \
 	fish zsh bash-color-prompt \
 	vim tmux htop nvtop glow fastfetch just symlinks fzf \
 	tailscale wireguard-tools iwd waypipe wl-clipboard \
