@@ -1,0 +1,18 @@
+# iso/Containerfile.purebuild — builds the purebuild static binary
+# twice-removed from host Go: golang container compiles, scratch exports.
+#
+# Usage (invoked by Justfile):
+#   podman build -f iso/Containerfile.purebuild \
+#     --build-arg TACKLEBOX_SHA=<pinned> \
+#     --output type=local,dest=.build/purebuild .
+#
+# Produces: .build/purebuild/purebuild (static, no cgo)
+FROM golang:1.26-bookworm AS build
+ARG TACKLEBOX_SHA=f3dd168bf15b235b554e497e7192a64a6563c4a4
+RUN git clone --depth 1 https://github.com/tuna-os/tacklebox.git /src \
+    && cd /src && git -c advice.detachedHead=false checkout "$TACKLEBOX_SHA"
+WORKDIR /src
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/purebuild ./cmd/purebuild
+
+FROM scratch
+COPY --from=build /out/purebuild /purebuild

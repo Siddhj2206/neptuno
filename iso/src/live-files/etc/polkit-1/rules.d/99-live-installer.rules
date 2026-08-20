@@ -1,7 +1,0 @@
-polkit.addRule(function(action, subject) {
-    if ((action.id === "org.freedesktop.policykit.exec" ||
-         action.id === "org.tunaos.Installer.install") &&
-            subject.user === "liveuser" && subject.local) {
-        return polkit.Result.YES;
-    }
-});

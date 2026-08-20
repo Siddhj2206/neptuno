@@ -1,0 +1,12 @@
+# iso/Containerfile.live — bakes the live environment
+#
+# The exported rootfs tar of this image is the purebuild input.
+# Keep it declarative: all live state is baked, nothing relies on boot-time
+# mutation (the EROFS is read-only; only the overlay is writable).
+#
+# Usage:
+#   podman build -f iso/Containerfile.live -t localhost/neptuno-live:stable .
+
+FROM localhost/neptuno:stable
+COPY src/configure-live.sh /tmp/configure-live.sh
+RUN /tmp/configure-live.sh && rm /tmp/configure-live.sh
