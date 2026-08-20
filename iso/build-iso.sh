@@ -177,12 +177,15 @@ mksquashfs "${SQUASHFS_ROOT}" "${SQUASHFS}" \
     -wildcards -e "proc/*" -e "sys/*" -e "dev/*" -e run -e tmp
 
 # Boot tar: kernel modules (vmlinuz + initramfs) and the Fedora shim/GRUB
-# binaries from /boot/efi (needed for the Secure-Boot-capable ESP) plus the
-# GRUB unicode font.
-tar -C "${MOUNT}" \
+# binaries (needed for the Secure-Boot-capable ESP) plus the GRUB unicode font.
+# Note: /boot/efi is a ghost (%ghost) in the RPM and is empty in the container
+# image (merged overlayfs shows /boot empty); the real EFI binaries live under
+# /usr/lib/efi/{shim,grub2}/*/. Tar the versioned tree and locate files by
+# name later — colon in version (1:2.12-64.fc44) is handled by tar/find.
+tar --force-local -C "${MOUNT}" \
     -cf "${BOOT_TAR}" \
     ./usr/lib/modules \
-    ./boot/efi/EFI/fedora \
+    ./usr/lib/efi \
     ./usr/share/grub/unicode.pf2
 podman image unmount "${LIVE_IMAGE}" || true
 
@@ -195,13 +198,13 @@ tar -xf "${BOOT_TAR}" -C "${BOOT_DIR}" --no-same-owner
 kernel=$(ls "${BOOT_DIR}/usr/lib/modules" | sort -V | tail -1)
 VMLINUZ="${BOOT_DIR}/usr/lib/modules/${kernel}/vmlinuz"
 INITRD="${BOOT_DIR}/usr/lib/modules/${kernel}/initramfs.img"
-SHIM_SRC="${BOOT_DIR}/boot/efi/EFI/fedora/shimx64.efi"
-GRUB_SRC="${BOOT_DIR}/boot/efi/EFI/fedora/grubx64.efi"
-MM_SRC="${BOOT_DIR}/boot/efi/EFI/fedora/mmx64.efi"
+SHIM_SRC=$(find "${BOOT_DIR}/usr/lib/efi" -type f -name "shimx64.efi" 2>/dev/null | sort -V | tail -n1)
+GRUB_SRC=$(find "${BOOT_DIR}/usr/lib/efi" -type f -name "grubx64.efi" 2>/dev/null | sort -V | tail -n1)
+MM_SRC=$(find "${BOOT_DIR}/usr/lib/efi" -type f -name "mmx64.efi" 2>/dev/null | sort -V | tail -n1)
 UNICODE_SRC="${BOOT_DIR}/usr/share/grub/unicode.pf2"
 
 for f in "${VMLINUZ}" "${INITRD}" "${SHIM_SRC}" "${GRUB_SRC}" "${MM_SRC}" "${UNICODE_SRC}"; do
-    [[ -f "${f}" ]] || { echo "ERROR: missing boot file: ${f}"; exit 1; }
+    [[ -n "${f}" && -f "${f}" ]] || { echo "ERROR: missing boot file: ${f:-<empty> (shim/grub search failed)}"; find "${BOOT_DIR}/usr/lib/efi" -type f 2>&1 | head -n 20; exit 1; }
 done
 echo ">>> Kernel:    $(du -sh "${VMLINUZ}" | cut -f1)  (${kernel})"
 echo ">>> Initramfs: $(du -sh "${INITRD}" | cut -f1)"
