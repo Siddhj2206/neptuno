@@ -69,14 +69,14 @@ podman export "${ctr_id}" > .build/iso/rootfs.tar
 podman rm -f "${ctr_id}" "${ctr_name}" 2>/dev/null || true
 trap - EXIT
 echo ">>> Rootfs tar: $(du -sh .build/iso/rootfs.tar | cut -f1)"
-echo ">>> Verifying live bake..."
-if ! tar tf .build/iso/rootfs.tar | grep -q "etc/gdm/custom.conf"; then
-    echo "ERROR: gdm custom.conf not in tar" >&2; exit 1
+# Agnostic: purebuild handles liveuser/DM, just ensure tar is valid
+# tar tf | grep -q exits early with SIGPIPE, so disable pipefail for this check
+set +o pipefail
+if ! tar tf .build/iso/rootfs.tar 2>&1 | grep -q "usr/lib/modules"; then
+    echo "ERROR: kernel modules not in tar" >&2; exit 1
 fi
-if ! tar tf .build/iso/rootfs.tar | grep -q "etc/accountsservice/user-templates/standard"; then
-    echo "ERROR: AccountsService template not in tar" >&2; exit 1
-fi
-echo ">>> Live bake verified"
+set -o pipefail
+echo ">>> Live bake verified (agnostic)"
 
 # ── 4. Purebuild ─────────────────────────────────────────────────────────────
 pure_image="${LIVE_IMAGE#localhost/}"

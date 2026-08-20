@@ -1,53 +1,21 @@
 #!/usr/bin/bash
-# iso/src/configure-live.sh — minimal live bake for purebuild
+# iso/src/configure-live.sh — minimal agnostic live bake for purebuild
 #
 # Runs inside iso/Containerfile `live` stage as root during podman build.
-# All state is baked, EROFS is read-only — no boot-time mutation.
-# Keep this file generic and not desktop-specific: the base image's
-# custom/ already defines the default session (neptuno: niri via
-# user-templates, finpilot: GNOME). The live user just needs autologin;
-# GDM will use the base's default session.
+# Keep this file highly agnostic: no hard-coded DM (GDM/SDDM/greetd),
+# no hard-coded WM (niri/gnome/kde). The base image's custom/ already
+# defines the default session (neptuno: niri via user-templates, finpilot:
+# GNOME), and purebuild's EnsureLiveUser/EnsureAutologin (tacklebox
+# purefs) handles the live user + display-manager autologin generically
+# for whatever DM the base ships. This bake only fixes image quirks that
+# purebuild can't: Fedora's vmlinuz hardlink and Silverblue's dangling
+# /usr/local symlink. All other live state is baked by purebuild.
 
 set -exo pipefail
 
-# ── 1. liveuser (passwordless, /var/home) ─────────────────────────────────
-if ! id liveuser &>/dev/null; then
-    useradd --create-home --uid 1000 --user-group --comment "Live User" liveuser
-fi
-passwd --delete liveuser
-mkdir -p /var/home/liveuser
-chown 1000:1000 /var/home/liveuser
-
-# ── 2. GDM autologin (live-only) ───────────────────────────────────────────
-# Base custom already has FallbackSession + InitialSetupEnable=false, we
-# just add the live autologin. Keep it minimal; don't touch Session.
-mkdir -p /etc/gdm
-# Preserve any existing custom.conf from base, just ensure autologin stanza
-if [[ -f /etc/gdm/custom.conf ]] && grep -q "^\[daemon\]" /etc/gdm/custom.conf; then
-    # Ensure AutomaticLogin lines exist (idempotent)
-    if ! grep -q "^AutomaticLoginEnable" /etc/gdm/custom.conf; then
-        echo "AutomaticLoginEnable=true" >>/etc/gdm/custom.conf
-    else
-        sed -i 's/^AutomaticLoginEnable=.*/AutomaticLoginEnable=true/' /etc/gdm/custom.conf
-    fi
-    if ! grep -q "^AutomaticLogin=" /etc/gdm/custom.conf; then
-        echo "AutomaticLogin=liveuser" >>/etc/gdm/custom.conf
-    else
-        sed -i 's/^AutomaticLogin=.*/AutomaticLogin=liveuser/' /etc/gdm/custom.conf
-    fi
-else
-    cat >/etc/gdm/custom.conf <<'GDMCONF'
-[daemon]
-AutomaticLoginEnable=true
-AutomaticLogin=liveuser
-GDMCONF
-fi
-
-# ── 3. Network + inhibit suspend ───────────────────────────────────────────
-systemctl enable NetworkManager.service 2>/dev/null || true
-systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target 2>/dev/null || true
-
-# ── 4. /usr/local dangling symlink (Silverblue) ─────────────────────────────
+# ── 1. /usr/local dangling symlink (Silverblue) ─────────────────────────────
+# Silverblue ships /usr/local → var/usrlocal which doesn't exist in the
+# container build; recreate so tooling writing to /usr/local doesn't fail.
 if [[ -L /usr/local ]] && [[ ! -e /usr/local ]]; then
     target=$(readlink /usr/local)
     mkdir -p "/${target}"
@@ -57,9 +25,9 @@ elif [[ ! -e /usr/local ]]; then
 fi
 mkdir -p /var/usrlocal
 
-# ── 5. Break vmlinuz hardlink for purebuild ─────────────────────────────────
+# ── 2. Break vmlinuz hardlink for purebuild ─────────────────────────────────
 # Fedora ships vmlinuz as hardlink (nlink 2); oci.ApplyTar → TypeHardlink
-# which purebuild's blob() rejects. Bake as regular file.
+# which purebuild's blob(".../vmlinuz") rejects (expects TypeFile).
 for kdir in /usr/lib/modules/*; do
     if [[ -f "${kdir}/vmlinuz" ]]; then
         cp -a --reflink=never "${kdir}/vmlinuz" "${kdir}/vmlinuz.tmp" 2>/dev/null || cp -a "${kdir}/vmlinuz" "${kdir}/vmlinuz.tmp"
