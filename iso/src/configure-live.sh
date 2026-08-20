@@ -42,20 +42,32 @@ AutomaticLogin=liveuser
 InitialSetupEnable=false
 GDMCONF
 
-# ── 3. niri as the session ──────────────────────────────────────────────────
+# ── 3. Desktop session ───────────────────────────────────────────────────
+# Portable: detect niri vs gnome (finpilot uses GNOME, neptuno uses niri).
+# Override via LIVE_SESSION env (set in live.conf or Justfile).
+LIVE_SESSION="${LIVE_SESSION:-}"
+if [[ -z "${LIVE_SESSION}" ]]; then
+    if [[ -f /usr/share/xsessions/niri.desktop ]] || [[ -f /usr/share/wayland-sessions/niri.desktop ]]; then
+        LIVE_SESSION="niri"
+    elif [[ -f /usr/share/xsessions/gnome.desktop ]] || [[ -f /usr/share/wayland-sessions/gnome.desktop ]]; then
+        LIVE_SESSION="gnome"
+    else
+        LIVE_SESSION="niri"
+    fi
+fi
 mkdir -p /var/lib/AccountsService/users
-cat >/var/lib/AccountsService/users/liveuser <<'ACCT'
+cat >/var/lib/AccountsService/users/liveuser <<ACCT
 [User]
-Session=niri
+Session=${LIVE_SESSION}
 SessionType=wayland
-XSession=niri
+XSession=${LIVE_SESSION}
 ACCT
 chmod 644 /var/lib/AccountsService/users/liveuser
 
 # FallbackSession for GDM ≥51 forward-compat (harmless if ignored)
 if grep -q "^\[daemon\]" /etc/gdm/custom.conf; then
     if ! grep -q "FallbackSession" /etc/gdm/custom.conf; then
-        echo "FallbackSession=niri" >>/etc/gdm/custom.conf
+        echo "FallbackSession=${LIVE_SESSION}" >>/etc/gdm/custom.conf
     fi
 fi
 

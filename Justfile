@@ -307,65 +307,11 @@ build-qcow2 $target_image=("localhost/" + IMAGE_NAME) $tag=DEFAULT_TAG: && (_bui
 build-raw $target_image=("localhost/" + IMAGE_NAME) $tag=DEFAULT_TAG: && (_build-bib target_image tag "raw" "iso/disk.toml")
 
 # Build the live ISO via purebuild (pure-Go, rootless, live-only)
+# Portable to finpilot: logic lives in iso/build-live.sh, Justfile is just a shim.
 # Flow (plan §3): bake live container → export rootfs tar → purebuild EROFS ISO
 [group('Build Virtual Machine Image')]
 build-iso:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    # shellcheck source=/dev/null
-    source iso/neptuno.conf
-    echo "=== Building live ISO ${ISO_LABEL} (purebuild ${TACKLEBOX_SHA:0:7}) ==="
-
-    # 1. Ensure purebuild binary (cached, rebuilt only when SHA changes)
-    cached_sha=""
-    if [[ -f .build/purebuild/.tacklebox-sha ]]; then cached_sha=$(cat .build/purebuild/.tacklebox-sha); fi
-    if [[ ! -x "${PUREBUILD_BIN}" || "${cached_sha}" != "${TACKLEBOX_SHA}" ]]; then
-        echo ">>> Building purebuild ${TACKLEBOX_SHA}..."
-        mkdir -p .build/purebuild
-        podman build -f iso/Containerfile.purebuild \
-            --build-arg "TACKLEBOX_SHA=${TACKLEBOX_SHA}" \
-            --output type=local,dest=.build/purebuild .
-        chmod +x "${PUREBUILD_BIN}" 2>/dev/null || true
-        echo "${TACKLEBOX_SHA}" > .build/purebuild/.tacklebox-sha
-        ls -lh "${PUREBUILD_BIN}"
-    else
-        echo ">>> Using cached purebuild ${PUREBUILD_BIN} ($(du -sh "${PUREBUILD_BIN}" | cut -f1)) [${TACKLEBOX_SHA:0:7}]"
-    fi
-
-    # 2. Bake live container (declarative, idempotent)
-    echo ">>> Baking live container ${LIVE_IMAGE}..."
-    podman build -f iso/Containerfile.live -t "${LIVE_IMAGE}" iso
-
-    # 3. Export rootfs tar (captures baked layer)
-    mkdir -p .build/iso output
-    # Use unique container name to avoid collisions
-    ctr_name="neptuno-live-export-$$"
-    echo ">>> Exporting rootfs tar..."
-    ctr_id=$(podman create --name "${ctr_name}" "${LIVE_IMAGE}")
-    trap 'podman rm -f "${ctr_id}" "${ctr_name}" 2>/dev/null || true' EXIT
-    podman export "${ctr_id}" > .build/iso/neptuno-rootfs.tar
-    podman rm -f "${ctr_id}" "${ctr_name}" 2>/dev/null || true
-    trap - EXIT
-    echo ">>> Rootfs tar: $(du -sh .build/iso/neptuno-rootfs.tar | cut -f1)"
-    echo ">>> Verifying live bake in tar..."
-    if ! tar tf .build/iso/neptuno-rootfs.tar | grep -q "var/lib/AccountsService/users/liveuser"; then echo "ERROR: liveuser not in tar" >&2; exit 1; fi
-    if ! tar tf .build/iso/neptuno-rootfs.tar | grep -q "etc/gdm/custom.conf"; then echo "ERROR: gdm custom.conf not in tar" >&2; exit 1; fi
-    echo ">>> Live bake verified"
-
-    # 4. Purebuild — EROFS + tbox dracut overlay + shim/GRUB ESP
-    # purebuild deletes the tar after ingest (bounded disk), but we also clean
-    pure_image="${LIVE_IMAGE#localhost/}"
-    # Fallback for localhost/ prefix: ensure repo:tag form
-    if [[ "${pure_image}" != *:* ]]; then pure_image="${pure_image}:stable"; fi
-    echo ">>> Running purebuild --image ${pure_image} --label ${ISO_LABEL}..."
-    "${PUREBUILD_BIN}" \
-        --image "${pure_image}" \
-        --rootfs-tar .build/iso/neptuno-rootfs.tar \
-        --workdir .build/iso \
-        --out "${ISO_OUTPUT}" \
-        --label "${ISO_LABEL}"
-    rm -f .build/iso/neptuno-rootfs.tar 2>/dev/null || true
-    echo ">>> ISO ready: ${ISO_OUTPUT} ($(du -sh "${ISO_OUTPUT}" | cut -f1))"
+    bash iso/build-live.sh
 
 # Rebuild a QCOW2 virtual machine image
 [group('Build Virtual Machine Image')]

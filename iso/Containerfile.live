@@ -9,6 +9,9 @@
 # Context is iso/ so COPY src/... resolves to iso/src/...
 
 # local — not Renovate-tracked (ephemeral localhost image)
-FROM localhost/neptuno:stable
+# For finpilot port: build-arg allows `podman build --build-arg IMAGE_NAME=...`
+ARG IMAGE_NAME=neptuno
+ARG DEFAULT_TAG=stable
+FROM localhost/${IMAGE_NAME}:${DEFAULT_TAG}
 COPY src/configure-live.sh /tmp/configure-live.sh
 RUN /tmp/configure-live.sh && rm /tmp/configure-live.sh
