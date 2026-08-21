@@ -59,35 +59,13 @@ if [[ -d "/var/lib/flatpak/app/${INSTALLER_APP_ID}" ]]; then
         mkdir -p /usr/local/bin
         ln -sf "${INSTALLER_BIN}/fisherman" /usr/local/bin/fisherman
     fi
-    # Installer config from single recipe.json in iso/ (generic, no neptuno.conf)
-    if [[ -f /tmp/recipe.json ]]; then
-        IMGREF="${IMGREF:-localhost/neptuno:stable}"
-        # Allow override via env (for finpilot port, set IMGREF)
-        if [[ -f /tmp/src/live.conf ]] 2>/dev/null; then
-            # shellcheck source=/dev/null
-            source /tmp/src/live.conf 2>/dev/null || true
-        fi
+    # Installer config — two separate files in iso/ for linting
+    if [[ -f /tmp/recipe.json && -f /tmp/images.json ]]; then
         mkdir -p /etc/bootc-installer
-        # Minimal images.json/recipe.json for online install (no offline store)
-        python3 - <<PYEOF
-import json
-imgref = "$IMGREF"
-with open("/tmp/recipe.json") as f:
-    recipe = json.load(f)
-recipe["image"] = imgref
-recipe["local_imgref"] = "containers-storage:" + imgref
-recipe["targetImgref"] = imgref
-recipe["imgref"] = imgref
-with open("/etc/bootc-installer/recipe.json", "w") as f:
-    json.dump(recipe, f, indent=2)
-    f.write("\n")
-images = {"default_image": imgref, "images": [{"name": "Neptuno", "imgref": imgref, "desc": "Neptuno — niri-based", "bootloader": "grub2", "filesystem": "btrfs", "composefs": False, "needs_user_creation": True, "flatpak_var_path": "var/lib/flatpak", "filesystems": ["btrfs", "xfs"]}], "fallback_flatpaks": []}
-with open("/etc/bootc-installer/images.json", "w") as f:
-    json.dump(images, f, indent=2)
-    f.write("\n")
-PYEOF
+        install -Dm644 /tmp/recipe.json /etc/bootc-installer/recipe.json
+        install -Dm644 /tmp/images.json /etc/bootc-installer/images.json
         touch /etc/bootc-installer/live-iso-mode
-        echo ">>> Bootc-installer configured for ${IMGREF}"
+        echo ">>> Bootc-installer configured"
     fi
 fi
 

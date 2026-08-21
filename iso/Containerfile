@@ -30,6 +30,7 @@ RUN --mount=type=bind,source=src,target=/src,relabel=shared \
     bash /src/install-flatpaks.sh
 COPY src/ /tmp/src/
 COPY recipe.json /tmp/recipe.json
+COPY images.json /tmp/images.json
 RUN chmod +x /tmp/src/configure-live.sh && /tmp/src/configure-live.sh
 
 # ── Target: purebuild — static Go binary, twice-removed from host Go ───────
