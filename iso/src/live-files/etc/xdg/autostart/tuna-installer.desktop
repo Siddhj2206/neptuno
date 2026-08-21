@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Install Neptuno
+Exec=flatpak run org.bootcinstaller.Installer
+OnlyShowIn=GNOME;KDE;X-NIRI;

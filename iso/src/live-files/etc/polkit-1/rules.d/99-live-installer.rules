@@ -1,0 +1,5 @@
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.bootcinstaller.Installer" && subject.isInGroup("liveuser")) {
+        return polkit.Result.YES;
+    }
+});
