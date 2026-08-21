@@ -21,8 +21,16 @@ ARG TACKLEBOX_SHA=f3dd168bf15b235b554e497e7192a64a6563c4a4
 
 # ── Target: live — declarative live bake, EROFS input ───────────────────────
 FROM localhost/${IMAGE_NAME}:${DEFAULT_TAG} AS live
-COPY src/configure-live.sh /tmp/configure-live.sh
-RUN /tmp/configure-live.sh && rm /tmp/configure-live.sh
+# Flatpak for live+install (installer + flatpaks list)
+RUN dnf5 install -y flatpak dbus-daemon 2>&1 | tail -n 20 && dnf5 clean all
+ARG CACHE_BUST=0
+COPY flatpaks /tmp/flatpaks-list
+RUN --mount=type=bind,source=src,target=/src,relabel=shared \
+    --mount=type=cache,target=/var/cache/flatpak-dl,id=neptuno-flatpak \
+    bash /src/install-flatpaks.sh
+COPY src/ /tmp/src/
+COPY recipe.json /tmp/recipe.json
+RUN chmod +x /tmp/src/configure-live.sh && /tmp/src/configure-live.sh
 
 # ── Target: purebuild — static Go binary, twice-removed from host Go ───────
 FROM docker.io/library/golang:1.26-bookworm@sha256:02f9f70beba7aa222cc739ab3935d1d948b80d154159ae00e885811d11d443bf AS purebuild

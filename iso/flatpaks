@@ -1,0 +1,7 @@
+# Live ISO flatpaks — one app ID per line (flathub)
+# org.bootcinstaller.Installer is installed separately via bundle (see src/install-flatpaks.sh)
+app.zen_browser.zen
+net.nokyan.Resources
+com.github.tchx84.Flatseal
+org.gnome.Loupe
+org.gnome.TextEditor

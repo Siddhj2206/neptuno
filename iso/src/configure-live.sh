@@ -36,4 +36,85 @@ for kdir in /usr/lib/modules/*; do
     fi
 done
 
+# ── 3. Bootc-installer (if flatpak present) — hybrid live+install ──────────
+# Only runs if install-flatpaks.sh installed org.bootcinstaller.Installer.
+# Keep it agnostic: no hard-coded WM, just generic polkit + autostart.
+INSTALLER_APP_ID="org.bootcinstaller.Installer"
+if [[ "${INSTALLER_CHANNEL:-stable}" == "dev" ]]; then
+    INSTALLER_APP_ID="org.bootcinstaller.Installer.Devel"
+fi
+if [[ -d "/var/lib/flatpak/app/${INSTALLER_APP_ID}" ]]; then
+    echo ">>> Configuring bootc-installer (hybrid)..."
+    # Polkit: allow liveuser to run installer without password
+    mkdir -p /etc/polkit-1/rules.d
+    cat >/etc/polkit-1/rules.d/99-live-installer.rules <<'POLKIT'
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.bootcinstaller.Installer" && subject.isInGroup("liveuser")) {
+        return polkit.Result.YES;
+    }
+});
+POLKIT
+    # Autostart installer in live session (generic, no WM hard-code)
+    mkdir -p /etc/xdg/autostart
+    cat >/etc/xdg/autostart/tuna-installer.desktop <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Install Neptuno
+Exec=flatpak run ${INSTALLER_APP_ID}
+OnlyShowIn=GNOME;KDE;X-NIRI;
+AutostartCondition=GSettings org.gnome.desktop.session session-name != 'neptuno'
+DESKTOP
+    # Sudoers for liveuser (installer needs it)
+    echo "liveuser ALL=(ALL) NOPASSWD: ALL" >/etc/sudoers.d/liveuser
+    chmod 0440 /etc/sudoers.d/liveuser
+    # Storage for installer (offline container storage)
+    mkdir -p /etc/containers
+    cat >/etc/containers/storage.conf <<'STORAGE'
+[storage]
+driver = "overlay"
+runroot = "/run/containers/storage"
+graphroot = "/var/lib/containers/storage"
+[storage.options]
+additionalimagestores = ["/usr/lib/containers/storage"]
+[storage.options.overlay]
+mount_program = "/usr/bin/fuse-overlayfs"
+STORAGE
+    # Fisherman symlink
+    INSTALLER_BIN=$(find /var/lib/flatpak/app/${INSTALLER_APP_ID} -name fisherman -type f 2>/dev/null | head -1 | xargs dirname 2>/dev/null || true)
+    if [[ -n "${INSTALLER_BIN}" ]]; then
+        mkdir -p /usr/local/bin
+        ln -sf "${INSTALLER_BIN}/fisherman" /usr/local/bin/fisherman
+    fi
+    # Installer config from single recipe.json in iso/ (generic, no neptuno.conf)
+    if [[ -f /tmp/recipe.json ]]; then
+        IMGREF="${IMGREF:-localhost/neptuno:stable}"
+        # Allow override via env (for finpilot port, set IMGREF)
+        if [[ -f /tmp/src/live.conf ]] 2>/dev/null; then
+            # shellcheck source=/dev/null
+            source /tmp/src/live.conf 2>/dev/null || true
+        fi
+        mkdir -p /etc/bootc-installer
+        # Minimal images.json/recipe.json for online install (no offline store)
+        python3 - <<PYEOF
+import json
+imgref = "$IMGREF"
+with open("/tmp/recipe.json") as f:
+    recipe = json.load(f)
+recipe["image"] = imgref
+recipe["local_imgref"] = "containers-storage:" + imgref
+recipe["targetImgref"] = imgref
+recipe["imgref"] = imgref
+with open("/etc/bootc-installer/recipe.json", "w") as f:
+    json.dump(recipe, f, indent=2)
+    f.write("\n")
+images = {"default_image": imgref, "images": [{"name": "Neptuno", "imgref": imgref, "desc": "Neptuno — niri-based", "bootloader": "grub2", "filesystem": "btrfs", "composefs": False, "needs_user_creation": True, "flatpak_var_path": "var/lib/flatpak", "filesystems": ["btrfs", "xfs"]}], "fallback_flatpaks": []}
+with open("/etc/bootc-installer/images.json", "w") as f:
+    json.dump(images, f, indent=2)
+    f.write("\n")
+PYEOF
+        touch /etc/bootc-installer/live-iso-mode
+        echo ">>> Bootc-installer configured for ${IMGREF}"
+    fi
+fi
+
 echo "Live bake complete."
