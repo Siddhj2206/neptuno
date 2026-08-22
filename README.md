@@ -92,13 +92,13 @@ Renovate will run every 6 hours and on config changes. It pins GitHub Actions to
 
 The base image is `quay.io/fedora-ostree-desktops/silverblue:44` and is pinned by SHA in `Containerfile` (Renovate keeps it up to date). neptuno layers desktop, virtualization, and multimedia tooling on top via numbered build scripts:
 
-- `build/10-build.sh` — copy Bluefin config, copy custom files, stage Brewfiles/Flatpaks/ujust, enable `podman.socket`
-- `build/20-base.sh` — remove Fedora cruft, install general CLI tools, multimedia codecs, COPR packages, systemd units
-- `build/30-dx.sh` — install Docker CE, libvirt/QEMU, and perf tooling
-- `build/40-dms.sh` — install the DMS/Niri desktop stack from COPR
-- `build/50-cleanup.sh` — remove build leftovers; `build/60-initramfs.sh` — regenerate initramfs
+- `build/steps/10-build.sh` — copy Bluefin config, copy custom files, stage Brewfiles/Flatpaks/ujust, enable `podman.socket`
+- `build/steps/20-base.sh` — remove Fedora cruft, install general CLI tools, multimedia codecs, COPR packages, systemd units
+- `build/steps/30-dx.sh` — install Docker CE, libvirt/QEMU, and perf tooling
+- `build/steps/40-dms.sh` — install the DMS/Niri desktop stack from COPR
+- `build/steps/50-cleanup.sh` — remove build leftovers; `build/steps/60-initramfs.sh` — regenerate initramfs
 
-To add packages, edit the relevant `build/NN-*.sh` script. To add user-installable CLI tools, add a `brew "..."` line to `custom/brew/*.Brewfile`. To add a GUI app, add a `[Flatpak Preinstall ...]` block to `custom/flatpaks/*.preinstall`.
+To add packages, edit the relevant `build/steps/NN-*.sh` script. To add user-installable CLI tools, add a `brew "..."` line to `custom/brew/*.Brewfile`. To add a GUI app, add a `[Flatpak Preinstall ...]` block to `custom/flatpaks/*.preinstall`.
 
 ### 6. Development Workflow
 
@@ -169,7 +169,7 @@ For optimal OTA deltas, also add `bootc-build/apply-pkg-intervals` before the re
 
 ### ujust Commands
 
-- `custom/ujust/custom-apps.just` and `custom/ujust/custom-system.just` provide active Brewfile shortcuts and an `install-dms-config` recipe
+- `custom/ujust/custom-system.just` provides an `install-dms-config` recipe and a neptuno-flavored `changelogs` override
 - `install-dms-config` copies the bundled DMS/Niri/Ghostty configs from `/etc/skel/.config/` to the user's home
 - See [custom/ujust/README.md](custom/ujust/README.md) for details
 
@@ -274,15 +274,15 @@ Before making changes, load the relevant skill from `.agents/skills/`:
 
 | What you want to do | Skill to load |
 |---|---|
-| Add/remove a package | `.agents/skills/finpilot-packages.md` |
-| Edit Brewfiles, Flatpaks, or ujust | `.agents/skills/finpilot-custom.md` |
-| Change Containerfile, Justfile, or build scripts | `.agents/skills/finpilot-build.md` |
-| Change CI workflows or Renovate | `.agents/skills/finpilot-ci.md` |
+| Add/remove a package | `.agents/skills/finpilot-packages/SKILL.md` |
+| Edit Brewfiles, Flatpaks, or ujust | `.agents/skills/finpilot-custom/SKILL.md` |
+| Change Containerfile, Justfile, or build scripts | `.agents/skills/finpilot-build/SKILL.md` |
+| Change CI workflows or Renovate | `.agents/skills/finpilot-ci/SKILL.md` |
 
 ### Phase 3: Production (PRs, debugging)
 
 | What you need | Skill to load |
 |---|---|
-| PR checklist and conventional commits | `.agents/skills/finpilot-pr-checklist.md` |
-| Debug a build or deploy failure | `.agents/skills/finpilot-troubleshooting.md` |
-| See a worked example | `.agents/skills/finpilot-examples.md` |
+| PR checklist and conventional commits | `.agents/skills/finpilot-pr-checklist/SKILL.md` |
+| Debug a build or deploy failure | `.agents/skills/finpilot-troubleshooting/SKILL.md` |
+| See a worked example | `.agents/skills/finpilot-examples/SKILL.md` |

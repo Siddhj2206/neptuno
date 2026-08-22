@@ -1,5 +1,5 @@
 # vim: set ft=make :
-# Skill: finpilot-custom.md — ujust rule reference
+# Skill: finpilot-custom/SKILL.md — ujust rule reference
 
 # Alias for bluefin-cli (terminal bling toggle)
 [group('System')]

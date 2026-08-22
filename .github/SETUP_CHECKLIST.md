@@ -14,7 +14,7 @@ Update `finpilot` → your image name in:
 - [ ] `artifacthub-repo.yml` (`repositoryID`)
 - [ ] `custom/ujust/README.md` (bootc switch example)
 - [ ] `.github/workflows/clean.yml` (`packages`)
-- [ ] `.agents/skills/finpilot-templates.md` (rename locations table)
+- [ ] `.agents/skills/finpilot-templates/SKILL.md` (rename locations table)
 
 ### 3. Enable GitHub Actions
 - [ ] Settings → Actions → General → Enable workflows

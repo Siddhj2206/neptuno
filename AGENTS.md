@@ -77,16 +77,16 @@ Read the repo skill docs before changing behavior:
 
 | I need to… | Load |
 |---|---|
-| Bootstrap a new fork | `finpilot-onboarding.md` |
-| Add/remove a package | `finpilot-packages.md` |
-| Change Brewfiles, Flatpaks, or ujust | `finpilot-custom.md` |
-| Change Containerfile, Justfile, or build scripts | `finpilot-build.md` |
-| Fix CI or Renovate | `finpilot-ci.md` / `finpilot-maintain.md` |
-| Open a PR | `finpilot-pr-checklist.md` |
-| Debug a build or deploy failure | `finpilot-troubleshooting.md` |
-| Follow a worked example | `finpilot-examples.md` |
-| Initialize/rename this template | `finpilot-templates.md` |
-| Orient to repo architecture | `finpilot-overview.md` |
+| Bootstrap a new fork | `finpilot-onboarding/SKILL.md` |
+| Add/remove a package | `finpilot-packages/SKILL.md` |
+| Change Brewfiles, Flatpaks, or ujust | `finpilot-custom/SKILL.md` |
+| Change Containerfile, Justfile, or build scripts | `finpilot-build/SKILL.md` |
+| Fix CI or Renovate | `finpilot-ci/SKILL.md` / `finpilot-maintain/SKILL.md` |
+| Open a PR | `finpilot-pr-checklist/SKILL.md` |
+| Debug a build or deploy failure | `finpilot-troubleshooting/SKILL.md` |
+| Follow a worked example | `finpilot-examples/SKILL.md` |
+| Initialize/rename this template | `finpilot-templates/SKILL.md` |
+| Orient to repo architecture | `finpilot-overview/SKILL.md` |
 
 ## Analysis vs Implementation
 
