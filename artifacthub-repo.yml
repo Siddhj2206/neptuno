@@ -3,6 +3,6 @@
 # Examples: https://artifacthub.io/packages/search?ts_query_web=ublue&sort=relevance&page=1
 
 repositoryID: neptuno # Fill in with your own credentials
-owners: # (optional, used to claim repository ownership)
-  - name: Jane Containerface
-    email: jane@blueuniversal.com
+owners: # (optional, used to claim repository ownership)
+  - name: Siddhant Jain
+    email: siddhj2206@gmail.com
