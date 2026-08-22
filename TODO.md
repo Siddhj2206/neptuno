@@ -3,7 +3,7 @@
 Trailing: "we'll do that after" = G21/G22/G23 (container-native ISO via dakota-iso, testing channel, ChairLift).
 
 ## ✅ Done
-- [x] **G12 — preinstall Brewfile wired** — `custom/brew/preinstall.d/default.Brewfile` auto-installs at first login (`400ac75`)
+- [x] **G12 — preinstall Brewfile wired** — `custom/brew/default.Brewfile` auto-installs at first login (`400ac75`; relocated from `preinstall.d/` to the standard `custom/brew/` path, build copies it into the image's `preinstall.d/`)
 - [x] **G4 — bonedigger** — `60-bonedigger.just` dropped, `ujust report` gone (`400ac75`)
 - [x] **install-dms-config** — rewritten + tested (dead ujust.sh source, tput styling, env-overridable paths, robust backups) (`400ac75`)
 - [x] **Services/timers enabled explicitly** — brew-update/upgrade timers, flatpak-appstream-refresh, rechunker-group-fix, user brew-preinstall (presets never fire on bootc) (`400ac75`)

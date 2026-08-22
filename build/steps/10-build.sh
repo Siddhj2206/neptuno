@@ -66,9 +66,10 @@ echo "::endgroup::"
 
 echo "::group:: Copy Custom Files"
 
-# Copy preinstall Brewfiles (auto-installed at first login by brew-preinstall.service)
+# Copy preinstall Brewfiles (auto-installed at first login by brew-preinstall.service).
+# Source of truth is custom/brew/*.Brewfile; every file there is OS-managed preinstall.
 mkdir -p /usr/share/ublue-os/homebrew/preinstall.d/
-cp /ctx/custom/brew/preinstall.d/*.Brewfile /usr/share/ublue-os/homebrew/preinstall.d/
+cp /ctx/custom/brew/*.Brewfile /usr/share/ublue-os/homebrew/preinstall.d/
 
 # Copy Bluefin flatpak Brewfiles (used by ujust install-system-flatpaks / bluefin-apps)
 mkdir -p /usr/share/ublue-os/homebrew/
