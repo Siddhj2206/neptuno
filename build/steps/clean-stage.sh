@@ -19,24 +19,8 @@ sed -i 's/^enabled=1/enabled=0/' /etc/yum.repos.d/tailscale.repo 2>/dev/null || 
 
 echo "::endgroup::"
 
-echo "::group:: Validate Third-Party Repos"
-# Ensure no third-party repos are left enabled
-for repo_file in /etc/yum.repos.d/*.repo; do
-	repo_name=$(basename "$repo_file" .repo)
-	case "$repo_name" in
-	fedora-cisco-openh264 | fedora*)
-		continue
-		;;
-	*)
-		if grep -q "^enabled=1" "$repo_file" 2>/dev/null; then
-			echo "ERROR: Third-party repo $repo_file still enabled!"
-			exit 1
-		fi
-		;;
-	esac
-done
-echo "All repos properly disabled."
-echo "::endgroup::"
+# Validation of all repo files moved to build/steps/validate-repos.sh,
+# called from build.sh right after this step.
 
 CLEAN_ROOT="${CLEAN_ROOT:-/}"
 
