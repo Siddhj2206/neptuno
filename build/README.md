@@ -17,7 +17,9 @@ build/
     ├── 50-cleanup.sh     # Remove build leftovers
     ├── 50-gaming.sh      # NOT wired into build.sh — intentionally unconnected (see TODO.md G11)
     ├── 60-initramfs.sh   # Regenerate initramfs via dracut (bluefin pattern)
-    └── clean-stage.sh    # Final stage cleanup (/opt symlink swap)
+    ├── clean-stage.sh    # Final stage cleanup (/opt symlink swap)
+    ├── validate-repos.sh # Fail the build if any third-party repo is left enabled (bluefin pattern)
+    └── 70-tests.sh       # In-image smoke tests: key packages, negativo codecs, unwanted removals, unit enables
 ```
 
 Steps are executed by explicit calls in `build/build.sh`, not by globbing — to add a step, create the script **and** add a line to `build/build.sh` (and keep the numbered naming convention: `NN-name.sh`).

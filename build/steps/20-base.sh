@@ -42,18 +42,20 @@ dnf5 config-manager setopt tailscale-stable.enabled=0
 
 dnf5 install -y -x 'PackageKit*' \
 	--enablerepo=tailscale-stable \
-	git gum make unzip dnf-plugins-core libwayland-server golang-bin \
+	git gum make unzip dnf-plugins-core libwayland-server \
 	fish zsh bash-color-prompt \
 	vim tmux htop nvtop glow fastfetch just symlinks fzf \
 	tailscale wireguard-tools iwd waypipe wl-clipboard \
 	ddcutil input-remapper lm_sensors powertop smartmontools evtest \
 	borgbackup restic rclone samba-client \
-	gcc gcc-c++ python3-pip python3-pygit2 distrobox git-credential-libsecret \
+	python3-pip python3-pygit2 distrobox git-credential-libsecret \
 	pam-u2f pamu2fcfg yubikey-manager openssh-askpass pam_yubico \
 	ifuse libimobiledevice libimobiledevice-utils usbmuxd \
 	hplip printer-driver-brlaser \
 	containerd flatpak-spawn \
 	gnome-tweaks adw-gtk3-theme xdg-terminal-exec \
+	libayatana-appindicator-gtk3 libappindicator-gtk3 \
+	firewall-config gvfs-nfs libva-utils igt-gpu-tools \
 	jetbrains-mono-fonts-all adwaita-fonts-all opendyslexic-fonts \
 	alsa-firmware alsa-tools-firmware \
 	nautilus-gsconnect \
@@ -159,6 +161,9 @@ systemctl enable ublue-system-setup.service
 systemctl enable input-remapper.service
 systemctl enable tailscaled.service
 systemctl enable uupd.timer
+# uupd replaces the base image's updater — disable Silverblue's default timer
+# so two systems don't stage the same updates (bluefin pattern)
+systemctl disable rpm-ostreed-automatic.timer 2>/dev/null || true
 systemctl --global enable podman-auto-update.timer 2>/dev/null || true
 systemctl enable dconf-update.service
 systemctl enable bootc-unified-storage.service

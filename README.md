@@ -16,7 +16,7 @@ Here are the main ways neptuno differs from the upstream base image.
 
 ### Added Packages (Build-time)
 
-- **Core CLI tools**: `git`, `gum`, `dnf-plugins-core`, `make`, `unzip`, `libwayland-server`, `golang-bin`, `fish`/`zsh`, `vim`, `tmux`, `htop`/`nvtop`, `glow`, `fastfetch`, `just`, `fzf`, `tailscale`, `wireguard-tools`, `borgbackup`/`restic`/`rclone`, `gcc`, `yubikey`/`pam-u2f` tooling, `libimobiledevice`, printing drivers, fonts
+- **Core CLI tools**: `git`, `gum`, `dnf-plugins-core`, `make`, `unzip`, `libwayland-server`, `fish`/`zsh`, `vim`, `tmux`, `htop`/`nvtop`, `glow`, `fastfetch`, `just`, `fzf`, `tailscale`, `wireguard-tools`, `borgbackup`/`restic`/`rclone`, `yubikey`/`pam-u2f` tooling, `libimobiledevice`, printing drivers, fonts (C/C++ and Go toolchains live in distrobox / Homebrew instead of the host)
 - **Multimedia codecs** (via negativo17 `fedora-multimedia`): `ffmpeg`, `libavcodec`, `@multimedia`, GStreamer plugins, `lame`, `libfdk-aac`, `libjxl`, with mesa/Intel driver overrides distro-synced and versionlocked
 - **DMS / Niri desktop stack** (via COPR — `avengemedia/danklinux`, `avengemedia/dms`, `yalter/niri`): `niri`, `quickshell-git`, `matugen`, `dgop`, `dsearch`, `cava`, `khal`, `dms`
 - **DMS supporting packages**: `xdg-desktop-portal-gtk`, `xdg-desktop-portal-gnome`, `accountsservice`, `xwayland-satellite`, `adw-gtk3-theme`, `qt6ct`, `qt6-qtmultimedia`

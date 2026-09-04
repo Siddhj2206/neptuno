@@ -38,6 +38,14 @@ echo "::group:: 70-clean-stage.sh"
 /ctx/build/steps/clean-stage.sh
 echo "::endgroup::"
 
+echo "::group:: validate-repos.sh"
+/ctx/build/steps/validate-repos.sh
+echo "::endgroup::"
+
+echo "::group:: 70-tests.sh"
+/ctx/build/steps/70-tests.sh
+echo "::endgroup::"
+
 echo "::group:: /opt symlink"
 rm -rf /opt && ln -s /var/opt /opt
 echo "::endgroup::"
