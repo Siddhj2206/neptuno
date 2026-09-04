@@ -15,6 +15,7 @@ Trailing: "we'll do that after" = G21/G22/G23 (container-native ISO via dakota-i
 - [x] **G6 — changelogs** — overridden in 60-custom.just → `siddhj2206/neptuno` (`b100436`)
 - [x] **G9 — starship bash init** — `profile.d/90-starship.sh` (`b100436`)
 - [x] **G10 — flatpak-nuke ordering** — `Before=flatpak-system-helper.service` aligned with upstream (`b100436`)
+- [x] **Upstream hardening round (2026-09)** — vs bluefin/common/brew audits: disable `rpm-ostreed-automatic.timer` (uupd replaces it); in-image smoke tests (`70-tests.sh`); ported bluefin `validate-repos.sh`; `just verify-inputs` cosigns all three pinned FROM images against vendored `keys/*.pub`; font entries reclassified `brew`→`cask` (preinstall remove-contract); starship path to `/home/linuxbrew`; fastfetch packages hides rpm count; tray libs + firewall-config + gvfs-nfs + libva-utils + igt-gpu-tools; **G23 embraced** (ChairLift/bluefinctl arrive via common shared preinstall.d); MissionCenter replaces Resources
 
 ## 🔧 P1 — infra/hardening
 - [x] **G14 — initramfs** — `60-initramfs.sh` rewritten (bluefin pattern): arch-qualified kver, marker skip + `FORCE_INITRAMFS` override, `DRACUT_NO_XATTR=1`, `--reproducible`, explicit `ostree dmsquash-live dmsquash-live-autooverlay`; VFIO `80-vfio.conf` now actually takes effect (replaces blunt `--regenerate-all`)
@@ -32,4 +33,3 @@ Trailing: "we'll do that after" = G21/G22/G23 (container-native ISO via dakota-i
 - [ ] **G11 — gaming** — `50-gaming.sh` kept, intentionally unconnected (no rpmfusion); revisit when wanted
 - [ ] **G15 — two-stage Containerfile / cache boundaries** — build-time optimization, user prefers current single-RUN structure
 - [ ] **G21 — container-native ISO / live ISO** — dakota-iso revamp (discuss in detail)
-- [ ] **G23 — ChairLift (`bctl`)** — brings inherited `bctl`-delegating recipes alive; needs frostyard/tap in preinstall

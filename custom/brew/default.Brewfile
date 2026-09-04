@@ -28,13 +28,13 @@ brew "herdr"           # (keep as-is from user install)
 brew "bbrew"           # (keep as-is from user install)
 
 # Nerd fonts
-brew "font-0xproto-nerd-font"
-brew "font-blex-mono-nerd-font"
-brew "font-caskaydia-mono-nerd-font"
-brew "font-comic-shanns-nerd-font"
-brew "font-droid-sans-mono-nerd-font"
-brew "font-fira-code-nerd-font"
-brew "font-go-mono-nerd-font"
-brew "font-sauce-code-pro-nerd-font"
-brew "font-source-code-pro"
-brew "font-ubuntu-nerd-font"
+cask "font-0xproto-nerd-font"
+cask "font-blex-mono-nerd-font"
+cask "font-caskaydia-mono-nerd-font"
+cask "font-comic-shanns-nerd-font"
+cask "font-droid-sans-mono-nerd-font"
+cask "font-fira-code-nerd-font"
+cask "font-go-mono-nerd-font"
+cask "font-sauce-code-pro-nerd-font"
+cask "font-source-code-pro"
+cask "font-ubuntu-nerd-font"

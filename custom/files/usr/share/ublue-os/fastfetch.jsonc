@@ -90,7 +90,8 @@
     },
     {
       "type": "packages",
-      "key": "󰏖"
+      "key": "󰏖",
+      "disabled": ["rpm"]
     },
     "break",
     {

@@ -10,8 +10,8 @@
 
 if command -v starship >/dev/null 2>&1; then
     _starship_bin="starship"
-elif [ -x "/var/home/linuxbrew/.linuxbrew/bin/starship" ]; then
-    _starship_bin="/var/home/linuxbrew/.linuxbrew/bin/starship"
+elif [ -x "/home/linuxbrew/.linuxbrew/bin/starship" ]; then
+    _starship_bin="/home/linuxbrew/.linuxbrew/bin/starship"
 else
     return 0
 fi

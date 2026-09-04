@@ -101,7 +101,7 @@ Branch=stable
 [Flatpak Preinstall io.gitlab.adhami3310.Impression]
 Branch=stable
 
-[Flatpak Preinstall net.nokyan.Resources]
+[Flatpak Preinstall io.missioncenter.MissionCenter]
 Branch=stable
 
 [Flatpak Preinstall it.mijorus.smile]
