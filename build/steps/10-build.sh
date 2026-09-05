@@ -30,10 +30,23 @@ rsync -rvK /ctx/oci/brew/ /
 rsync -rvK /ctx/oci/common/shared/ /
 
 # Bluefin-specific non-GNOME configs (higher priority, overrides shared)
+# NB: bazaar.preinstall must come from common — 70-tests.sh asserts it exists
+# (upstream NEVER-REMOVE file; dropping it uninstalls Bazaar from user systems).
+# Bazaar itself is intentionally NOT duplicated in custom/flatpaks/default.preinstall.
+# NOTE: only the 4 bazaar configs are cherry-picked from etc/bazaar/ — that dir
+# also carries ~33MB of Bluefin wallpapers in the pinned common image, so a
+# blanket copy would duplicate them into /etc.
 rsync -rvK --relative \
 	/ctx/oci/common/bluefin/./etc/zsh/ \
 	/ctx/oci/common/bluefin/./usr/share/fish/ \
 	/ctx/oci/common/bluefin/./usr/lib/dracut/ \
+	/ctx/oci/common/bluefin/./usr/share/flatpak/preinstall.d/bazaar.preinstall \
+	/ctx/oci/common/bluefin/./etc/bazaar/bazaar.yaml \
+	/ctx/oci/common/bluefin/./etc/bazaar/blocklist.yaml \
+	/ctx/oci/common/bluefin/./etc/bazaar/curated.yaml \
+	/ctx/oci/common/bluefin/./etc/bazaar/hooks.py \
+	/ctx/oci/common/bluefin/./usr/lib/systemd/user/bazaar.service \
+	/ctx/oci/common/bluefin/./usr/lib/tmpfiles.d/bazaar-flatpak.conf \
 	/
 
 echo "::endgroup::"
