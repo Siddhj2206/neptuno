@@ -18,7 +18,6 @@ stat /usr/share/ublue-os/just/60-custom.just
 # so a rename or drop upstream would otherwise stop shipping with no signal.
 test -f /usr/share/ublue-os/homebrew/preinstall.d/default.Brewfile
 test -f /usr/share/ublue-os/homebrew/preinstall.d/chairlift.Brewfile
-test -f /usr/share/ublue-os/homebrew/preinstall.d/bluefinctl.Brewfile
 test -f /usr/share/ublue-os/homebrew/preinstall.d/system-cli.Brewfile
 test -x /usr/bin/brew-preinstall
 test -f /usr/lib/systemd/user/brew-preinstall.service
