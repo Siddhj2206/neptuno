@@ -31,7 +31,7 @@ description: >-
 5. **Configure branch protection and auto-merge**
 6. **Trigger first build**
 7. **Add the "What Makes this Raptor Different" section to README** (template below)
-8. **Enable signing** (optional, recommended for production; setup: `finpilot-templates`)
+8. **Verify signing** on the first signed build (`finpilot-templates`)
 
 Keep day-one changes minimal and iterate in phases:
 
@@ -41,7 +41,7 @@ Keep day-one changes minimal and iterate in phases:
    (`finpilot-packages`, `finpilot-build`)
 3. **Phase 3 — Runtime**: add Flatpak/Brew customizations, test in a VM with
    `just run-vm-qcow2` (`finpilot-custom`)
-4. **Phase 4 — Production**: enable signing, full branch protection
+4. **Phase 4 — Production**: verify signing, full branch protection
    (`finpilot-templates`, `finpilot-maintain`)
 
 Resist changing everything at once — each phase validates the previous.
@@ -82,6 +82,25 @@ This token allows Renovate to open PRs for digest bumps and dependency updates.
 
 This ensures PRs are validated before merging and Renovate can auto-merge safe digest updates.
 
+## Set Up Promotion (Stable Branch)
+
+Create `stable` as an exact copy of `main` (git commands in `SETUP_CHECKLIST.md`
+step 3). The `promote-main-to-stable.yml` workflow then automates releases:
+
+1. Pushes to `main` publish `:stable-testing`; a squash PR to `stable` opens
+   automatically whenever the trees differ
+2. The PR requests review from `<owner>/maintainers` — org forks need that
+   team; personal-account forks should replace the caller workflow with a
+   local one that skips reviewer requests
+3. `stable`'s required approvals set the automation level: `0` = fully
+   automatic, `1` = review, then auto-merge
+4. Keyless signing (enabled by default) feeds the release gate — signed
+   `:testing` images report `release/ready`; unsigned images report
+   `release/blocked`
+
+Full requirements live in `SETUP_CHECKLIST.md` → step 3; promotion mechanics
+in `finpilot-ci`.
+
 ## First Green Build
 
 After the rename and secret setup, trigger a build:
@@ -92,7 +111,7 @@ After the rename and secret setup, trigger a build:
 Monitor the workflow. A successful first build:
 
 - Passes `bootc container lint --fatal-warnings`
-- Publishes `:stable` and `:stable.YYYYMMDD` tags to GHCR
+- Publishes `:stable-testing` and `:testing` tags to GHCR (`stable` branch builds publish `:stable`)
 - Appears under **Packages** in your repository
 
 ## README "What Makes this Raptor Different" Section
@@ -129,10 +148,9 @@ _Last updated: [date]_
 **Maintenance requirement**: update this section on every package or
 configuration change — see the update rules in `finpilot-maintain`.
 
-## Optional Signing Setup
+## Signing
 
-Signing is **disabled by default** so first builds succeed immediately. Enable
-later for production — full keyless OIDC setup and verification:
+No setup required — first builds publish signed images. Verification details:
 `finpilot-templates`.
 
 ## Common Rationalizations
@@ -142,7 +160,7 @@ later for production — full keyless OIDC setup and verification:
 | "I'll rename the obvious places and fix the rest later."       | Missing `.github/workflows/clean.yml` or `iso/iso.toml` causes silent failures months later. Do all 7 now. |
 | "I don't need branch protection for a personal fork."          | Without it, Renovate auto-merge won't work, and digest PRs sit unmerged.                                   |
 | "I'll add the raptor section to README after I have packages." | Add the section immediately with placeholders. Update it iteratively.                                      |
-| "Signing is too much work for a first build."                  | Signing is disabled by default. First builds succeed immediately. Enable later.                            |
+| "Signing is too much work for a first build."                  | Nothing to configure — builds sign images automatically.                                                   |
 | "I'll use my fine-grained PAT for Renovate."                   | Renovate requires a **Classic PAT** with `repo` + `workflow` scopes. Fine-grained PATs do not work.        |
 
 ## Red Flags
@@ -163,4 +181,4 @@ later for production — full keyless OIDC setup and verification:
 - [ ] Branch protection for `main` configured with `validate` as required check?
 - [ ] First green build succeeded and image published to GHCR?
 - [ ] README contains the "What Makes this Raptor Different" section?
-- [ ] Optional signing enabled (or deferred for later)?
+- [ ] Signing verified on the first signed build?

@@ -1,55 +1,98 @@
 # Build Scripts
 
-The image build is a single monolithic `RUN /ctx/build/build.sh` in the Containerfile. `build.sh` executes the numbered step scripts in `steps/` in a fixed order.
+This directory contains build scripts used during image creation. The
+Containerfile explicitly runs each script in order; extra scripts must be
+explicitly added to the Containerfile.
 
-## Layout
+## How It Works
 
+Scripts are named with a number prefix (`00-`, `10-`, `20-`, `25-`, `40-`,
+`45-`) and run in ascending order during the container build process. Each script is one
+**layer**: metadata, overlays, wm-agnostic packages, multimedia, the compositor, dx.
+
+## Included Scripts
+
+- **`00-image-info.sh`** - Image identity (os-release / image-info.json), ARG-driven
+- **`10-build.sh`** - Overlays + custom files: brew OCI layer, common `shared/` layer (ujust, flatpak-preinstall, brew-preinstall), `custom/files/` → `/`, `custom/config/` → `/etc/skel`, just consolidation, flatpak preinstall files; wm-agnostic
+- **`20-base.sh`** - WM-agnostic desktop foundation packages (fonts, graphics, audio, portals, keyring, display manager, zram, power) from `packages/base.toml`; COPR sections installed per-repo; wm-agnostic
+- **`25-multimedia.sh`** - Full multimedia (ffmpeg + non-FOSS codecs, mesa/VA overrides) from the negativo17 `fedora-multimedia` repo via `packages/multimedia.toml`; wm-agnostic
+- **`40-niri.sh`** - Compositor layer: niri + DMS stack from `packages/niri.toml` + dynamic wiring (greeter, first-boot units, schemas); **wm-specific — renumber/replace for a different compositor**
+- **`45-dx.sh`** - DX layer: developer experience stack — docker-ce daemon (official third-party repo, removed after install), adb, minimal libvirt/qemu host daemon — from `packages/dx.toml`; daemons socket-activated; wm-agnostic
+- `clean-stage.sh` - Cleanup stage (build artifacts, final image hygiene)
+- `packages/` - TOML manifests (the "manifest of record": `base.toml`, `firmware.toml`, `multimedia.toml`, `niri.toml`, `dx.toml`)
+- `scripts/` - Shared helpers (`read-packages`, `package-lib.sh`)
+
+## Creating Your Own Scripts
+
+Create numbered scripts between the layers above (e.g. `30-…` for a
+wm-agnostic app layer, `45-…` for compositor extras):
+
+```bash
+# 30-development.sh - Development tools (wm-agnostic)
+# 45-niri-extra.sh   - Compositor-specific extras
 ```
-build/
-├── build.sh            # Orchestrator — runs each step in order (see Containerfile)
-└── steps/
-    ├── 00-image-info.sh  # Write image-info/metadata (name, tag, vendor)
-    ├── copr-helpers.sh   # Shared helpers: copr_install_isolated (auto-disables COPRs)
-    ├── 10-build.sh       # Copy Bluefin config, custom files, Brewfiles/Flatpaks/ujust, podman.socket
-    ├── 20-base.sh        # Remove Fedora cruft, CLI tools, codecs, COPR packages, systemd units
-    ├── 30-dx.sh          # Docker CE, libvirt/QEMU, perf tooling
-    ├── 40-dms.sh         # DMS/Niri desktop stack from COPR
-    ├── 50-cleanup.sh     # Remove build leftovers
-    ├── 50-gaming.sh      # NOT wired into build.sh — intentionally unconnected (see TODO.md G11)
-    ├── 60-initramfs.sh   # Regenerate initramfs via dracut (bluefin pattern)
-    ├── clean-stage.sh    # Final stage cleanup (/opt symlink swap)
-    ├── validate-repos.sh # Fail the build if any third-party repo is left enabled (bluefin pattern)
-    └── 70-tests.sh       # In-image smoke tests: key packages, negativo codecs, unwanted removals, unit enables
-```
-
-Steps are executed by explicit calls in `build/build.sh`, not by globbing — to add a step, create the script **and** add a line to `build/build.sh` (and keep the numbered naming convention: `NN-name.sh`).
-
-## Conventions
-
-- Scripts run as root during build; build context is mounted at `/ctx`
-- Use `dnf5` exclusively for package management (never `dnf`, `yum`, or `rpm-ostree`)
-- Always pass `-y` for non-interactive installs
-- Any COPR enabled during a step must be disabled before the step ends (`copr_install_isolated` handles this)
-- Source shared functions from `steps/copr-helpers.sh` rather than duplicating them
 
 ### Script Template
 
 ```bash
 #!/usr/bin/bash
-
-set -euox pipefail
+set -euo pipefail
 
 echo "Running custom setup..."
 # Your commands here
 ```
 
+### Conventions
+
+- **Manifest-driven installs**: packages live in `packages/*.toml`, read by
+  `scripts/read-packages`. Never hardcode `dnf5 install` lists in a layer
+  script.
+- **Shared helpers** (`scripts/package-lib.sh`) — use these, don't reinvent:
+  - `install_fedora_section <manifest> <label> [dnf5 flags...]` — installs
+    the `[fedora]` section and asserts every package landed
+  - `install_copr_sections <manifest>` — enables ALL `["copr:<owner>/<project>"]`
+    sections, then installs their packages in ONE transaction (explicit args
+    beat coprdep-pulled builds: quickshell-git over plain quickshell); explicit
+    chroot via `copr_chroot`; COPRs disabled by clean-stage.sh in the final
+    image
+  - `assert_packages_present <label> <pkgs...>`, `assert_vendor <label>
+    <vendor> <pkgs...>`
+- **Assert gates**: every layer verifies its packages post-install — the
+  build FAILS listing missing names. Do not remove.
+- **COPR policy (AGENTS.md rule 3)**: COPRs are enabled only during the
+  build layers that install from them; `clean-stage.sh` disables them in the
+  final image.
+- **Group markers**: wrap each step in `echo "::group:: Name"` /
+  `echo "::endgroup::"` (CI annotations).
+- **Formatting**: shellcheck + shfmt — `just lint`, `just format`.
+
 ### Best Practices
 
-- **Use descriptive names**: `50-gaming.sh` is better than `50-stuff.sh`
-- **One purpose per script**: easier to debug and reorder
-- **Clean up after yourself**: remove temporary files and disable temporary repos
-- **Test incrementally**: add one step at a time and test builds
+- **One purpose per script**: Easier to debug and maintain
+- **Package installs go in the TOML manifests**, not inline `dnf5 install`
+  lines — see `packages/base.toml` for the format and `scripts/read-packages`
+- **Keep composition swap-friendly**: wm-agnostic things in `10/20/25/45`,
+  wm-specific things in `40-*` (+ `custom/config`, `custom/files`)
+- **Clean up after yourself**: remove temporary files; COPR repos are
+  disabled by `clean-stage.sh` before lint
+- **Test incrementally**: one script at a time, then `just build`
+- **Comment your code**: Future you will thank present you
 
-### Disabling a Step
+### Disabling a Script
 
-Comment out its invocation in `build/build.sh` (see `50-gaming.sh` for an example of an unwired step). Do not rely on removing execute permission — `build.sh` calls steps explicitly.
+Remove its corresponding `RUN` block from `Containerfile` (or delete the script).
+
+## Execution Order
+
+The template runs scripts explicitly, rather than automatically discovering
+files by prefix. Place extra script blocks between the existing layers and
+before `clean-stage.sh`. Use numbered names to communicate the intended order.
+
+## Notes
+
+- Scripts run as root during build
+- Build context is available at `/ctx` (`/ctx/build`, `/ctx/custom`)
+- Use dnf5 for package management (not dnf or yum)
+- Always use `-y` flag for non-interactive installs
+- System-wide static files live in `custom/files/`; user config defaults in
+  `custom/config/` — prefer those over heredocs in scripts

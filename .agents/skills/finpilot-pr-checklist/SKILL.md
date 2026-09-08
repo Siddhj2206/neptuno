@@ -44,7 +44,7 @@ Ensure commit messages follow the format:
 <type>[optional scope]: <description>
 ```
 
-Valid types: `feat`, `fix`, `docs`, `chore`, `build`, `ci`, `refactor`, `test`
+Valid types: `feat`, `fix`, `docs`, `chore`, `build`, `ci`, `config`, `refactor`, `test` (full list + scopes: `.github/commit-convention.md`)
 
 Examples:
 
@@ -59,7 +59,9 @@ ci: add validate-brewfiles workflow
 Run on all modified shell files:
 
 ```bash
-shellcheck build/*.sh
+shellcheck build/*.sh build/scripts/*.sh
+# custom/files hooks: covered by validate-pr's system-files-shellcheck-glob in CI;
+# locally: shellcheck $(find custom/files -name '*.sh')
 ```
 
 **Fix ALL errors before committing.** Shellcheck in CI is a hard block.
@@ -154,6 +156,18 @@ just --list
 | Raptor section present | Verify "What Makes this Raptor Different?" section exists and is up to date |
 
 **CI triggers:** None by default (consider adding `markdownlint` to pre-commit)
+
+### Repo-wide Doc Sweeps
+
+| Check                   | Command                                                              |
+| ----------------------- | -------------------------------------------------------------------- |
+| Include dot-directories | `grep -rn "pattern" .github .agents` (don't rely on `grep -r .` alone) |
+
+`.github/` and `.agents/` hold most of this template's docs, skills, and
+workflows. A recursive search rooted at `.` can silently skip dot-directories
+depending on grep configuration — target them explicitly when auditing docs
+for stale claims, and verify every reported location against the real file
+before editing.
 
 ---
 

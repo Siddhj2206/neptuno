@@ -29,7 +29,8 @@ description: >-
 
 ## Architecture
 
-finpilot is a **bootc image template** following the Bluefin multi-stage build architecture:
+finpilot is a **bootc image** following the Bluefin multi-stage build architecture,
+customised here for a Hummingbird base + niri/DMS desktop:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -41,9 +42,13 @@ finpilot is a **bootc image template** following the Bluefin multi-stage build a
                           │ --mount=type=bind,from=ctx
 ┌─────────────────────────▼───────────────────────────────────┐
 │  Stage 2: Final image                                       │
-│    FROM quay.io/fedora-ostree-desktops/silverblue:44        │
+│    FROM quay.io/hummingbird-community/bootc-os:latest       │
 │    RUN /ctx/build/00-image-info.sh   (metadata)             │
-│    RUN /ctx/build/10-build.sh        (packages)             │
+│    RUN /ctx/build/10-build.sh        (overlays + wiring)    │
+│    RUN /ctx/build/20-base.sh         (base packages)        │
+│    RUN /ctx/build/25-multimedia.sh   (multimedia)           │
+│    RUN /ctx/build/40-niri.sh         (compositor)           │
+│    RUN /ctx/build/45-dx.sh           (dev stack)            │
 │    RUN /ctx/build/clean-stage.sh     (pre-lint cleanup)     │
 │    RUN bootc container lint --fatal-warnings                │
 └─────────────────────────────────────────────────────────────┘
@@ -54,10 +59,16 @@ finpilot is a **bootc image template** following the Bluefin multi-stage build a
 ```
 ├── Containerfile          # Multi-stage build definition (base + OCI context image pins)
 ├── Justfile               # Local build automation
-├── build/                 # Build-time scripts (00-, 10-, 20-, 30-...)
+├── build/                 # Build-time scripts (00/10/20/25/40/45 + clean)
 │   ├── 00-image-info.sh   # image-info.json + os-release branding
-│   ├── 10-build.sh        # Main package install script
-│   └── clean-stage.sh     # Pre-lint artifact cleanup
+│   ├── 10-build.sh        # OCI overlays + custom tree wiring (no dnf)
+│   ├── 20-base.sh         # WM-agnostic base packages (base.toml)
+│   ├── 25-multimedia.sh   # negativo17 multimedia (multimedia.toml)
+│   ├── 40-niri.sh         # Compositor layer (niri.toml)
+│   ├── 45-dx.sh           # Dev stack (dx.toml)
+│   ├── packages/          # TOML manifests of record (one per layer)
+│   ├── scripts/           # package-lib.sh + read-packages helpers
+│   └── clean-stage.sh     # Pre-lint artifact cleanup (disables COPRs)
 ├── custom/                # Runtime: brew/, flatpaks/, ujust/
 ├── .github/
 │   ├── workflows/
@@ -106,7 +117,7 @@ To keep changes minimal and safe:
 - `.github/workflows/renovate.yml` - Managed by projectbluefin/actions
 - `.github/workflows/validate-*.yml` - Validation workflows
 - `.gitignore` - Prevents committing secrets
-- `build/copr-helpers.sh` - Stable helper patterns
+- `build/scripts/package-lib.sh` - Shared install/assert helpers (stable API)
 - `LICENSE` - Repository license
 
 **Modify with extreme caution:**

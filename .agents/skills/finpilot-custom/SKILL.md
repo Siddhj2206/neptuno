@@ -31,16 +31,14 @@ description: >-
 
 ## Brewfiles: `custom/brew/*.Brewfile`
 
-Brewfiles use Ruby syntax. In this repo they are **OS-managed preinstall declarations**, not user-opt-in installs: `build/steps/10-build.sh` copies every `custom/brew/*.Brewfile` into the image's `/usr/share/ublue-os/homebrew/preinstall.d/`, and the per-user `brew-preinstall.service` applies them at first login — installing additions, uninstalling removals, and never touching user-added packages. Homebrew itself is pre-staged at build time via the `@ublue-os/brew` OCI container.
+Brewfiles use Ruby syntax. They define Homebrew packages installed by users after deployment. Homebrew itself is pre-staged at build time via the `@ublue-os/brew` OCI container and extracted on first boot by `brew-setup.service`; Brewfiles define what users install after that extraction.
 
 ### File Locations
 
-| File                           | Purpose                                        |
-| ------------------------------ | ---------------------------------------------- |
-| `custom/brew/default.Brewfile` | OS-managed CLI tools installed for every user  |
-| Custom `*.Brewfile`            | Additional OS-managed sets (all auto-installed) |
-
-**Every `*.Brewfile` placed here is force-installed on every user account.** Do not put user-opt-in Brewfiles in this directory.
+| File                           | Purpose                                    |
+| ------------------------------ | ------------------------------------------ |
+| `custom/brew/default.Brewfile` | General purpose CLI tools (the only Brewfile) |
+| Custom `*.Brewfile`            | Create as needed for specific use cases    |
 
 ### Syntax
 
@@ -59,15 +57,17 @@ brew "node"
 brew "python"
 ```
 
-### How They Are Applied
+### How Users Invoke Them
 
-No user action is required. The flow is declarative:
+Users install via `ujust` commands (shortcuts defined in `custom/ujust/custom-system.just` — the only recipe file; current recipes: `install-dms-config`, `changelogs`):
 
-1. Edit `custom/brew/default.Brewfile`, add/remove `brew` lines
-2. Build and deploy the image
-3. On next login, `brew-preinstall.service` reconciles the user's Homebrew with the declared state (content-addressed: only runs on hash change)
+```bash
+# Restore DMS/skel config onto an existing user
+ujust install-dms-config
 
-Removing a package from a preinstall Brewfile *uninstalls* it from user systems. User-added packages are never affected.
+# Show image changelogs
+ujust changelogs
+```
 
 ### Validation
 
@@ -119,15 +119,10 @@ ujust commands are shortcuts for user convenience — they should only invoke Br
 ```just
 # vim: set ft=make :
 
-[group('Apps')]
-install-system-flatpaks:
+[group('System')]
+install-dms-config:
     #!/usr/bin/env bash
-    brew bundle --file /usr/share/ublue-os/homebrew/system-flatpaks.Brewfile
-
-[group('Apps')]
-bluefin-apps:
-    #!/usr/bin/env bash
-    brew bundle --file /usr/share/ublue-os/homebrew/system-dx-flatpaks.Brewfile
+    ...restore skel/DMS config onto the invoking user...
 
 [group('System')]
 my-custom-command:
@@ -161,7 +156,7 @@ my-custom-command:
 
 | Rationalization                                                             | Reality                                                                                               |
 | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| "I'll add `dnf5 install` to a just file for convenience."                   | **Never.** ujust is for user-level shortcuts. Use `build/steps/10-build.sh` for system packages.            |
+| "I'll add `dnf5 install` to a just file for convenience."                   | **Never.** ujust is for user-level shortcuts. Use `build/10-build.sh` for system packages.            |
 | "Flatpaks should be in the container so they work offline."                 | Flatpaks are intentionally post-first-boot to keep the container small and allow independent updates. |
 | "I'll put the Brewfile inline in the just file instead of a separate file." | Separate Brewfiles are easier to validate and let users install them manually too.                    |
 | "The just file doesn't need a shebang if it's just one command."            | Always use a shebang (`#!/usr/bin/env bash`) for explicit execution context.                          |
@@ -170,13 +165,13 @@ my-custom-command:
 
 - `dnf5` or `rpm-ostree` in any `.just` file
 - Flatpak preinstall missing `Branch=stable`
-- User-opt-in Brewfile placed in `custom/brew/` — everything there is force-installed on every user at first login
+- Brewfile without a corresponding `ujust` shortcut in `custom/ujust/`
 - App ID in `.preinstall` not verified on Flathub
 - Just file using `dnf` or `yum` instead of proper Brewfile/Flatpak shortcuts
 
 ## Verification
 
-- [ ] Is every `.Brewfile` under `custom/brew/` intended as OS-managed preinstall (auto-installed, declarative)?
+- [ ] Does each `.Brewfile` have a corresponding `ujust` shortcut?
 - [ ] Do all Flatpak entries specify `Branch=stable`?
 - [ ] Are all app IDs in `.preinstall` files verified on Flathub?
 - [ ] Does `just --list` pass without errors?

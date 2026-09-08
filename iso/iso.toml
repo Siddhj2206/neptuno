@@ -8,7 +8,7 @@
 contents = """
 %post
 # After installation, switch to the custom image from this repository
-# IMPORTANT: Update this URL to match your repository (ghcr.io/USERNAME/REPO:stable)
+# IMPORTANT: Keep this URL matching your repository (ghcr.io/siddhj2206/neptuno:stable)
 bootc switch --mutate-in-place --transport registry ghcr.io/siddhj2206/neptuno:stable
 %end
 """

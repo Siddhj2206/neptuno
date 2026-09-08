@@ -1,0 +1,51 @@
+# multimedia — full codec set (negativo17). Consumed by 25-multimedia.sh:
+# [fedora] -> one install --enablerepo=fedora-multimedia
+#
+# [multimedia_overrides] -> codec-adjacent Mesa/VA packages synced and locked
+#                            from fedora-multimedia, following Bluefin
+# Verified 2026-08-28, updated 2026-08-29 f44:
+# - ffmpeg/libavcodec/libfdk-aac are negativo17 only (Fedora has *-free)
+# - gstreamer: -bad-free split -> unsplit bad (neg17 obsoletes), libav -> plugin-libav
+# - intel-vpl-gpu-rt: in bluefin's 12 overrides but absent on f44 negativo
+#   (repoquery f44 shows no such package — skip)
+# - libpostproc: removed in ffmpeg 8 (F44, 8.1.2) — no RPM, only Provides: from
+#   libavutil; dropped (otherwise rpm -q assert fails like mesa-va-drivers)
+
+[multimedia_overrides]
+packages = [
+    "intel-mediasdk",
+    "intel-gmmlib",
+    "libheif",
+    "libva",
+    "libva-intel-media-driver",
+    "mesa-dri-drivers",
+    "mesa-filesystem",
+    "mesa-libEGL",
+    "mesa-libGL",
+    "mesa-libgbm",
+    "mesa-vulkan-drivers",
+]
+
+[fedora]
+packages = [
+    "ffmpeg",
+    "ffmpeg-libs",
+    "libavcodec",
+    "libavdevice",
+    "libavfilter",
+    "libavformat",
+    "libavutil",
+    "libswresample",
+    "libswscale",
+    "libfdk-aac",
+    "gstreamer1-plugins-base",
+    "gstreamer1-plugins-good",
+    "gstreamer1-plugins-bad",
+    "gstreamer1-plugins-ugly",
+    "gstreamer1-plugin-libav",
+    "lame",
+    "lame-libs",
+    "libjxl",
+    "ffmpegthumbnailer",
+    "pipewire-libs-extra", # negativo17 rebuild (bluefin vendor assert)
+]

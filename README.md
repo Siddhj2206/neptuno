@@ -1,44 +1,133 @@
 # neptuno
 
-neptuno is a custom bootc image built on [`quay.io/fedora-ostree-desktops/silverblue`](https://fedoraproject.org/atomic-desktops/silverblue) with the multi-stage layering model from the Bluefin ecosystem (OCI-imported resources from `@projectbluefin/common` and `@ublue-os/brew`). It adds a DMS/Niri tiling desktop stack, a Docker + libvirt virtualization setup, multimedia codecs, and a small set of build-time CLI packages for a more opinionated daily-driver image.
+A template for building custom bootc operating system images based on the lessons from [Universal Blue](https://universal-blue.org/) and [Bluefin](https://projectbluefin.io). It is designed to be used manually, but is optimized to be bootstraped by GitHub Copilot. After set up you'll have your own custom Linux.
+
+This template uses the **multi-stage build architecture** from @projectbluefin/distroless, combining resources from multiple OCI containers for modularity and maintainability. See the [Architecture](#architecture) section below for details.
+
+**Unlike previous templates, you are not modifying Bluefin and making changes.**: You are assembling your own Bluefin in the same exact way that Bluefin, Aurora, and Bluefin LTS are built. This is way more flexible and better for everyone since the image-agnostic and desktop things we love about Bluefin lives in @projectbluefin/common.
+
+Instead, you create your own OS repository based on this template, allowing full customization while leveraging Bluefin's robust build system and shared components.
 
 > Be the one who moves, not the one who is moved.
 
-## What Makes neptuno Different?
+## What Makes this Raptor Different?
 
-Here are the main ways neptuno differs from the upstream base image.
-
-### Base Image
-
-- **Base image**: `quay.io/fedora-ostree-desktops/silverblue:44`
-- **Build model**: Multi-stage bootc image with OCI-imported resources from `@projectbluefin/common` and `@ublue-os/brew`
-- **Package strategy**: `dnf5` for build-time system changes, Homebrew for user-installed CLI tools, Flatpak for GUI apps
+Neptuno combines the Fedora Silverblue GNOME desktop with an additional
+Niri/DMS session. Manifests of record live in `build/packages/*.toml`.
 
 ### Added Packages (Build-time)
 
-- **Core CLI tools**: `git`, `gum`, `dnf-plugins-core`, `make`, `unzip`, `libwayland-server`, `fish`/`zsh`, `vim`, `tmux`, `htop`/`nvtop`, `glow`, `fastfetch`, `just`, `fzf`, `tailscale`, `wireguard-tools`, `borgbackup`/`restic`/`rclone`, `yubikey`/`pam-u2f` tooling, `libimobiledevice`, printing drivers, fonts (C/C++ and Go toolchains live in distrobox / Homebrew instead of the host)
-- **Multimedia codecs** (via negativo17 `fedora-multimedia`): `ffmpeg`, `libavcodec`, `@multimedia`, GStreamer plugins, `lame`, `libfdk-aac`, `libjxl`, with mesa/Intel driver overrides distro-synced and versionlocked
-- **DMS / Niri desktop stack** (via COPR — `avengemedia/danklinux`, `avengemedia/dms`, `yalter/niri`): `niri`, `quickshell-git`, `matugen`, `dgop`, `dsearch`, `cava`, `khal`, `dms`
-- **DMS supporting packages**: `xdg-desktop-portal-gtk`, `xdg-desktop-portal-gnome`, `accountsservice`, `xwayland-satellite`, `adw-gtk3-theme`, `qt6ct`, `qt6-qtmultimedia`
-- **Other COPR packages**: `ghostty` (`scottames/ghostty`), `nerd-fonts` (`che/nerd-fonts`), `uupd` + `oversteer-udev` (`ublue-os/packages`)
+- **Base (`base.toml`)**: additional portals, fonts, networking, YubiKey/FIDO2
+  tools, zram, Ghostty (COPR), and uupd auto-updates (COPR), on top of
+  Silverblue's existing GNOME, drivers, firmware, and tuned power policy
+- **Multimedia (`multimedia.toml`)**: negativo17 ffmpeg + full codecs with
+  mesa/VA overrides (versionlocked)
+- **Compositor (`niri.toml`)**: Niri, xwayland-satellite, and the DMS stack
+  (avengemedia COPRs), selectable alongside GNOME in GDM
+- **DX (`dx.toml`)**: docker-ce daemon, android-tools, libvirt/qemu host daemon
 
-### Runtime Applications
+### Added Applications (Runtime)
 
-- **Homebrew** (`custom/brew/default.Brewfile`): `bat`, `eza`, `fd`, `rg`, `gh`, `starship`, `zoxide`, `htop`, `tmux`
-- **Flatpak** (`custom/flatpaks/default.preinstall`): an active catalog of 40+ apps preinstalled on first boot — GNOME apps (Calculator, Calendar, Maps, Papers, TextEditor, Weather…), themes (`adw-gtk3`), plus Bazaar, Pinta, Flatseal, ExtensionManager, DistroShelf, Ignition, Warehouse, Impression, Resources, smile, Refine, Podman Desktop, devtoolbox, and more
-- **ujust** (`custom/ujust/`): `install-default-apps`, `install-dev-tools`, and `install-fonts` Brewfile shortcuts, plus an `install-dms-config` recipe that copies the bundled DMS/Niri/Ghostty configs from `/etc/skel/.config/` into the user's home directory
+- **CLI Tools (Homebrew, 20 formulae)**: fish + zsh shells, starship, neovim,
+  lazygit, atuin, eza/bat/fd/ripgrep/zoxide, htop/btop/nvtop, gh, bun, uv …
+  (full list: `custom/brew/default.Brewfile`)
+- **GUI Apps (Flatpak, 26 preinstalls)**: Firefox, Zen Browser + niri/DMS
+  tooling (full list: `custom/flatpaks/default.preinstall`)
 
 ### Configuration Changes
 
-- `podman.socket` is enabled
-- The DMS session is wired up via `systemctl --global add-wants niri.service dms`, with `niri` enabled globally (`dsearch` is installed but not yet enabled)
-- GDM defaults to the NIRI session
-- Skeleton config files for Niri, Ghostty, and a DMS environment drop-in are copied to `/etc/skel/.config/` at build time
-- A daily scheduled build is configured via cron in `build-image.yml`
+- ublue user+privileged setup hooks (wheel/docker/libvirt group enrollment,
+  skel config restore) — `custom/files/usr/share/ublue-os/`
+- ujust recipes: `install-dms-config`, `changelogs`
+  (`custom/ujust/custom-system.just`)
 
-*Last updated: 2026-08-11*
+_Last updated: 2026-09-05_
 
-> This section is what tells users how the image differs from the base. Update it whenever you add, remove, or reconfigure packages, apps, or system services.
+## Guided Copilot Mode
+
+This template works best with **phased prompts** that let Copilot bootstrap your image in three stages.
+
+### Phase 1 — Bootstrap
+
+Use this prompt first to get your fork building:
+
+```
+Bootstrap a new custom OS from @projectbluefin/finpilot. Name it after this repository. Use the `finpilot-onboarding` skill first, then:
+1. Rename `finpilot` in the 7 required files
+2. Enable GitHub Actions and set RENOVATE_TOKEN (classic PAT with `repo` +
+   `workflow` scopes, or a fine-grained token with **Dependabot alerts:
+   Read-only** and **Contents: Read and write**)
+3. Configure branch protection for `main` with `validate` as a required status check
+4. Enable auto-merge
+5. Trigger the first green build on `main`
+6. Add the "What Makes this Raptor Different" section to README.md (with placeholders)
+```
+
+### Phase 2 — Customize
+
+Once the first build is green, use this prompt to add packages:
+
+```
+Use the `finpilot-packages` and `finpilot-custom` skills, then:
+1. Add one system package to the image in `build/packages/<layer>.toml`
+2. Add one CLI tool to `custom/brew/default.Brewfile`
+3. Add one GUI app to `custom/flatpaks/default.preinstall`
+4. Add a shortcut in `custom/ujust/custom-system.just` to install them
+5. Update the README "What Makes this Raptor Different" section with the new entries
+6. Run `just build && just build-qcow2 && just run-vm-qcow2` to verify locally
+7. Open a PR and merge once `validate` passes
+```
+
+### Phase 3 — Production
+
+When you are ready for production, use this prompt to harden the setup:
+
+```
+Use the `finpilot-maintain` and `finpilot-ci` skills, then:
+1. Verify keyless image signing works: cosign verify --certificate-identity-regexp="https://github.com/USER/REPO/.github/workflows/" --certificate-oidc-issuer="https://token.actions.githubusercontent.com" ghcr.io/USER/REPO:stable
+2. Follow the maintenance schedule in the `finpilot-maintain` skill
+```
+
+## What's Included
+
+### Build System
+
+- Automated builds via GitHub Actions on every commit
+- Self-hosted Renovate for automated dependency updates
+- Automatic cleanup of old images (90+ days) to keep it tidy
+- Pull request workflow - test changes before merging to main
+  - PRs build and validate before merge
+  - `main` builds `:stable-testing`; merging the auto-opened promotion PR to `stable` publishes `:stable`
+- Validates your files on pull requests so you never break a build:
+  - Brewfile, Justfile, ShellCheck, Renovate config, and it'll even check to make sure the flatpak you add exists on FlatHub
+- Production Grade Features
+  - Container signing with keyless OIDC
+
+### Homebrew Integration
+
+- Pre-configured Brewfiles for easy package installation and customization
+- Includes curated collections: development tools, fonts, CLI utilities. Go nuts.
+- Users install packages at runtime with `brew bundle`, aliased to premade `ujust commands`
+- See [custom/brew/README.md](custom/brew/README.md) for details
+
+### Flatpak Support
+
+- Ship your favorite flatpaks
+- Automatically installed on first boot after user setup
+- See [custom/flatpaks/README.md](custom/flatpaks/README.md) for details
+
+### ujust Commands
+
+- User-friendly command shortcuts via `ujust`
+- Pre-configured examples for app installation and system maintenance for you to customize
+- See [custom/ujust/README.md](custom/ujust/README.md) for details
+
+### Build Scripts
+
+- Modular numbered scripts (10-, 20-, 30-) run in order
+- Example scripts included for third-party repositories and desktop replacement
+- Helper functions for safe COPR usage
+- See [build/README.md](build/README.md) for details
 
 ## Quick Start
 
@@ -48,21 +137,24 @@ Click "Use this template" to create a new repository from this template.
 
 ### 2. Rename the Project
 
-If you fork this and rename `neptuno` to your own image, update these 6 files:
+Important: Change `finpilot` to your repository name in these 7 files:
 
 1. `Containerfile` (`# Name:` comment and `ARG IMAGE_NAME`): `# Name: your-repo-name`
-2. `Justfile` (`export IMAGE_NAME := env("IMAGE_NAME", ...)` and `REPO_ORG`): your values
+2. `Justfile` (`export IMAGE_NAME := env("IMAGE_NAME", ...)`): `your-repo-name`
 3. `README.md` (title): `# your-repo-name`
 4. `artifacthub-repo.yml` (`repositoryID`): `repositoryID: your-repo-name`
 5. `custom/ujust/README.md` (bootc switch example): `localhost/your-repo-name:stable`
 6. `.github/workflows/clean.yml` (`packages`): `packages: your-repo-name`
+7. `iso/iso.toml` (bootc switch URL): `ghcr.io/YOUR_USERNAME/your-repo-name:stable`
 
 ### 3. Enable GitHub Actions
 
 - Go to the "Actions" tab in your repository
 - Click "I understand my workflows, go ahead and enable them"
 
-Your first build will start automatically.
+Your first build will start automatically!
+
+Note: Images are signed automatically with keyless OIDC signing — no keys or secrets to configure. See "Image Signing" below for details.
 
 ### 4. Enable Renovate (Required)
 
@@ -72,7 +164,7 @@ Renovate automatically updates dependencies and GitHub Actions (including workfl
 
 1. Go to GitHub → Settings → Developer settings → **Personal access tokens** → **Tokens (classic)**
 2. Click **Generate new token (classic)**
-3. Set a note like `renovate-neptuno`
+3. Set a note like `renovate-finpilot`
 4. Select scopes: **`repo`** (full control) and **`workflow`** (update workflows)
 5. Click **Generate token** and copy the value
 6. Go to your repository → Settings → Secrets and variables → Actions
@@ -88,107 +180,184 @@ Renovate automatically updates dependencies and GitHub Actions (including workfl
 
 Renovate will run every 6 hours and on config changes. It pins GitHub Actions to SHAs and updates tracked image digests automatically.
 
-### 5. Customize Your Image
+### 5. Maintain Your Template
 
-The base image is `quay.io/fedora-ostree-desktops/silverblue:44` and is pinned by SHA in `Containerfile` (Renovate keeps it up to date). neptuno layers desktop, virtualization, and multimedia tooling on top via numbered build scripts:
+Repositories created with **Use this template** are independent repositories.
+Renovate keeps pinned dependencies current, but it does not copy arbitrary
+changes from finpilot's `Containerfile`, build scripts, or workflows.
 
-- `build/steps/10-build.sh` — copy Bluefin config, copy custom files, stage Brewfiles/Flatpaks/ujust, enable `podman.socket`
-- `build/steps/20-base.sh` — remove Fedora cruft, install general CLI tools, multimedia codecs, COPR packages, systemd units
-- `build/steps/30-dx.sh` — install Docker CE, libvirt/QEMU, and perf tooling
-- `build/steps/40-dms.sh` — install the DMS/Niri desktop stack from COPR
-- `build/steps/50-cleanup.sh` — remove build leftovers; `build/steps/60-initramfs.sh` — regenerate initramfs
+For a template improvement or build-system change, file a scoped
+[finpilot issue](https://github.com/projectbluefin/finpilot/issues/new/choose)
+instead of merging unrelated histories:
 
-To add packages, edit the relevant `build/steps/NN-*.sh` script. To add user-installable CLI tools, add a `brew "..."` line to `custom/brew/*.Brewfile`. To add a GUI app, add a `[Flatpak Preinstall ...]` block to `custom/flatpaks/*.preinstall`.
+- Select **"Opt in to a clanker working on my issue"** when creating your own
+  issue to send it directly to `3-clanker-queue`.
+- Maintainers can move any accepted issue to `3-clanker-queue`.
+- A Hive-connected agent opens a focused pull request; humans review and merge
+  it.
 
-### 6. Development Workflow
+Review and port structural changes into your custom image deliberately through
+a pull request. This preserves your image-specific changes while sharing
+improvements with every future finpilot user.
 
-All changes should be made via pull requests:
+### 6. Customize Your Image
 
-1. Open a pull request on GitHub with the change you want.
+Choose your base image in `Containerfile` (the `FROM` line):
+
+```dockerfile
+FROM quay.io/fedora-ostree-desktops/silverblue:44@sha256:...
+```
+
+Neptuno layers Niri/DMS on the Silverblue GNOME base. The Fedora major is
+tracked by the `FEDORA_MAJOR_VERSION` ARG — bump both together, and keep the
+Renovate rule blocking base-image majors.
+
+Add your packages to the layer manifests in `build/packages/*.toml`:
+
+```toml
+[fedora]
+packages = ["package-name"]
+```
+
+Customize your apps:
+
+- Add Brewfiles in `custom/brew/` ([guide](custom/brew/README.md))
+- Add Flatpaks in `custom/flatpaks/` ([guide](custom/flatpaks/README.md))
+- Add ujust commands in `custom/ujust/` ([guide](custom/ujust/README.md))
+
+### 7. Development Workflow
+
+Massive changes and feature adds go via pull requests; small fixes and
+routine chores may push directly to `main` (see AGENTS.md Branch Strategy):
+
+1. Open a pull request on GitHub with the change you want (for large changes).
 2. The PR will automatically trigger:
    - Build validation
    - Brewfile, Flatpak, Justfile, and shellcheck validation
    - Test image build
 3. Once checks pass, merge the PR
-4. Merging triggers publishes a `:stable` image
+4. Merging to `main` publishes a `:stable-testing` image; the promotion PR it opens publishes `:stable` when merged
 
-### 7. Deploy Your Image
+### 8. Promote to Stable
 
-Switch an existing bootc system to neptuno:
+The template uses a two-branch release model:
+
+| Branch   | Image tag                        | Audience                       |
+| -------- | -------------------------------- | ------------------------------ |
+| `main`   | `:stable-testing` (+ `:testing`) | Testers and release candidates |
+| `stable` | `:stable`                        | Production systems             |
+
+When `stable` differs from `main`, the [`promote-main-to-stable`](.github/workflows/promote-main-to-stable.yml) workflow opens a squash promotion PR automatically, enables auto-merge, and runs a release gate that verifies image signatures on `:testing`. Direct pushes to `stable` are not part of the workflow; hotfixes made there are merged back into `main` by [`sync-stable-to-main`](.github/workflows/sync-stable-to-main.yml).
+
+For the automated promotion PR to open, your repository needs:
+
+- An **organization-owned repo with a `maintainers` team** — the workflow requests review from `<owner>/maintainers` when creating the PR. Personal-account forks can replace `.github/workflows/promote-main-to-stable.yml` with a local version that skips reviewer requests.
+- Branch protection on `stable`: **0 required approvals** means fully automatic promotion; **1 approval** means review, then auto-merge.
+- The release gate is advisory by default — make the promote workflow a required check on `stable` if a `release/blocked` result should block merging.
+
+### 9. Deploy Your Image
+
+Test the candidate from `main` first:
 
 ```bash
-sudo bootc switch ghcr.io/siddhj2206/neptuno:stable
+sudo bootc switch --transport registry ghcr.io/your-username/your-repo-name:stable-testing
 sudo systemctl reboot
 ```
 
-## Image Signing (Enabled)
+After merging the promotion PR, deploy production:
 
-neptuno images are signed using **keyless OIDC signing** via Cosign and GitHub Actions. The `Sign and publish` step in `.github/workflows/build-image.yml` is already uncommented — no setup is required. The signature is created using GitHub's OIDC token via Fulcio, and a build provenance attestation is attached to the image.
+```bash
+sudo bootc switch --transport registry ghcr.io/your-username/your-repo-name:stable
+sudo systemctl reboot
+```
 
-Verify a signed image with:
+## Image Signing
+
+Images are signed automatically with **keyless OIDC signing** via Cosign and GitHub Actions. No manual key generation, `cosign.key`, or `cosign.pub` files are required — the signature is created using GitHub's OIDC token via Fulcio during each build.
+
+### Why Sign Images?
+
+- Verify image authenticity and integrity
+- Prevent tampering and supply chain attacks
+- Required for some enterprise/security-focused deployments
+- Industry best practice for production images
+- **Required for promotion**: the `main → stable` release gate verifies signatures on `:testing` and blocks promotion of unsigned images
+
+### Verify a Signed Image
 
 ```bash
 cosign verify \
-  --certificate-identity-regexp="https://github.com/siddhj2206/neptuno/.github/workflows/" \
+  --certificate-identity-regexp="https://github.com/your-username/your-repo-name/.github/workflows/" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/siddhj2206/neptuno:stable
+  ghcr.io/your-username/your-repo-name:stable
 ```
 
-## Image Rechunking (Enabled)
+### Disabling Signing (Not Recommended)
 
-The `Rechunk image` step in `.github/workflows/build-image.yml` is enabled. It uses [`chunkah`](https://github.com/coreos/chunkah) to reorganize OCI layers without rpm-ostree, reducing update sizes by 5-10× and improving download resumability.
+To disable, comment out the `Sign and publish` step in `.github/workflows/build-image.yml`. Be aware that unsigned images will fail the promotion release gate, so `main → stable` promotions will report `release/blocked` until signing is re-enabled.
 
-For optimal OTA deltas, also add `bootc-build/apply-pkg-intervals` before the rechunk step and create a `.github/workflows/pkg-cadence.yml` workflow that calls `projectbluefin/actions/.github/workflows/reusable-pkg-cadence.yml@v1`.
+## Love Your Image? Let's Go to Production
 
-## What's Included
+Ready to take your custom OS to production? Enable these features for enhanced security, reliability, and performance:
 
-### Build System
+### Production Checklist
 
-- Automated builds via GitHub Actions on every commit, plus a daily scheduled build
-- Self-hosted Renovate for automated dependency updates
-- Automatic cleanup of old images (90+ days) to keep it tidy
-- Pull request workflow — test changes before merging to main
-  - PRs build and validate before merge
-  - `main` branch builds `:stable` images
-- Validates your files on pull requests so you never break a build:
-  - Brewfile, Justfile, ShellCheck, Renovate config, and Flatpak app IDs on Flathub
-- Production-grade features already enabled:
-  - Container signing with keyless OIDC
-  - Image rechunking for smaller OTA deltas
+- [ ] **Verify Image Signing**
+  - Provides cryptographic verification of your images
+  - Prevents tampering and ensures authenticity
+  - Uses keyless OIDC signing via GitHub Actions — no keys or secrets required
+  - Verify it works with the `cosign verify` command in the "Image Signing" section above
 
-### Homebrew Integration
+- [ ] **Enable Image Rechunking** (Recommended)
+  - Optimizes bootc image layers for better update performance
+  - Improves download resumability with evenly sized layers
+  - Set `ENABLE_RECHUNKING: "true"` in `.github/workflows/build-image.yml`
+  - Uses OCI-native chunkah; `/usr/libexec/bootc-base-imagectl` is not required
+  - Status: **Not enabled by default** (optional optimization)
 
-- Pre-configured Brewfiles for easy package installation and customization
-- Users install packages at runtime with `brew bundle` or premade `ujust` commands
-- See [custom/brew/README.md](custom/brew/README.md) for details
+#### Adding Image Rechunking
 
-### Flatpak Support
+The old rechunking recipe used `/usr/libexec/bootc-base-imagectl`, which is absent from many Universal Blue images. Do not copy that recipe or install a legacy rechunker: its layer format is not a safe migration path to the current implementation.
 
-- `custom/flatpaks/default.preinstall` ships an active catalog of 40+ apps installed on first boot
-- See [custom/flatpaks/README.md](custom/flatpaks/README.md) for details
+Neptuno uses the OCI-native [`bootc-build/chunka`](https://github.com/projectbluefin/actions/tree/main/bootc-build/chunka) action. The action runs chunkah from a pinned container and replaces the locally built image before the existing tag and push steps. Silverblue is RPM-based, so chunkah can discover components from its RPM database without `bootc-base-imagectl`.
 
-### ujust Commands
+To enable it, change the workflow environment value:
 
-- `custom/ujust/custom-system.just` provides an `install-dms-config` recipe and a neptuno-flavored `changelogs` override
-- `install-dms-config` copies the bundled DMS/Niri/Ghostty configs from `/etc/skel/.config/` to the user's home
-- See [custom/ujust/README.md](custom/ujust/README.md) for details
+```yaml
+env:
+  ENABLE_RECHUNKING: "true"
+  RECHUNK_MAX_LAYERS: "128"
+```
 
-### Build Scripts
+Rechunking runs only for publish builds, not pull requests. It requires additional runner time and temporary storage. Keep `ENABLE_RECHUNKING` set to `"false"` if those costs are more important than smaller OTA deltas.
 
-- Modular numbered scripts (10-, 20-, 30-, 40-, 50-, 60-) run in order from the Containerfile
-- Helper functions for safe COPR usage in `build/copr-helpers.sh`
-- See [build/README.md](build/README.md) for details
+**Custom base images:** This switch is supported for the template's default RPM-based image. BuildStream-produced images strip the component xattrs chunkah needs and require an `xattr-manifest`; changing to one of those images is not a one-line setup. See the action's `xattr-manifest` input before replacing the default base.
+
+**Optional package cadence:** Basic rechunking does not require package cadence data. Advanced deployments can run [`bootc-build/apply-pkg-intervals`](https://github.com/projectbluefin/actions/tree/main/bootc-build/apply-pkg-intervals) before rechunking and maintain `files/pkg-intervals.tsv` with the reusable package-cadence workflow. That workflow requires a repository GitHub App ID and private key, so configure it separately rather than treating it as part of basic enablement.
+
+**References:**
+
+- [chunkah](https://github.com/coreos/chunkah)
+- [projectbluefin/actions rechunking](https://github.com/projectbluefin/actions/tree/main/bootc-build/chunka)
+- [bootc documentation](https://containers.github.io/bootc/)
+
+### After Enabling Production Features
+
+Your workflow will:
+
+- Sign all images using keyless OIDC signing
+- Provide cryptographic proof of authenticity via SLSA build provenance attestation
 
 ## Detailed Guides
 
-- [Build Scripts](build/README.md) - Build-time customization
 - [Homebrew/Brewfiles](custom/brew/README.md) - Runtime package management
 - [Flatpak Preinstall](custom/flatpaks/README.md) - GUI application setup
 - [ujust Commands](custom/ujust/README.md) - User convenience commands
+- [Build Scripts](build/README.md) - Build-time customization
 
 ## Architecture
 
-neptuno follows the **multi-stage build architecture** from `@projectbluefin/distroless`, as documented in the [Bluefin Contributing Guide](https://docs.projectbluefin.io/contributing/).
+This template follows the **multi-stage build architecture** from @projectbluefin/distroless, as documented in the [Bluefin Contributing Guide](https://docs.projectbluefin.io/contributing/).
 
 ### Multi-Stage Build Pattern
 
@@ -199,9 +368,10 @@ neptuno follows the **multi-stage build architecture** from `@projectbluefin/dis
 - **@projectbluefin/common** - Desktop configuration shared with Aurora (includes branding/artwork content)
 - **@ublue-os/brew** - Homebrew integration
 
-**Stage 2: Base Image**
+**Stage 2: Base Image** — Fedora Silverblue (digest-pinned):
 
-- `quay.io/fedora-ostree-desktops/silverblue:44@sha256:...` (the active base, pinned by Renovate)
+- `quay.io/fedora-ostree-desktops/silverblue:44` (Fedora F44 with GNOME/GDM;
+  Neptuno adds Niri/DMS as another desktop session)
 
 ### Benefits of This Architecture
 
@@ -219,7 +389,7 @@ COPY --from=ghcr.io/projectbluefin/common:latest /system_files /oci/common
 COPY --from=ghcr.io/ublue-os/brew:latest /system_files /oci/brew
 ```
 
-Build scripts can access these files at:
+Your build scripts can access these files at:
 
 - `/ctx/oci/common/` - Shared desktop configuration (branding/artwork content lives inside `common`)
 - `/ctx/oci/brew/` - Homebrew integration files
@@ -244,45 +414,33 @@ just run-vm-qcow2       # Test in browser-based VM
 ## Learn More
 
 - [Universal Blue Documentation](https://universal-blue.org/)
-- [Bluefin Documentation](https://docs.projectbluefin.io/)
 - [bootc Documentation](https://containers.github.io/bootc/)
+- [Video Tutorial by TesterTech](https://www.youtube.com/watch?v=IxBl11Zmq5wE)
 
 ## Security
 
-This image ships with production security features enabled by default:
+This template provides security features for production use:
 
 - Image signing with keyless OIDC cosign for cryptographic verification
-- Image rechunking for smaller, more resumable OTA updates
 - Automated security updates via Renovate
-- Build provenance tracking via SLSA attestation
+- Build provenance tracking
 
-Users can verify signed images with the `cosign verify` snippet under "Image Signing (Enabled)" above.
+Signing and Renovate run automatically; see the "Love Your Image? Let's Go to Production" section above for optional production hardening like rechunking.
 
----
+## Troubleshooting
 
-## Copilot / AI Agent Instructions
+### Flatpaks not preinstalled after bootc switch (fixes #49)
 
-This repository uses skill-based agent instructions in `.agents/skills/`. If you're using an AI coding assistant:
+Flatpaks are installed on first boot via `flatpak-preinstall.service`, not during `bootc switch`. Ensure:
 
-### Phase 1: Bootstrap (first time with this repo)
+- Internet is available on first boot
+- `flatpak-preinstall.service` completes (`systemctl status flatpak-preinstall.service`)
+- Wait until the service finishes before checking for flatpaks
 
-Open `AGENTS.md` in the root of this repository — it contains the router table showing which skill file covers your change.
+### flatpak-preinstall errors about adw-gtk3 runtimes (fixes #30)
 
-### Phase 2: Customize (adding packages, changing config)
+The `adw-gtk3-dark` runtime is not available on Flathub. These warnings are cosmetic and do not prevent other flatpaks from installing. To suppress, remove `adw-gtk3-dark` from your flatpak list in `custom/flatpaks/`.
 
-Before making changes, load the relevant skill from `.agents/skills/`:
+### Homebrew not available after bootc switch (fixes #44)
 
-| What you want to do | Skill to load |
-|---|---|
-| Add/remove a package | `.agents/skills/finpilot-packages/SKILL.md` |
-| Edit Brewfiles, Flatpaks, or ujust | `.agents/skills/finpilot-custom/SKILL.md` |
-| Change Containerfile, Justfile, or build scripts | `.agents/skills/finpilot-build/SKILL.md` |
-| Change CI workflows or Renovate | `.agents/skills/finpilot-ci/SKILL.md` |
-
-### Phase 3: Production (PRs, debugging)
-
-| What you need | Skill to load |
-|---|---|
-| PR checklist and conventional commits | `.agents/skills/finpilot-pr-checklist/SKILL.md` |
-| Debug a build or deploy failure | `.agents/skills/finpilot-troubleshooting/SKILL.md` |
-| See a worked example | `.agents/skills/finpilot-examples/SKILL.md` |
+Homebrew is **pre-staged at build time** (tarball + systemd services). The `brew-setup.service` extracts it on **first boot**. If you don't see `brew`, verify `brew-setup.service` ran (`systemctl status brew-setup.service`) and that your Containerfile includes the Brew integration.

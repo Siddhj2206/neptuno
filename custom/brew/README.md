@@ -1,26 +1,37 @@
 # Homebrew Integration
 
-This directory contains Brewfile declarations that will be copied into your custom image at `/usr/share/ublue-os/homebrew/`.
+Brewfiles in this directory are **auto-preinstalled**: every `*.Brewfile`
+here is copied to `/usr/share/ublue-os/homebrew/preinstall.d/` at build and
+applied at first login by `brew-preinstall.service` (content-addressed by
+hash — editing a file is enough to re-apply on the next login).
 
-## What are Brewfiles?
+## What goes here vs the base image
 
-Brewfiles are Homebrew's way of declaring packages in a declarative format. They allow you to specify which packages, taps, and casks you want installed.
+- **This directory: USER tools.** Things a person runs interactively
+  (CLI tools, fonts, shells). Homebrew delivers them; the base image stays
+  lean.
+- **Base image (`build/packages/base.toml`): SYSTEM tools.** Things needed
+  at build time, by systemd services, at first boot *before* brew is
+  extracted, or for desktop integration (e.g. `ghostty`, `git`, `jq`,
+  `rsync`, `gum`).
 
-## How It Works
+## Files
 
-1. **During Build**: `build/steps/10-build.sh` copies `*.Brewfile` from this directory to `/usr/share/ublue-os/homebrew/preinstall.d/` in the image
-2. **First Login**: `brew-preinstall.service` (per-user) processes every file in `preinstall.d/` — installing new packages, uninstalling ones removed from the list, and never touching user-added packages
-3. **User Experience**: Declarative package management via Homebrew, OS-managed on every user account
+- **`default.Brewfile`** — the default preinstall set (htop, nvtop, fzf,
+  glow, zenity + shells, dev tools, modern CLI replacements). All entries
+  verified on Homebrew with Linux bottles.
 
-## Adding a Preinstall Package
+## Adding a user tool
 
-1. Add the formula/cask line to `default.Brewfile`
-2. Build your image — the next login applies it (content-addressed: only on hash change)
+1. Add `brew "name"` to `default.Brewfile` (keep the comment style).
+2. That's it — it lands at the next image update + first login.
 
-**Important**: removing a package from a preinstall Brewfile *uninstalls* it from user systems. User-added packages are never affected.
+`brew-preinstall.service` runs in the graphical session after brew is
+extracted (`brew-setup.service`); both are user units from the
+`@ublue-os/brew` / `@projectbluefin/common` overlays.
 
-## Contents
+## Resources
 
-- `default.Brewfile` — OS-managed packages installed for every user at first login
-
-**Note**: every `*.Brewfile` placed here becomes an auto-installed preinstall file. Do not put user-opt-in Brewfiles in this directory.
+- [Homebrew](https://brew.sh/)
+- [`brew bundle` docs](https://docs.brew.sh/Manpage#bundle-subcommand)
+- `brew search <name>` on the live system to confirm availability

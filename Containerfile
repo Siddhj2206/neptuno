@@ -3,12 +3,13 @@
 ###############################################################################
 # Name: neptuno
 #
-# IMPORTANT: Change "finpilot" above to your desired project name.
+# IMPORTANT: Change "neptuno" above if you rename the project again.
 # This name should be used consistently throughout the repository in:
 #   - Justfile: export IMAGE_NAME := env("IMAGE_NAME", "your-name-here")
 #   - README.md: # your-name-here (title)
 #   - artifacthub-repo.yml: repositoryID: your-name-here
 #   - custom/ujust/README.md: localhost/your-name-here:stable (in bootc switch example)
+#   - build/00-image-info.sh: ${IMAGE_VENDOR:-...}/${IMAGE_NAME:-...} fallbacks
 #
 # The project name defined here is the single source of truth for your
 # custom image's identity. When changing it, update all references above
@@ -26,17 +27,16 @@
 #    - @projectbluefin/common - Desktop configuration shared with Aurora
 #    - @ublue-os/brew - Homebrew integration
 #
-# 2. Base Image Options (edit the FROM line below):
-#    - `quay.io/fedora-ostree-desktops/silverblue:44` (Fedora 44 and GNOME)
-#    - `quay.io/fedora-ostree-desktops/base-main:44` (Fedora 44, no desktop)
-#    - `quay.io/centos-bootc/centos-bootc:stream10` (CentOS-based)
+# 2. Base Image (edit the FROM line below):
+#    `quay.io/fedora-ostree-desktops/silverblue:44` (Fedora Silverblue with
+#    GNOME/GDM; Niri is added as a second session)
 #
 # See: https://docs.projectbluefin.io/contributing/ for architecture diagram
 ###############################################################################
 
 # OCI context images - imported below and pinned directly in their FROM lines.
-# The base image is a Fedora official OSTree desktop image.
-FROM ghcr.io/projectbluefin/common:latest@sha256:56762e4846fd4f33733a9d91481c8e53d75aed1e95756c96ae70898d5db9b146 AS common
+# The base image is pinned in the FROM line below and updated by Renovate.
+FROM ghcr.io/projectbluefin/common:latest@sha256:654560ef3f874a416d6f68aec5f35db058abe2777fa55f2f4471cc1b06091380 AS common
 FROM ghcr.io/ublue-os/brew:latest@sha256:d52b3f578f01623636aff534291b0bd8ff0a0244ef225bf51aecb5fa05a137af AS brew
 
 # Context stage - combine local and imported OCI container resources
@@ -49,38 +49,91 @@ COPY custom /custom
 COPY --from=common /system_files /oci/common
 COPY --from=brew /system_files /oci/brew
 
-# Base Image - GNOME included (Fedora official OSTree desktop)
-# Renovate will keep the digest pin up to date.
+# Base Image - Fedora Silverblue supplies the supported GNOME/GDM desktop stack.
+# Niri is added as a second Wayland session by build/40-niri.sh.
 FROM quay.io/fedora-ostree-desktops/silverblue:44@sha256:3756011b47fa4cb86037666047338cb2d4517de453268c22d443a62edbc03255
 
-# Image identity - these define how bootc, fastfetch, and the ublue ecosystem
-# recognize your image. Change these to match your project name.
 ARG IMAGE_NAME="neptuno"
 ARG IMAGE_VENDOR="siddhj2206"
 ARG UBLUE_IMAGE_TAG="stable"
 ARG BASE_IMAGE_NAME="silverblue"
 ARG FEDORA_MAJOR_VERSION="44"
 ARG VERSION=""
+ARG SHA_HEAD_SHORT=""
 
 ### MODIFICATIONS
-## Make modifications desired in your image and install packages by modifying the build scripts.
-## The following RUN directive mounts the ctx stage which includes:
-##   - build.sh orchestrator from /build
-##   - Step scripts from /build/steps/
-##   - Local custom files from /custom
-##   - Files from @projectbluefin/common at /oci/common (includes branding/artwork content)
-##   - Files from @ublue-os/brew at /oci/brew
-## All build step scripts are orchestrated by build.sh which calls them in order.
-## clean-stage.sh and /opt symlink are also handled inside this RUN (not separate layers),
-## matching the Bluefin pattern of one monolithic build layer for optimal OTA updates.
+## Silverblue already supplies Fedora repositories, DNF plugins, rsync, kernel
+## drivers, firmware, and GNOME. Do not import Hummingbird bootstrap logic.
+
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=tmpfs,dst=/boot \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build/00-image-info.sh
+
+# Match Bluefin's image-wide package policy: only explicitly requested
+# dependencies are installed by the remaining package layers.
+RUN --mount=type=cache,dst=/var/cache/libdnf5 \
+    dnf5 config-manager setopt install_weak_deps=0
 
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache/libdnf5 \
     --mount=type=cache,dst=/var/cache/rpm-ostree \
-    --mount=type=secret,id=GITHUB_TOKEN \
     --mount=type=tmpfs,dst=/boot \
     --mount=type=tmpfs,dst=/tmp \
-    /ctx/build/build.sh
+    /ctx/build/10-build.sh
+
+### BASE PACKAGES — wm-agnostic desktop foundation (base.toml).
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache/libdnf5 \
+    --mount=type=cache,dst=/var/cache/rpm-ostree \
+    --mount=type=tmpfs,dst=/boot \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build/20-base.sh
+
+### MULTIMEDIA — negativo17 ffmpeg + mesa/VA overrides (multimedia.toml).
+## The third-party repo is disabled by clean-stage.sh after its packages and
+## version locks are baked into the image.
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache/libdnf5 \
+    --mount=type=cache,dst=/var/cache/rpm-ostree \
+    --mount=type=tmpfs,dst=/boot \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build/25-multimedia.sh
+
+### NIRI COMPOSITOR LAYER — niri + DMS (COPRs, disabled by clean-stage.sh).
+## GNOME/GDM remains the display manager; Niri is an additional session.
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache/libdnf5 \
+    --mount=type=cache,dst=/var/cache/rpm-ostree \
+    --mount=type=tmpfs,dst=/boot \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build/40-niri.sh
+
+### DX LAYER — docker-ce (repo removed after install), adb, libvirt/qemu
+## host daemon, all socket-activated (dx.toml).
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache/libdnf5 \
+    --mount=type=cache,dst=/var/cache/rpm-ostree \
+    --mount=type=tmpfs,dst=/boot \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build/45-dx.sh
+
+### CLEANUP
+## Pre-lint cleanup (clean-stage.sh). /run is deliberately not tmpfs here:
+## clean-stage.sh must remove image-layer files like /run/dnf for bootc
+## lint's nonempty-run-tmp check (it tolerates busy Buildah bind mounts).
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=tmpfs,dst=/tmp \
+    --mount=type=tmpfs,dst=/boot \
+    /ctx/build/clean-stage.sh
+
+### /opt
+## Makes /opt writeable by default. Needs to be here to make the main image
+## build strict (no /opt there). This is for downstream images/stuff like k0s.
+## If you need /opt as an immutable real directory for build-time packages
+## (e.g. google-chrome, docker-desktop), replace the next line with:
+##   RUN rm /opt && mkdir /opt
+RUN rm -rf /opt && ln -s /var/opt /opt
 
 ### INIT
 ## Required for bootc images

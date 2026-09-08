@@ -1,40 +1,34 @@
-# Preinstall Brewfile for neptuno
-# Auto-installed at first login by brew-preinstall.service (content-addressed:
-# adding a package here installs it, removing one uninstalls it — user-added
-# packages are never touched).
+# neptuno — default brew preinstalls (auto-installed at first login).
+#
+# Every Brewfile in this directory is copied to
+# /usr/share/ublue-os/homebrew/preinstall.d/ and applied automatically by
+# brew-preinstall.service (content-addressed by hash — edit to re-apply).
+#
+# Policy: only USER tools live here. System tools (build-time, systemd
+# services, first boot before brew, desktop integration) stay in the base
+# image (build/packages/base.toml) — e.g. ghostty is native on purpose.
+#
+# All entries verified in Homebrew core with Linux bottles, 2026-08-29
+# (host-proven set: every formula runs on the neptuno host today).
 
-# Terminal / shell
-brew "starship"        # Cross-shell prompt
-brew "btop"            # Resource monitor
-brew "trash-cli"       # trash instead of rm
-brew "dysk"            # Disk usage visualizer
+# --- CLI tools (ported from the neptuno host brew set) -----------------------
+brew "htop"         # interactive process viewer
+brew "nvtop"        # GPU process monitor
+brew "fzf"          # fuzzy finder
+brew "glow"         # markdown pager (used by the `changelogs` ujust recipe)
+brew "zenity"       # GTK dialogs for scripts
 
-# Development
-brew "gh"              # GitHub CLI
-brew "bun"             # JS runtime
-brew "uv"              # Python package manager
-brew "lazygit"         # TUI git client
-brew "go"              # Go toolchain
-brew "rust"            # Rust toolchain
-
-# Containers / ops
-brew "lazydocker"      # TUI for podman/docker
-brew "podman-tui"      # Podman TUI
-brew "topgrade"        # Upgrade everything
-
-# Extras
-brew "bluefin-cli"     # Terminal bling toggle (neptuno-cli depends on it)
-brew "herdr"           # (keep as-is from user install)
-brew "bbrew"           # (keep as-is from user install)
-
-# Nerd fonts
-cask "font-0xproto-nerd-font"
-cask "font-blex-mono-nerd-font"
-cask "font-caskaydia-mono-nerd-font"
-cask "font-comic-shanns-nerd-font"
-cask "font-droid-sans-mono-nerd-font"
-cask "font-fira-code-nerd-font"
-cask "font-go-mono-nerd-font"
-cask "font-sauce-code-pro-nerd-font"
-cask "font-source-code-pro"
-cask "font-ubuntu-nerd-font"
+# --- core dev/terminal stack (uncommented + expanded from template) ---------
+brew "starship"     # shell prompt
+brew "btop"         # system monitor
+brew "gh"           # GitHub CLI
+brew "lazygit"      # git TUI
+brew "bun"
+brew "uv"
+brew "neovim"
+brew "eza"          # modern ls
+brew "bat"          # modern cat
+brew "fd"           # modern find
+brew "ripgrep"      # modern grep
+brew "zoxide"       # smart cd
+brew "atuin"        # shell history

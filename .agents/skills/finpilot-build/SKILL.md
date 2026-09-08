@@ -25,7 +25,7 @@ description: >-
 1. **Identify which `FROM` line or ARG drives your change**
 2. **All image digests** are pinned directly in `Containerfile` `FROM` lines; Renovate updates them
 3. **Run `just build`** locally before opening a PR; `just lint` to shellcheck
-4. **Add `00-` prefix** for metadata scripts, `10-` for main packages, `20+` for extras
+4. **Add `00-` prefix** for metadata scripts, `10-` for overlay/wiring, `20-` for base packages, `25-` for multimedia, `40-` for compositor, `45-` for dx; `clean-stage.sh` always last
 
 ## Image Pinning Pattern
 
@@ -37,9 +37,9 @@ built-in `dockerfile` manager updates every digest.
 FROM ghcr.io/projectbluefin/common:latest@sha256:<current> AS common
 FROM ghcr.io/ublue-os/brew:latest@sha256:<current> AS brew
 
-# Base image
+# Base image (Hummingbird bootc-os — minimal F44-era bootc OS, no desktop)
 ARG FEDORA_MAJOR_VERSION="44"
-FROM quay.io/fedora-ostree-desktops/silverblue:44@sha256:<current>
+FROM quay.io/hummingbird-community/bootc-os:latest@sha256:<current>
 ```
 
 **Never update digests manually.** Let Renovate open PRs for digest bumps.
@@ -51,53 +51,47 @@ release, update both the `FEDORA_MAJOR_VERSION` ARG and the base image tag.
 
 ### Numbering
 
-| Prefix             | Purpose                                                                               |
-| ------------------ | ------------------------------------------------------------------------------------- |
-| `00-image-info.sh` | Metadata only: writes `image-info.json`, customises `os-release`                      |
-| `10-build.sh`      | Main script: copies custom files, `dnf5 install`                                      |
-| `20-*.sh`          | Optional extras: third-party repos, COPR packages                                     |
-| `30-*.sh`          | Optional desktop swaps                                                                |
-| `clean-stage.sh`   | Always runs last: reverts `keepcache`, disables fedora flatpak repo, clears artefacts |
+| Prefix             | Purpose                                                                                                        |
+| ------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `00-image-info.sh` | Metadata only: writes `image-info.json`, brands `os-release`                                                   |
+| `10-build.sh`      | Overlay & wiring: OCI overlays (brew, common), `custom/` tree, skel — no `dnf` installs                        |
+| `20-base.sh`       | WM-agnostic desktop foundation from `build/packages/base.toml` + `firmware.toml`                         |
+| `25-multimedia.sh` | negativo17 multimedia + mesa overrides (versionlocked) from `build/packages/multimedia.toml`                   |
+| `40-niri.sh`       | Compositor layer (niri + DMS, COPRs) from `build/packages/niri.toml`                                           |
+| `45-dx.sh`         | Dev stack (docker-ce, adb, libvirt) from `build/packages/dx.toml`                                              |
+| `clean-stage.sh`   | Always runs last: reverts `keepcache`, removes COPR repo files (keeps mesa versionlocks), disables fedora flatpak repo, clears artefacts |
 
-### Template build script rules
+### Manifest-driven package rules
 
-- **Default packages**: build scripts in the template must have **no packages installed by default** — only commented examples. Users add their own.
-- **Exception**: `dnf5 install -y tmux` is intentionally present as a minimal smoke-test that the DNF cache is warm. Do not remove it.
+- **Packages live in `build/packages/*.toml`** (manifest of record + post-install assert gate) — never `dnf5 install <name>` loose in a script. Consumer scripts call `install_fedora_section` / `install_copr_sections` from `build/scripts/package-lib.sh`.
+- **tmux/gum ship via `base.toml`**: tmux smoke-tests that the DNF cache is warm, gum is required by the ujust recipes' interactive prompts. Do not remove.
 - Always use `dnf5` — never `dnf`, `yum`, or `rpm-ostree`
 - Always use `dnf5 install -y` (non-interactive)
-- COPR: enable → install → `copr_install_isolated` (auto-disables); never leave a repo enabled
+- COPR: `install_copr_sections` enables → installs per `["copr:owner/project"]` section; `clean-stage.sh` removes all `_copr*.repo` files. Never ship an enabled COPR.
 
-### NVIDIA GPU support
+### Compositor / GPU layers
 
-NVIDIA support is a build-time option activated by renaming the example script and adding its explicit Containerfile `RUN` block:
-
-```bash
-mv build/40-nvidia.sh.example build/40-nvidia.sh
-# Add the standard RUN block for /ctx/build/40-nvidia.sh after 10-build.sh.
-# See build/README.md.
-just build
-```
-
-All NVIDIA logic is self-contained in `40-nvidia.sh`. When both the script and its explicit Containerfile `RUN` block are activated, it provisions the NVIDIA driver, CDI container toolkit, Mutter kms-modifiers, and bootc kernel args directly into the base image — no separate image variant, no `IMAGE_NAME` gating.
-
-Deactivate by removing its Containerfile `RUN` block and renaming the script back to `.example`. See `build/40-nvidia.sh.example` for the full implementation.
+There is no NVIDIA layer and no `.example` scripts in `build/`. A new
+layer (e.g. compositor swap, NVIDIA support) follows the established
+pattern: `build/40-<name>.sh` + `build/packages/<name>.toml` + one explicit
+Containerfile `RUN` block. See `40-niri.sh` + `niri.toml` as the reference.
 
 ### 00-image-info.sh branding
 
 The comment in the `os-release` append block must use `${IMAGE_NAME}`:
 
 ```bash
-cat >> "${OS_RELEASE}" << EOF
+cat >>"${OS_RELEASE}" <<EOF
 
-# ${IMAGE_NAME} image identity   ← use variable, not literal "finpilot"
-VARIANT_ID="${IMAGE_FLAVOR}"
+# ${IMAGE_NAME} image identity   ← use variable, not literal "pluto"
+VARIANT_ID="${IMAGE_NAME}"
 ...
 EOF
 ```
 
 ## Base Image
 
-Default: `quay.io/fedora-ostree-desktops/silverblue:44`
+Default: `quay.io/hummingbird-community/bootc-os:latest` (digest-pinned, rolling `:latest` — Renovate batches digest bumps)
 
 The major version is controlled by the `FEDORA_MAJOR_VERSION` ARG and the `FROM` line in `Containerfile`. To bump Fedora releases:
 
@@ -118,8 +112,8 @@ The major version is controlled by the `FEDORA_MAJOR_VERSION` ARG and the `FROM`
 - Floating tags (`FROM image:latest` without `@sha256:...`)
 - `FROM ${FOO}@${BAR}` where `BAR` could be empty
 - `dnf`, `yum`, or `rpm-ostree` in any build script
-- COPR left enabled after package install (missing `dnf5 copr disable`)
-- `# finpilot image identity` hardcoded instead of `# ${IMAGE_NAME} image identity`
+- COPR repo files surviving `clean-stage.sh` (missing `_copr*.repo` removal)
+- `# pluto image identity` hardcoded instead of `# ${IMAGE_NAME} image identity`
 
 ## Verification
 

@@ -2,7 +2,9 @@
 # Sign up and add the Repository ID to the right field. Owners fields are optional.
 # Examples: https://artifacthub.io/packages/search?ts_query_web=ublue&sort=relevance&page=1
 
-repositoryID: neptuno # Fill in with your own credentials
-owners: # (optional, used to claim repository ownership)
-  - name: Siddhant Jain
-    email: siddhj2206@gmail.com
+repositoryID: neptuno
+# owners: optional (used to claim repository ownership on Artifact Hub) —
+# fill in if/when publishing there. Example:
+# owners:
+#   - name: Your Name
+#     email: you@example.com

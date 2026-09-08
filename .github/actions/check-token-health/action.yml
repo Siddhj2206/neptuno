@@ -18,29 +18,29 @@ description: |
 
 inputs:
   token:
-    description: 'The GitHub token to validate'
+    description: "The GitHub token to validate"
     required: true
   token_name:
-    description: 'Human-readable name for error messages (e.g., RENOVATE_TOKEN)'
+    description: "Human-readable name for error messages (e.g., RENOVATE_TOKEN)"
     required: true
   required_scopes:
-    description: 'Comma-separated list of required OAuth scopes (empty = any valid token)'
+    description: "Comma-separated list of required OAuth scopes (empty = any valid token)"
     required: false
-    default: ''
+    default: ""
   min_remaining_requests:
-    description: 'Minimum API requests remaining before warning'
+    description: "Minimum API requests remaining before warning"
     required: false
-    default: '100'
+    default: "100"
 
 outputs:
   valid:
-    description: 'Whether the token is valid (true/false)'
+    description: "Whether the token is valid (true/false)"
     value: ${{ steps.check.outputs.valid }}
   rate_remaining:
-    description: 'API rate limit remaining'
+    description: "API rate limit remaining"
     value: ${{ steps.check.outputs.rate_remaining }}
   expires_at:
-    description: 'Token expiry (if detectable)'
+    description: "Token expiry (if detectable)"
     value: ${{ steps.check.outputs.expires_at }}
 
 runs:

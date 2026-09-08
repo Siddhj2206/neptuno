@@ -42,78 +42,11 @@ The template does not automatically discover numbered scripts. See `build/README
 
 ## Existing Example Scripts
 
-### `build/40-nvidia.sh.example`
-
-**What it does:**
-
-- Pulls pre-built NVIDIA akmods from `ghcr.io/ublue-os/akmods-nvidia-open`
-- Installs NVIDIA driver (open kernel modules, CUDA, libnvidia-container)
-- Configures CDI (Container Device Interface) GPU passthrough for Podman
-- Writes bootc kernel args: nouveau blacklist + `nvidia-drm.modeset=1`
-- Enables Mutter `kms-modifiers` for Wayland support on NVIDIA
-
-**How to activate:**
-
-```bash
-mv build/40-nvidia.sh.example build/40-nvidia.sh
-# Add the standard RUN block for /ctx/build/40-nvidia.sh after 10-build.sh.
-# See build/README.md.
-just build
-```
-
-All NVIDIA logic is self-contained in the script. It provisions NVIDIA support directly into the base image when both the script is renamed to `.sh` and its Containerfile `RUN` block is added. Deactivate by removing that `RUN` block and renaming the file back to `.example`.
-
-**Expected validation:**
-
-- `pr-validation.yml` → shellcheck
-- `build-image.yml` → full build test
-- **Must test on actual NVIDIA hardware** — Wayland/modeset issues are not caught in CI
-
----
-
-### `build/20-onepassword.sh.example`
-
-**What it does:**
-
-- Adds the 1Password repository
-- Installs `1password`
-- Removes the repo file after install (isolated install pattern)
-
-**How to activate:**
-
-```bash
-cp build/20-onepassword.sh.example build/20-onepassword.sh
-# Add the standard RUN block for /ctx/build/20-onepassword.sh after 10-build.sh.
-# See build/README.md, then customize this script if needed.
-```
-
-**Expected validation:**
-
-- `pr-validation.yml` → shellcheck
-- `build-image.yml` → full build test
-
----
-
-### `build/30-cosmic-desktop.sh.example`
-
-**What it does:**
-
-- Removes the GNOME desktop environment
-- Installs the COSMIC desktop environment from COPR
-- Sets the default graphical target
-
-**How to activate:**
-
-```bash
-cp build/30-cosmic-desktop.sh.example build/30-cosmic-desktop.sh
-# Add the standard RUN block for /ctx/build/30-cosmic-desktop.sh after 10-build.sh.
-# See build/README.md, then customize this script if needed.
-```
-
-**Expected validation:**
-
-- `pr-validation.yml` → shellcheck
-- `build-image.yml` → full build test (significant change, test thoroughly)
+No `.example` files ship in `build/` — every layer is live. The reference
+implementation for a new layer is `build/40-niri.sh` + `build/packages/niri.toml`:
+a `40-<name>.sh` script consuming a TOML manifest via `package-lib.sh`
+helpers, wired by one explicit Containerfile `RUN` block. The 45-dx.sh
+docker-ce pattern is the reference for third-party repos.
 
 ---
 
@@ -121,9 +54,9 @@ cp build/30-cosmic-desktop.sh.example build/30-cosmic-desktop.sh
 
 When adding a new pattern that others might reuse, create an `.example` file:
 
-1. **Name it** with the correct prefix: `20-` for third-party repos, `30-` for desktop swaps
+1. **Name it** with the correct prefix: `40-` for compositor/desktop layers, `45-` for dev-stack style extras
 2. **Include comments** explaining what it does and how to customize
-3. **Follow conventions**: `set -euo pipefail`, `dnf5`, `copr_install_isolated` for COPRs
+3. **Follow conventions**: `set -euo pipefail`, `dnf5`, TOML manifest + `package-lib.sh` helpers, `install_copr_sections` for COPRs
 4. **Add the new example to this skill** so agents discover it
 
 ### Template for New Examples
@@ -147,14 +80,14 @@ set -euo pipefail
 
 | Example                      | Shellcheck | Build Test | Additional Validation                   |
 | ---------------------------- | ---------- | ---------- | --------------------------------------- |
-| Third-party repo (`20-*.sh`) | Yes        | Yes        | Verify repo URL accessible              |
-| Desktop swap (`30-*.sh`)     | Yes        | Yes        | Test in VM (`just run-vm-qcow2`)        |
-| COPR install (`20-*.sh`)     | Yes        | Yes        | Verify COPR exists and packages install |
-| NVIDIA GPU (`40-nvidia.sh`)  | Yes        | Yes        | Test on NVIDIA hardware; verify `nvidia-smi` after boot |
+| Third-party repo (`45-*.sh`) | Yes        | Yes        | Verify repo URL accessible              |
+| Desktop swap (`40-*.sh`)     | Yes        | Yes        | Test in VM (`just run-vm-qcow2`)        |
+| COPR install (TOML section)  | Yes        | Yes        | Verify COPR exists and packages install |
+| NVIDIA GPU (new `40-*.sh`)   | Yes        | Yes        | Test on NVIDIA hardware; verify `nvidia-smi` after boot |
 
 ## Link to Package Decision Tree
 
-For deciding whether to use an example script or add directly to `build/10-build.sh`, use `finpilot-packages`.
+For deciding whether to add a new layer script or extend a `build/packages/*.toml` manifest, use `finpilot-packages`.
 
 **Quick guide:**
 

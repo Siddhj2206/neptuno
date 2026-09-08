@@ -1,21 +1,48 @@
-# Copilot Instructions for neptuno bootc Image
+# Copilot Instructions for finpilot bootc Image Template
 
 ## Start here
 
-Read the repo skill docs before changing behavior:
+Task-specific instructions are Agent Skills under
+`.agents/skills/<skill-name>/SKILL.md`. Agents discover them automatically from
+their descriptions. Use the matching skill before changing behavior; for an
+unfamiliar multi-phase task, start with `finpilot-overview`, continue with the
+domain skill, and finish with `finpilot-pr-checklist`. Not sure which skill
+fits? Load `finpilot-router` — it owns the routing table. The skill index with
+links lives in `.agents/skills/README.md`.
 
-- `.agents/skills/finpilot-overview/SKILL.md` — architecture, repo layout, task router
-- `.agents/skills/finpilot-onboarding/SKILL.md` — fork bootstrap: rename, Actions, token, first build
-- `.agents/skills/finpilot-packages/SKILL.md` — decision tree (dnf5 vs Brew vs Flatpak)
-- `.agents/skills/finpilot-custom/SKILL.md` — Brewfiles, Flatpaks, ujust rules
-- `.agents/skills/finpilot-build/SKILL.md` — Containerfile, Justfile, build scripts
-- `.agents/skills/finpilot-ci/SKILL.md` — GitHub Actions workflows, composite actions, Renovate
-- `.agents/skills/finpilot-maintain/SKILL.md` — ongoing: Renovate PRs, signing, local test loop
-- `.agents/skills/finpilot-troubleshooting/SKILL.md` — symptom → cause → fix
-- `.agents/skills/finpilot-pr-checklist/SKILL.md` — PR gates by change type
-- `.agents/skills/finpilot-examples/SKILL.md` — runnable examples and activation patterns
-- `.agents/skills/finpilot-templates/SKILL.md` — template init and rename reference
-- `.agents/skills/finpilot-router/SKILL.md` — skill router, load when unsure which skill fits
+## Branch Strategy
+
+- `main` is the **testing branch** — pushes publish `:stable-testing` images.
+  PRs are for **massive changes and feature adds**; small fixes and routine
+  chores (single-layer tweaks, dependency pins, docs) may push directly to
+  `main`, still gated by the pre-commit checklist and the on-push image build
+  (which runs `bootc container lint --fatal-warnings`).
+- `stable` is the **production branch** — pushes publish `:stable` images.
+- Promotion is `main` → `stable` via squash PRs opened by
+  `.github/workflows/promote-main-to-stable.yml`, a thin caller of the factory
+  reusable `projectbluefin/actions/.github/workflows/reusable-promote-squash.yml`.
+  `sync-stable-to-main.yml` (`reusable-sync-branches.yml`) merges any direct
+  `stable` hotfixes back into `main`.
+- Decision record: the factory reusable workflow was chosen over the external
+  pull[bot] app (issues #235/#237). Do not add `.github/pull.yml`.
+- Never commit directly to `stable`; it receives only promotion PRs.
+
+## Release Workflow
+
+1. Open changes against `main`.
+2. Merge only after required validation and image build checks pass.
+3. Test `ghcr.io/OWNER/IMAGE:stable-testing`.
+4. Review the auto-opened promotion PR from `main` to `stable`.
+5. Merge the promotion to publish `ghcr.io/OWNER/IMAGE:stable`.
+
+| Branch   | Image tag         | Audience                       |
+| -------- | ----------------- | ------------------------------ |
+| `main`   | `:stable-testing` | Testers and release candidates |
+| `stable` | `:stable`         | Production systems             |
+
+The promotion release gate verifies cosign signatures on the `:testing` tag;
+keyless signing is enabled by default in `build-image.yml` ("Sign and publish"
+step) and reports `release/ready` once a signed `:testing` image exists.
 
 ## CRITICAL: GitHub API Usage
 
@@ -62,31 +89,18 @@ Read the repo skill docs before changing behavior:
 
 1. **ALWAYS** use Conventional Commits format for ALL commits (see `.github/commit-convention.md`)
 2. **NEVER** commit `cosign.key` to repository (`cosign.key` is `.gitignore`-d)
-3. **ALWAYS** disable COPRs after use (`copr_install_isolated` in `build/copr-helpers.sh`)
+3. **ALWAYS** ship the image without enabled COPR repos — COPRs are enabled only for the build layers that install from them; the final clean stage (`build/clean-stage.sh`) disables them before lint
 4. **ALWAYS** use `dnf5` exclusively (never `dnf`, `yum`, `rpm-ostree`)
 5. **ALWAYS** use `-y` flag for non-interactive installs
 6. **NEVER** use `dnf5` in ujust files — only Brewfile/Flatpak shortcuts
-7. **NEVER** push directly to `main` (only via PR with passing `validate` check)
-8. **ALWAYS** confirm with user before deviating from @ublue-os/bluefin patterns
-9. **ALWAYS** run shellcheck/YAML validation before committing
-10. **ALWAYS** follow numbered script convention: `10-*.sh`, `20-*.sh`, `30-*.sh`
-11. **ALWAYS** validate that new Flatpak IDs exist on Flathub before adding
-12. **NEVER** modify validation workflows without understanding impact on PR checks
-
-## Task Router
-
-| I need to… | Load |
-|---|---|
-| Bootstrap a new fork | `finpilot-onboarding/SKILL.md` |
-| Add/remove a package | `finpilot-packages/SKILL.md` |
-| Change Brewfiles, Flatpaks, or ujust | `finpilot-custom/SKILL.md` |
-| Change Containerfile, Justfile, or build scripts | `finpilot-build/SKILL.md` |
-| Fix CI or Renovate | `finpilot-ci/SKILL.md` / `finpilot-maintain/SKILL.md` |
-| Open a PR | `finpilot-pr-checklist/SKILL.md` |
-| Debug a build or deploy failure | `finpilot-troubleshooting/SKILL.md` |
-| Follow a worked example | `finpilot-examples/SKILL.md` |
-| Initialize/rename this template | `finpilot-templates/SKILL.md` |
-| Orient to repo architecture | `finpilot-overview/SKILL.md` |
+7. **NEVER** push massive changes or feature adds directly to `main` — they require a PR with passing `validate` check; small fixes and routine chores may push directly to `main`
+8. **NEVER** push directly to `stable`; promote tested `main` commits via the promotion PR from `promote-main-to-stable.yml`
+9. **ALWAYS** test the `:stable-testing` image before merging a promotion to `stable`
+10. **ALWAYS** confirm with user before deviating from @ublue-os/bluefin patterns
+11. **ALWAYS** run shellcheck/YAML validation before committing
+12. **ALWAYS** follow numbered script convention: `00-`, `10-`, `20-`, `25-`, `40-`, `45-` (+ `clean-stage.sh` last)
+13. **ALWAYS** validate that new Flatpak IDs exist on Flathub before adding
+14. **NEVER** modify validation workflows without understanding impact on PR checks
 
 ## Analysis vs Implementation
 
@@ -102,6 +116,31 @@ Assisted-by: [Model Name] via [Tool Name]
 
 ---
 
-**Last Updated**: 2026-06-16
+## Factory workflow and ownership
+
+Use the shared lifecycle and labels in
+[`projectbluefin/common/docs/skills/label-workflow.md`](https://github.com/projectbluefin/common/blob/main/docs/skills/label-workflow.md).
+Humans triage and approve; agents work only on assigned or
+`3-clanker-queue` issues. Clankers is authenticated Hive transport only, not
+merge authority. Keep template-specific ownership local and never write to
+`ublue-os/*`.
+
+## Self-Improvement
+
+Every session: ship the work and update the relevant skill file in
+`.agents/skills/`. Same PR, not a follow-up.
+
+Banned:
+- No changelog files. Delete `IMPROVEMENTS.md`, `CHANGELOG.md`, and
+  `SESSION.md` if found.
+- No session notes committed to the repository.
+- No "append here" documentation. Route durable learning to `.agents/skills/`.
+
+Before marking work done:
+- [ ] Discovered a workaround, pattern, or convention?
+- [ ] Updated or created the relevant skill file?
+- [ ] Included that learning in this PR?
+
+**Last Updated**: 2026-09-05
 **Template Version**: finpilot (Agent UX Overhaul)
 **Maintainer**: Universal Blue Community

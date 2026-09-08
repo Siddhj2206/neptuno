@@ -1,0 +1,11 @@
+# bootc-generic-iso GRUB / ISO config for Neptuno offline installer
+# Lives in the installer container at /usr/lib/image-builder/bootc/iso.yaml
+# (legacy path /usr/lib/bootc-image-builder/iso.yaml also populated).
+# See osbuild.org/docs/developer-guide/projects/image-builder/advanced/bootc/isos
+label: "neptuno-Installer"
+grub2:
+  timeout: 10
+  entries:
+    - name: "Install Neptuno (offline, embedded payload)"
+      linux: "/images/pxeboot/vmlinuz inst.stage2=hd:LABEL=neptuno-Installer console=tty0 inst.graphical quiet selinux=0 rhgb"
+      initrd: "/images/pxeboot/initrd.img"

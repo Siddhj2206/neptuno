@@ -29,32 +29,39 @@ description: >-
 
 ## Decision Table
 
-| Request                        | Action                                        | Location                             |
-| ------------------------------ | --------------------------------------------- | ------------------------------------ |
-| Add a system package (dnf5)    | `dnf5 install -y pkg`                         | `build/10-build.sh`                  |
-| Add a COPR package             | `copr_install_isolated "owner/repo" pkg`      | `build/10-build.sh` (or `20-*.sh`)   |
-| Add a third-party repo package | Enable repo → `dnf5 install -y` → remove repo | `build/20-*.sh` (see examples)       |
-| Add a CLI tool (runtime)       | `brew "pkg"`                                  | `custom/brew/default.Brewfile`       |
-| Add a dev environment tool     | `brew "pkg"`                                  | `custom/brew/development.Brewfile`   |
-| Add a font                     | `brew "font-xyz"`                             | `custom/brew/fonts.Brewfile`         |
-| Add a GUI app                  | `[Flatpak Preinstall org.app.id]`             | `custom/flatpaks/default.preinstall` |
-| Add a user command             | Create shortcut (NO dnf5)                     | `custom/ujust/*.just`                |
-| Enable a systemd service       | `systemctl enable service.name`               | `build/10-build.sh`                  |
-| Replace desktop environment    | Remove old → install new → set default        | `build/30-*.sh` (see examples)       |
-| Switch base image              | Update `FROM` line                            | `Containerfile`                      |
-| Add OCI containers             | Uncomment/add `COPY --from=`                  | `Containerfile` ctx stage            |
-| Add NVIDIA GPU support         | Rename `40-nvidia.sh.example`, then add its RUN block after `10-build.sh` | `build/40-nvidia.sh` |
+| Request                        | Action                                                        | Location                             |
+| ------------------------------ | ------------------------------------------------------------- | ------------------------------------ |
+| Add a system package (dnf5)    | Append to the layer manifest                                  | `build/packages/<layer>.toml` `[fedora]` |
+| Add a COPR package             | Add a `["copr:owner/project"]` section to the layer manifest  | `build/packages/<layer>.toml`        |
+| Add a third-party repo package | Enable repo → install → remove repo (45-dx.sh docker pattern) | Layer script + `[repo]` TOML section |
+| Add a CLI tool (runtime)       | `brew "pkg"`                                                  | `custom/brew/default.Brewfile` (only Brewfile) |
+| Add a GUI app                  | `[Flatpak Preinstall org.app.id]`                             | `custom/flatpaks/default.preinstall` |
+| Add a user command             | Add a recipe (NO dnf5)                                        | `custom/ujust/custom-system.just`    |
+| Enable a systemd service       | `systemctl enable service.name`                               | The layer's `build/<nn>-*.sh` script |
+| Replace desktop environment    | New `40-<name>.sh` + `packages/<name>.toml` + Containerfile RUN block | `build/` (see 40-niri.sh) |
+| Switch base image              | Update `FROM` line                                            | `Containerfile`                      |
+| Add OCI containers             | Uncomment/add `COPY --from=`                                  | `Containerfile` ctx stage            |
+| Add GPU support                | Same new-layer pattern (no `.example` scripts exist)          | `build/` (see 40-niri.sh)            |
 
-## Build-Time: `build/10-build.sh`
+## Build-Time: `build/packages/*.toml`
 
-System packages are installed at build-time and baked into the container image.
+System packages are declared in TOML manifests (manifest of record) and
+installed by the layer script in one transaction with a post-install
+assert gate — the build FAILS on a missing name by design.
 
 **Example:**
 
+```toml
+# In build/packages/base.toml
+[fedora]
+packages = [
+    "wireguard-tools",
+]
+```
+
 ```bash
-# In build/10-build.sh
-dnf5 install -y vim git htop neovim tmux
-systemctl enable podman.socket
+# In the layer script (e.g. build/20-base.sh)
+install_fedora_section "${PKGS_TOML}" "base packages"
 ```
 
 **When to use:**
@@ -68,40 +75,63 @@ systemctl enable podman.socket
 
 - Always use `dnf5` (never `dnf`, `yum`, or `rpm-ostree`)
 - Always use `-y` flag for non-interactive installs
-- For COPR repositories, use `copr_install_isolated` pattern and disable after use
-- Group related `dnf5 install` commands together for efficient layer caching
+- For COPR packages, add a `["copr:owner/project"]` section — `install_copr_sections` (in `build/scripts/package-lib.sh`) enables → installs; `clean-stage.sh` removes all COPR repo files
+- One transaction per section for efficient layer caching
 
-## COPR: `copr_install_isolated`
+## COPR: `install_copr_sections`
 
-Community repositories must be isolated to prevent repo persistence.
+Community repositories must not persist in the image.
 
 **Example:**
 
-```bash
-source /ctx/build/copr-helpers.sh
-copr_install_isolated "ublue-os/staging" package-name
+```toml
+# In build/packages/niri.toml
+["copr:avengemedia/dms"]
+packages = ["dms", "dms-cli"]
 ```
 
-**What `copr_install_isolated` does:**
+**What `install_copr_sections` does:**
 
-1. Enables the COPR repo
-2. Installs the specified package(s)
-3. Disables the COPR repo
+1. Enables each `["copr:..."]` section's repo
+2. Installs the section's package(s) with vendor/assert checks
+3. Leaves removal to `clean-stage.sh` (`rm -f /etc/yum.repos.d/_copr*.repo`)
 
-**Never leave a COPR enabled after install.**
+**Never ship an enabled COPR.**
 
-## Third-Party Repos: `build/20-*.sh`
+## Verifying Package Sources
 
-For Google Chrome, 1Password, VS Code, etc. Follow the example scripts.
+New packages are verified against the BUILD repos (Fedora proper + the
+manifest's own COPR sections), NOT the host's repolist. The host can install
+a same-named package from a COPR that is not enabled in the build — e.g.
+`oversteer-udev` exists only in `copr:ublue-os/packages`; a "host-proven"
+pick otherwise fails 20-base.sh with `No match for argument`. When a
+host-proven package is missing from Fedora, find its real source with
+`rpm -qi <pkg>` on the host — the Vendor/Packager fields name the COPR
+(`Fedora Copr - user <owner>`).
+
+**`dnf5 repoquery` exits 0 and prints NOTHING for names absent from the
+enabled repos** — an empty result means "not found", never "verified".
+Always repoquery-against-the-build-repos before adding a package, and spot
+each vendor assertion (assert_vendor) for third-party installs.
+
+**assert_vendor matches the raw `%{VENDOR}` field** — verify it on the host
+before asserting (`rpm -q --qf '%{NAME} %{VENDOR}\n' <pkg>`), it is not
+always the project name: docker-ce* report `Docker`, but `containerd.io`
+reports an EMPTY vendor (containerd project packaging) and must be
+presence-asserted instead (2026-08-29 build failure).
+
+## Third-Party Repos: layer script + TOML section
+
+For docker-ce style third-party repos, follow the 45-dx.sh pattern.
 
 **Pattern:**
 
 1. Add GPG key (if required)
 2. Create repo file in `/etc/yum.repos.d/`
 3. `dnf5 install -y` the package(s)
-4. **CRITICAL**: Remove the repo file at end of script
+4. **CRITICAL**: Remove the repo file at end of script (unless the repo is an intentional exception like negativo17 multimedia, which stays enabled)
 
-See `build/20-onepassword.sh.example` for a complete working example.
+See `build/45-dx.sh` (docker-ce) for the complete working pattern.
 
 ## Runtime Brew: `custom/brew/*.Brewfile`
 

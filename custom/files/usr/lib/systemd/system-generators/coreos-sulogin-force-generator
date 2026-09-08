@@ -1,5 +1,6 @@
 #!/usr/bin/bash
 
+# Ported from siddhj2206/neptuno
 # This systemd.generator(7) detects if rescue or emergency targets were
 # requested from the kernel cmdline; if so, it overrides the respective
 # target to set force sulogin, allowing use of rescue/emergency targets
@@ -53,7 +54,7 @@ write_dropin() {
 [Service]
 Environment=SYSTEMD_SULOGIN_FORCE=1
 EOF
-    echo "$(basename ${0}): set SYSTEMD_SULOGIN_FORCE=1 for ${service}.service"
+    echo "$(basename "${0}"): set SYSTEMD_SULOGIN_FORCE=1 for ${service}.service"
 }
 
 # Match kernel command line targets for systemd(1) rescue/emergency

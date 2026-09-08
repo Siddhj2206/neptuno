@@ -1,0 +1,64 @@
+# Neptuno Niri layer manifest — WM-specific.
+#
+# Consumed by build/40-niri.sh via build/scripts/read-packages:
+#   [fedora]                  -> one dnf5 install transaction
+#   ["copr:<owner>/<project>"] -> enabled + installed per COPR (disabled by
+#                                 clean-stage.sh — AGENTS.md rule 3)
+#
+# Swap story: replacing the compositor (e.g. hyprland) = new script (40-hyprland.sh)
+# + this manifest + the wm bits in custom/config — the base/multimedia layers
+# stay untouched.
+#
+# Sources: docs/research/niri-layer-design.md (2026-08-28).
+#   - niri IS in Fedora proper — no COPR needed.
+#   - satty (screenshot editor) skipped; DMS screenshot works without it.
+
+[fedora]
+packages = [
+    # --- compositor + XI bridge -------------------------------------------
+    "niri",                      # in Fedora F43; COPR yalter/niri-git = newer
+    "xwayland-satellite",        # niri's hard Requires (no bundled Xwayland)
+
+    # --- niri ecosystem utilities (zirconium/tunaOS set) -------------------
+    "kanshi",                    # output layout daemon
+    "wtype",                     # X11-ish typing tool (wayland)
+    "wl-mirror",                 # mirror/clone outputs
+    "wev",                       # wayland event inspect (debugging)
+
+    # --- storage / automount (no GNOME Shell to do this on niri) -----------
+    "udiskie",                   # user-level automount daemon (user unit)
+    "gnome-disk-utility",        # NOT on Flathub — native only
+
+    # --- system plumbing the DMS installer also expects --------------------
+    "accountsservice",           # seat/user info for greeter & apps
+
+    # --- network helpers -----------------------------------------------------
+    "nm-connection-editor",
+
+    # --- Qt theming stack (tunaOS set; DMS writes qt6ct colors via matugen) --
+    "qt6ct",
+    "kf6-kimageformats",           # image format plugins (DMS doctor expects it)
+    "plasma-breeze",
+    "kf6-kirigami",
+    "kf6-qqc2-desktop-style",
+
+    # --- DMS ecosystem ----------------------------------------------------------
+    "khal",                          # calendar backend for DMS calendar
+]
+
+# One COPR per section (one bad name kills the transaction); clean-stage.sh
+# disables them in the final image (AGENTS.md rule 3).
+["copr:avengemedia/dms"]
+packages = [
+    "dms",
+    "dms-cli",
+]
+
+["copr:avengemedia/danklinux"]
+packages = [
+    "quickshell-git",            # full-feature quickshell (polkit/idle support)
+    "matugen",                   # wallpaper -> theme generation
+    "danksearch",                # spotlight search backend
+    "dgop",                      # DMS go helpers
+    "material-symbols-fonts",
+]

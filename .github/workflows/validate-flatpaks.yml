@@ -17,7 +17,7 @@ jobs:
         shell: bash
         run: |
           sudo apt install -y flatpak
-          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
       - name: Validate Flatpaks
         shell: bash
@@ -29,9 +29,18 @@ jobs:
           find "custom/flatpaks" -iname '*\.preinstall' -print0 | \
             while IFS= read -r -d '' flatpaks_file ; do
               echo "::group:: ===$(basename "$flatpaks_file")==="
-              sed -n 's/^\[Flatpak Preinstall \(.*\)\]$/\1/p' "$flatpaks_file" | \
-                while read -r app_id ; do
-                  flatpak remote-info --user flathub "${app_id}"
-                done
+              while IFS= read -r app_id; do
+                branch=$(awk -v app="$app_id" '
+                  $0 == "[Flatpak Preinstall " app "]" {found=1; next}
+                  found && /^Branch=/ {print; valid=1; exit}
+                  found && /^\[/ {exit}
+                  END {if (!valid) print "MISSING"}
+                ' "$flatpaks_file")
+                if [ "$branch" = "MISSING" ]; then
+                  echo "✗ $app_id: missing Branch= key"
+                  exit 1
+                fi
+                flatpak remote-info --user flathub "${app_id}"
+              done < <(sed -n 's/^\[Flatpak Preinstall \(.*\)\]$/\1/p' "$flatpaks_file")
               echo "::endgroup::"
             done
