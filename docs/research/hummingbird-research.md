@@ -13,7 +13,7 @@ There are **two Hummingbirds** that must not be conflated:
 1. **Project Hummingbird** — a Red Hat container-image *factory* (GitLab org `redhat/hummingbird`) producing minimal, hardened, *distroless* containers (curl, python, go, nginx, postgres, etc.). Announced at Red Hat Summit 2026. This is a userspace container catalog project.
 2. **Fedora Hummingbird** — the *OS* application of the same factory model: a **rolling, bootc-based, minimal server/VM operating system** shipped as an OCI image at **`quay.io/hummingbird-community/bootc-os`**. Announced May 12, 2026 via Fedora Magazine. **Explicitly experimental, "not suitable for production."** It is a *minimal* OS — **no desktop environment, no flatpak, no GNOME** — and is **VM-oriented**, not desktop-oriented.
 
-For pluto (a GNOME desktop image), rebasing means: keep finpilot's runtime layer (ctx stage, custom/, ujust, brew, flatpak preinstall, signing, two-branch model) and replace only the base + base-dependent assumptions — but **the entire desktop stack must be assembled from scratch** on top of a minimal base, because Hummingbird ships no desktop packages at all.
+For pluto (a GNOME desktop image), rebasing means: keep finpilot's runtime layer (ctx stage, custom/, ujust, brew, flatpak preinstall, signing, release workflow) and replace only the base + base-dependent assumptions — but **the entire desktop stack must be assembled from scratch** on top of a minimal base, because Hummingbird ships no desktop packages at all.
 
 ---
 
@@ -128,7 +128,8 @@ CMD ["/sbin/init"]
 ### (i) Carries over cleanly
 
 1. **Multi-stage Containerfile with scratch `ctx` stage** — orthogonal to the base. The ctx pattern (COPY build/, custom/, `COPY --from=common`/`--from=brew`) composes config layers onto any base.
-2. **Two-branch model (`main` → `:stable-testing`, `stable` → `:stable`) + promote-main-to-stable squash PR + `validate` job** — pure GitHub-side workflow; Hummingbird has no opinion; unchanged.
+2. **Single release branch (`main` → `:stable`) + `validate` job** — pure
+   GitHub-side workflow; Hummingbird has no opinion.
 3. **Keyless OIDC cosign signing of pluto's images** — bootc native (bootc verifies signatures via policy), and Hummingbird's own images are cosign-signed, so the ecosystem is consistent. Base images need no special handling.
 4. **Renovate digest pinning of the FROM line** — bootc-os publishes stable digests daily; same mechanism as today. Expect **much higher churn** (base rebuilt ~daily), so consider batching/minimum interval.
 5. **Runtime layer: `custom/` (ujust recipes, Brewfile), `build/` scripts, ublue flavorbits** — base-agnostic. **dnf5 is present in bootc-os** (`dnf5` in package list), satisfying finpilot's "ALWAYS use dnf5" rule. `sudo` present.

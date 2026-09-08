@@ -199,7 +199,7 @@ Base is rolling: digest pin + batched updates is the linchpin. Plan for the base
 
 1. **A — Build:** implement §3–§5 → `shellcheck`/YAML/`just --list` → **local `just build`** (podman/buildah available) → push `main` → CI green.
 2. **B — Boot test:** `just build-qcow2` + `run-vm-qcow2` — prove greetd greeter works, niri boots, DMS runs, audio/network/wifi work, Flathub reachable, first-boot units ran.
-3. **C — Promote:** after `:stable-testing` behaves, let the auto promotion land on `stable`.
+3. **C — Release:** after the image behaves, merge to `main` to publish `:stable`.
 4. **D — Iterate:** track !15860 (F44 roll), audit common-overlay SELinux assumptions (`/usr/lib/selinux`), kernel/firmware checks, adjust `FEDORA_MAJOR_VERSION`.
 
 ---

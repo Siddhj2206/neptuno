@@ -20,39 +20,11 @@
 - [ ] Settings → Actions → General → Enable workflows
 - [ ] Set "Read and write permissions"
 
-### 3. Configure Testing and Production Branches
+### 3. Configure the Release Branch
 
-This template uses a **two-branch model**: `main` publishes `:stable-testing`
-candidate images, and `stable` publishes `:stable` production images.
-Promotion is a squash PR from `main` to `stable` opened automatically by
-`.github/workflows/promote-main-to-stable.yml` (factory reusable workflow —
-no external GitHub App required).
-
-Create `stable` as an exact copy of `main`, then return to `main`:
-
-```bash
-git switch main
-git switch -c stable
-git push --set-upstream origin stable
-git switch main
-```
-
-- [ ] Never commit directly to `stable`; it receives only promotion PRs
-- [ ] Keyless signing is enabled by default; after the first build, verify it
-      (see "Verify Image Signing" below) so the promotion release gate can
-      check signatures and report `release/ready`
-
-Promotion PR requirements:
-
-- The promote workflow requests review from `<owner>/maintainers` when it
-  creates the PR — your repo must live in an org with that team, or replace
-  `promote-main-to-stable.yml` with a local workflow that skips reviewer
-  requests (the reviewer is set inside the shared `projectbluefin/actions`
-  reusable, so editing only your caller file won't change it)
-- Set `stable`'s required approvals to choose your automation level: `0` =
-  fully automatic promotion, `1` = a maintainer approves, then auto-merge
-- The release gate is advisory by default; add the promote workflow as a
-  required check on `stable` if a `release/blocked` result should block merges
+`main` is the only release branch and publishes the `:stable` image tag.
+Configure branch protection for `main` to require the validation checks that
+fit your repository.
 
 ### 4. First Push
 
@@ -80,11 +52,9 @@ git push origin main
   - Enable "Require status checks to pass before merging"
   - Add `validate` as a required status check
   - Enable "Require branches to be up to date before merging"
-- [ ] Configure branch protection for `stable`: require a pull request before
-      merging so only promotion PRs land there
 - [ ] Renovate will create a PR to pin your GitHub Actions to SHAs
 
-Renovate targets `main`; approved changes reach `stable` through the promotion flow.
+Renovate targets `main`.
 
 **Agent skills:** `finpilot-onboarding` (branch protection), `finpilot-ci` (Renovate config)
 
@@ -108,14 +78,7 @@ Renovate targets `main`; approved changes reach `stable` through the promotion f
 
 ### 8. Deploy
 
-Test the candidate image from `main`:
-
-```bash
-sudo bootc switch --transport registry ghcr.io/YOUR_USERNAME/YOUR_REPO:stable-testing
-sudo systemctl reboot
-```
-
-After merging the promotion to `stable`, deploy the production image:
+After a successful `main` build, deploy the published image:
 ```bash
 sudo bootc switch --transport registry ghcr.io/YOUR_USERNAME/YOUR_REPO:stable
 sudo systemctl reboot
@@ -132,12 +95,11 @@ secrets to configure. After the first green build, verify the signature:
 cosign verify \
   --certificate-identity-regexp="https://github.com/YOUR_USERNAME/YOUR_REPO/.github/workflows/" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/YOUR_USERNAME/YOUR_REPO:stable-testing
+  ghcr.io/YOUR_USERNAME/YOUR_REPO:stable
 ```
 
 To disable signing (not recommended), comment out the `Sign and publish`
-step in `.github/workflows/build-image.yml`. Unsigned images fail the
-promotion release gate (`release/blocked`).
+step in `.github/workflows/build-image.yml`.
 
 **Agent skill:** `finpilot-templates` (signing verification)
 

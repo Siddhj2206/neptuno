@@ -94,8 +94,7 @@ Images are signed automatically via **keyless OIDC signing** with Cosign + Fulci
 the `Sign and publish` step in `.github/workflows/build-image.yml`. No `cosign.key`,
 `cosign.pub`, or `SIGNING_SECRET` are needed, and no setup is required.
 
-Unsigned images fail the promotion release gate (`release/blocked`), so leave the
-step enabled.
+Leave the signing step enabled so published images carry verifiable provenance.
 
 Users verify images with:
 

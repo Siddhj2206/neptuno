@@ -33,9 +33,7 @@ description: >-
 
 | File                          | Trigger                           | Purpose                                                       |
 | ----------------------------- | --------------------------------- | ------------------------------------------------------------- |
-| `build-image.yml`             | push main + stable, manual        | Publish `:stable-testing` (main) or `:stable` (stable)        |
-| `promote-main-to-stable.yml`  | cron daily + manual dispatch      | Squash promotion PR `main` → `stable` via factory reusable    |
-| `sync-stable-to-main.yml`     | push stable                       | Merge direct `stable` hotfixes back to `main` (usually no-op) |
+| `build-image.yml`             | push main, manual                 | Build, sign, and publish `:stable` from `main`                |
 | `pr-validation.yml`           | PR → main                         | shellcheck + hadolint + pre-commit via `validate-pr`          |
 | `renovate.yml`                | schedule 6h, push renovate config | Self-hosted Renovate runner                                   |
 | `clean.yml`                   | schedule weekly                   | Delete GHCR images older than 90 days                         |
@@ -44,20 +42,12 @@ description: >-
 | `validate-justfiles.yml`      | PR paths: `Justfile`, `custom/ujust/**` | `just --list` syntax check                              |
 | `validate-renovate.yml`       | PR paths: `.github/renovate.json` | `renovate-config-validator`                                   |
 
-## Branch Promotion and Tags
+## Release Branch and Tags
 
-- `main` is the testing branch and publishes `:stable-testing` (plus bare
-  `:testing`, which the promotion release gate resolves).
-- `stable` is the production branch and publishes `:stable`.
-- Promotion uses `reusable-promote-squash.yml` and `reusable-sync-branches.yml`
-  from `projectbluefin/actions` — the factory contract. pull[bot] /
-  `.github/pull.yml` was rejected (issues #235/#237); do not add it.
-- The `Determine image tag` step sets `TAG_STREAM=testing` off the production
-  branch; `Finalize branch tags` renames `testing*` tags to `stable-testing-*`
-  so they never collide with production `stable-daily*` aliases.
-- The release gate verifies cosign signatures on `:testing`; the `Sign and
-  publish` step in `build-image.yml` provides them, and unsigned images report
-  `release/blocked`.
+- `main` is the sole release branch and publishes `:stable`.
+- Workflow dispatches from other branches may build for validation, but only
+  the repository default branch tags, pushes, signs, and rechunks an image.
+- The `Sign and publish` step uses keyless OIDC signing for the pushed image.
 
 ## Composite Action Pins
 
@@ -76,9 +66,7 @@ The SHA comment (`# v1`) is for human readability only — Renovate ignores it.
 A caller's `permissions:` block is a **ceiling** for every nested job in a reusable
 workflow. A nested job requesting an ungranted permission fails the whole workflow
 at startup (`startup_failure`, no jobs run, no logs — only the inline validation
-error). Issue #256: `promote-main-to-stable.yml` omitted `packages`, but the
-reusable's `gate` job requests `packages: read`. Fix: update the caller to grant
-at least the permission(s) requested by the reusable workflow (prefer the minimal set).
+error). Grant only the permissions requested by the nested workflow.
 
 ## Rechunking
 
