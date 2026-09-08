@@ -33,7 +33,7 @@ description: >-
 
 | File                          | Trigger                           | Purpose                                                       |
 | ----------------------------- | --------------------------------- | ------------------------------------------------------------- |
-| `build-image.yml`             | push main, manual                 | Build, sign, and publish `:stable` from `main`                |
+| `build-image.yml`             | push main, manual                 | Build, sign, and publish `:stable-daily` from `main`          |
 | `pr-validation.yml`           | PR → main                         | shellcheck + hadolint + pre-commit via `validate-pr`          |
 | `renovate.yml`                | schedule 6h, push renovate config | Self-hosted Renovate runner                                   |
 | `clean.yml`                   | schedule weekly                   | Delete GHCR images older than 90 days                         |
@@ -44,7 +44,7 @@ description: >-
 
 ## Release Branch and Tags
 
-- `main` is the sole release branch and publishes `:stable`.
+- `main` is the sole release branch and publishes `:stable-daily`.
 - Workflow dispatches from other branches may build for validation, but only
   the repository default branch tags, pushes, signs, and rechunks an image.
 - The `Sign and publish` step uses keyless OIDC signing for the pushed image.

@@ -12,7 +12,7 @@ links lives in `.agents/skills/README.md`.
 
 ## Branch Strategy
 
-- `main` is the only release branch and publishes `:stable`.
+- `main` is the only release branch and publishes `:stable-daily`.
 - PRs are for massive changes and feature additions; small fixes and routine
   chores may push directly to `main`, still gated by the pre-commit checklist
   and the on-push image build (`bootc container lint --fatal-warnings`).

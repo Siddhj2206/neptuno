@@ -15,29 +15,17 @@
 
 [fedora]
 packages = [
-    # --- compositor + XI bridge -------------------------------------------
-    "niri",                      # in Fedora F43; COPR yalter/niri-git = newer
-    "xwayland-satellite",        # niri's hard Requires (no bundled Xwayland)
+    # --- compositor ---------------------------------------------------------
+    "niri",                      # pulls its xwayland-satellite requirement
 
-    # --- niri ecosystem utilities (zirconium/tunaOS set) -------------------
+    # --- niri session utilities ---------------------------------------------
     "kanshi",                    # output layout daemon
-    "wtype",                     # X11-ish typing tool (wayland)
-    "wl-mirror",                 # mirror/clone outputs
-    "wev",                       # wayland event inspect (debugging)
 
     # --- storage / automount (no GNOME Shell to do this on niri) -----------
     "udiskie",                   # user-level automount daemon (user unit)
-    "gnome-disk-utility",        # NOT on Flathub — native only
-
-    # --- system plumbing the DMS installer also expects --------------------
-    "accountsservice",           # seat/user info for greeter & apps
-
-    # --- network helpers -----------------------------------------------------
-    "nm-connection-editor",
 
     # --- Qt theming stack (tunaOS set; DMS writes qt6ct colors via matugen) --
     "qt6ct",
-    "kf6-kimageformats",           # image format plugins (DMS doctor expects it)
     "plasma-breeze",
     "kf6-kirigami",
     "kf6-qqc2-desktop-style",

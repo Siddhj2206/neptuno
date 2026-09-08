@@ -215,7 +215,6 @@ window-rule {
 }
 window-rule {
     match app-id=r#"^gnome-control-center$"#
-    match app-id=r#"^pavucontrol$"#
     match app-id=r#"^nm-connection-editor$"#
     default-column-width { proportion 0.5; }
     open-floating false

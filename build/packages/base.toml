@@ -8,69 +8,31 @@
 # Every entry is verified present post-install (assert gate in package-lib.sh);
 # adding a package that does not exist FAILS the build on purpose.
 #
-# Naming notes (verified against Fedora 44, 2026-08-29):
-#   - ffmpeg/ffmpeg-libs/libavcodec are RPM Fusion (Fedora ships ffmpeg-free/
-#     libavcodec-free) — NOT in this list; add via a fusion repo layer if wanted.
-#   - libfdk-aac is RPM Fusion only; alsa-tools-firmware exists in F44
-#     (verified 2026-09-05).
-#   - alsa-ucm-conf/alsa-lib-ucm-conf no longer exist as packages: UCM configs
-#     are merged into alsa-lib.
-#   - flatpak-spawn is not a package — its binary ships inside flatpak.
-#   - The full multimedia set (ffmpeg, non-FOSS codecs) is a separate layer:
-#     build/packages/multimedia.toml + build/25-multimedia.sh.
-#   - The compositor layer (niri, DMS, greeter) lives in packages/niri.toml
-#     (wm-specific, consumed by 40-niri.sh) — keep this file wm-agnostic so a
-#     hyprland swap only touches the niri layer.
+# Silverblue already provides GNOME, audio, graphics, fonts, XDG portals,
+# NetworkManager, Flatpak, firmware updates, and zram. Keep only Neptuno's
+# additions here. Multimedia is in multimedia.toml; Niri/DMS is in niri.toml.
 
 [fedora]
 packages = [
-    # --- audio --------------------------------------------------------------
-    "pipewire",
-    "wireplumber",
-    "pipewire-pulseaudio",
-    "pavucontrol",
-    "alsa-lib",                      # UCM configs merged here since F43
-    # --- graphics (base has ZERO) -------------------------------------------
-    "mesa-dri-drivers",              # provides mesa-va-drivers since F44 (merged)
-    "mesa-vulkan-drivers",
-    "vulkan-loader",
-
-    # --- fonts (base has NO fontconfig at all) ------------------------------
-    "fontconfig",
-    "default-fonts",
+    # --- fonts --------------------------------------------------------------
     "adwaita-fonts-all",
-    "google-noto-color-emoji-fonts",
-    "google-noto-emoji-fonts",
-    "google-noto-sans-cjk-vf-fonts",
     "jetbrains-mono-fonts-all",      # dev fonts (ported from neptuno)
-    "xdg-desktop-portal",
-    "xdg-desktop-portal-gnome",      # what niri's spec points at
-    "xdg-desktop-portal-gtk",
-    "xdg-user-dirs",
-    "xdg-utils",
+
+    # --- terminal integration -----------------------------------------------
     "xdg-terminal-exec",
 
-    # --- keyring / auth ------------------------------------------------------
-    "gnome-keyring",
-    "gnome-keyring-pam",             # PAM hookup lands with the DM config
-    "polkit-kde",                    # auth agent; polkit-gnome is retired
+    # --- YubiKey / FIDO2 ----------------------------------------------------
     "pam-u2f",                       # FIDO2/U2F PAM auth module
     "pamu2fcfg",                     # FIDO2 credential enrollment tool
     "pam_yubico",                    # YubiKey OTP PAM module
-    "gnupg2-scdaemon",               # smartcard daemon — YubiKey OpenPGP/SSH
     "ykpers",                        # YubiKey personalization tools
     "ykclient",                      # YubiKey client library
     "yubikey-manager",               # ykman CLI
     "python3-yubikey-manager",       # ykman python stack
 
-    # --- networking / hardware -----------------------------------------------
-    "NetworkManager-wifi",
-    "wpa_supplicant",
+    # --- networking / hardware ----------------------------------------------
     "firewall-config",               # firewall GUI (pulls firewalld; bluefin ships it)
     "tailscale",                     # private overlay network (used on neptuno)
-    "wireguard-tools",
-    "fwupd",                         # LVFS firmware updates (timer enabled in 20-base.sh)
-    "microcode_ctl",
     "brightnessctl",
     "playerctl",
     "NetworkManager-tui",
@@ -84,26 +46,14 @@ packages = [
     "igt-gpu-tools",                 # intel_gpu_top & friends
     "libratbag-ratbagd",             # mouse configuration daemon
     "ifuse",                         # iPhone/iPad mounting (FUSE)
-    "libimobiledevice",
-    "usbmuxd",
     "solaar-udev",                   # Logitech devices (udev rules only)
-    "openrgb-udev-rules",            # RGB devices (udev rules only)
 
     # --- apps / helpers ------------------------------------------------------
-    "wl-clipboard",
     "waypipe",
-    "nautilus",
     "distrobox",                 # dev container workflow (bluefin standard)
     "cava",
     "qt6-qtmultimedia",
-    "dconf",
-    "glib-networking",
-    "flatpak",                       # runtime + flatpak-spawn binary
-    "cups-pk-helper",                # printer polkit helper (DMS doctor expects it)
-    "langpacks-en",                  # base locale is C-only
-    "git",                           # brew runtime dependency (not in base)
     "git-credential-libsecret",      # git × gnome-keyring credential helper
-    "jq",                            # brew-preinstall state hashing (not in base)
     "fastfetch",
 
     # --- theming / tray (wm-agnostic) ----------------------------------------
@@ -112,10 +62,6 @@ packages = [
     "libayatana-appindicator-gtk3",
     "7zip-standalone",               # 7z CLI (FileRoller covers GUI only)
     "borgbackup",                    # dedup backup tool (RPM home)
-
-    # --- memory -------------------------------------------------------------
-    "zram-generator",                # compressed swap; config written by
-                                     #   20-base.sh: [zram0] zram-size = min(ram, 8192)
 
     # --- shells (RPM, not brew: a login shell must exist before first login) --
     "fish",                          # default user shell

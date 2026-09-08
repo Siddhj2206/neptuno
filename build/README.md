@@ -14,7 +14,7 @@ Scripts are named with a number prefix (`00-`, `10-`, `20-`, `25-`, `40-`,
 
 - **`00-image-info.sh`** - Image identity (os-release / image-info.json), ARG-driven
 - **`10-build.sh`** - Overlays + custom files: brew OCI layer, common `shared/` layer (ujust, flatpak-preinstall, brew-preinstall), `custom/files/` → `/`, `custom/config/` → `/etc/skel`, just consolidation, flatpak preinstall files; wm-agnostic
-- **`20-base.sh`** - WM-agnostic desktop foundation packages (fonts, graphics, audio, portals, keyring, display manager, zram, power) from `packages/base.toml`; COPR sections installed per-repo; wm-agnostic
+- **`20-base.sh`** - WM-agnostic Neptuno additions (device, network, developer, terminal, and font packages) from `packages/base.toml`; COPR sections installed per-repo; wm-agnostic
 - **`25-multimedia.sh`** - Full multimedia (ffmpeg + non-FOSS codecs, mesa/VA overrides) from the negativo17 `fedora-multimedia` repo via `packages/multimedia.toml`; wm-agnostic
 - **`40-niri.sh`** - Compositor layer: niri + DMS stack from `packages/niri.toml` + dynamic wiring (greeter, first-boot units, schemas); **wm-specific — renumber/replace for a different compositor**
 - **`45-dx.sh`** - DX layer: developer experience stack — docker-ce daemon (official third-party repo, removed after install), adb, minimal libvirt/qemu host daemon — from `packages/dx.toml`; daemons socket-activated; wm-agnostic

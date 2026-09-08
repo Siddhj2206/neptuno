@@ -17,13 +17,13 @@ Niri/DMS session. Manifests of record live in `build/packages/*.toml`.
 
 ### Added Packages (Build-time)
 
-- **Base (`base.toml`)**: additional portals, fonts, networking, YubiKey/FIDO2
-  tools, zram, Ghostty (COPR), and uupd auto-updates (COPR), on top of
-  Silverblue's existing GNOME, drivers, firmware, and tuned power policy
+- **Base (`base.toml`)**: Neptuno device, network, developer, and terminal
+  additions; YubiKey/FIDO2 tools; Ghostty (COPR); and uupd auto-updates
+  (COPR), on top of Silverblue's existing GNOME desktop stack
 - **Multimedia (`multimedia.toml`)**: negativo17 ffmpeg + full codecs with
   mesa/VA overrides (versionlocked)
-- **Compositor (`niri.toml`)**: Niri, xwayland-satellite, and the DMS stack
-  (avengemedia COPRs), selectable alongside GNOME in GDM
+- **Compositor (`niri.toml`)**: Niri and the DMS stack (avengemedia COPRs),
+  selectable alongside GNOME in GDM
 - **DX (`dx.toml`)**: docker-ce daemon, android-tools, libvirt/qemu host daemon
 
 ### Added Applications (Runtime)
@@ -84,7 +84,7 @@ When you are ready for production, use this prompt to harden the setup:
 
 ```
 Use the `finpilot-maintain` and `finpilot-ci` skills, then:
-1. Verify keyless image signing works: cosign verify --certificate-identity-regexp="https://github.com/USER/REPO/.github/workflows/" --certificate-oidc-issuer="https://token.actions.githubusercontent.com" ghcr.io/USER/REPO:stable
+1. Verify keyless image signing works: cosign verify --certificate-identity-regexp="https://github.com/USER/REPO/.github/workflows/" --certificate-oidc-issuer="https://token.actions.githubusercontent.com" ghcr.io/USER/REPO:stable-daily
 2. Follow the maintenance schedule in the `finpilot-maintain` skill
 ```
 
@@ -97,7 +97,7 @@ Use the `finpilot-maintain` and `finpilot-ci` skills, then:
 - Automatic cleanup of old images (90+ days) to keep it tidy
 - Pull request workflow - test changes before merging to main
   - PRs build and validate before merge
-  - `main` publishes `:stable`
+  - `main` publishes `:stable-daily`
 - Validates your files on pull requests so you never break a build:
   - Brewfile, Justfile, ShellCheck, Renovate config, and it'll even check to make sure the flatpak you add exists on FlatHub
 - Production Grade Features
@@ -145,7 +145,7 @@ Important: Change `finpilot` to your repository name in these 7 files:
 4. `artifacthub-repo.yml` (`repositoryID`): `repositoryID: your-repo-name`
 5. `custom/ujust/README.md` (bootc switch example): `localhost/your-repo-name:stable`
 6. `.github/workflows/clean.yml` (`packages`): `packages: your-repo-name`
-7. `iso/iso.toml` (bootc switch URL): `ghcr.io/YOUR_USERNAME/your-repo-name:stable`
+7. `iso/iso.toml` (bootc switch URL): `ghcr.io/YOUR_USERNAME/your-repo-name:stable-daily`
 
 ### 3. Enable GitHub Actions
 
@@ -236,14 +236,14 @@ routine chores may push directly to `main` (see AGENTS.md Branch Strategy):
    - Brewfile, Flatpak, Justfile, and shellcheck validation
    - Test image build
 3. Once checks pass, merge the PR
-4. Merging to `main` publishes `:stable`
+4. Merging to `main` publishes `:stable-daily`
 
 ### 8. Deploy Your Image
 
 Deploy the published image from `main`:
 
 ```bash
-sudo bootc switch --transport registry ghcr.io/your-username/your-repo-name:stable
+sudo bootc switch --transport registry ghcr.io/your-username/your-repo-name:stable-daily
 sudo systemctl reboot
 ```
 
@@ -257,7 +257,7 @@ Images are signed automatically with **keyless OIDC signing** via Cosign and Git
 - Prevent tampering and supply chain attacks
 - Required for some enterprise/security-focused deployments
 - Industry best practice for production images
-- Provides verifiable provenance for the `:stable` image published from `main`
+- Provides verifiable provenance for the `:stable-daily` image published from `main`
 
 ### Verify a Signed Image
 
@@ -265,7 +265,7 @@ Images are signed automatically with **keyless OIDC signing** via Cosign and Git
 cosign verify \
   --certificate-identity-regexp="https://github.com/your-username/your-repo-name/.github/workflows/" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/your-username/your-repo-name:stable
+  ghcr.io/your-username/your-repo-name:stable-daily
 ```
 
 ### Disabling Signing (Not Recommended)

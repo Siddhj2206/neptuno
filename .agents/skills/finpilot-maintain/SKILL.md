@@ -158,7 +158,7 @@ digest-only PRs. If Renovate stops creating PRs, run the Renovate section of
 
 - Review and clean up old branches
 - Verify `RENOVATE_TOKEN` still valid
-- Verify signing works (`cosign verify` on the latest `:stable` image)
+- Verify signing works (`cosign verify` on the latest `:stable-daily` image)
 - Review `build/*.sh` scripts for obsolete packages or patterns
 
 ### Annually

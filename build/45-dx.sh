@@ -61,8 +61,9 @@ echo "::group:: Enable Socket-Activated Daemons"
 # Socket-activated (no daemons at boot). libvirtd.socket is gone since the
 # F34 modular split; this set is host-proven (virsh qemu:///system works):
 # virtqemud + virtnetworkd (default NAT) + virtnodedevd + virtstoraged +
-# virtsecretd + virtproxyd (legacy-socket compat, via libvirt-daemon-qemu's
-# Requires chain incl. libvirt-daemon-proxy — no extra packages).
+# virtsecretd + virtproxyd (legacy-socket compatibility). Their individual
+# driver packages are declared in dx.toml to avoid libvirt-daemon-qemu's
+# all-architecture qemu dependency.
 systemctl enable docker.socket
 systemctl enable virtqemud.socket virtnetworkd.socket virtnodedevd.socket virtstoraged.socket virtsecretd.socket virtproxyd.socket
 

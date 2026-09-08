@@ -128,7 +128,7 @@ CMD ["/sbin/init"]
 ### (i) Carries over cleanly
 
 1. **Multi-stage Containerfile with scratch `ctx` stage** — orthogonal to the base. The ctx pattern (COPY build/, custom/, `COPY --from=common`/`--from=brew`) composes config layers onto any base.
-2. **Single release branch (`main` → `:stable`) + `validate` job** — pure
+2. **Single release branch (`main` → `:stable-daily`) + `validate` job** — pure
    GitHub-side workflow; Hummingbird has no opinion.
 3. **Keyless OIDC cosign signing of pluto's images** — bootc native (bootc verifies signatures via policy), and Hummingbird's own images are cosign-signed, so the ecosystem is consistent. Base images need no special handling.
 4. **Renovate digest pinning of the FROM line** — bootc-os publishes stable digests daily; same mechanism as today. Expect **much higher churn** (base rebuilt ~daily), so consider batching/minimum interval.

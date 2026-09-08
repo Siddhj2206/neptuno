@@ -84,7 +84,7 @@ This ensures PRs are validated before merging and Renovate can auto-merge safe d
 
 ## Configure the Release Stream
 
-`main` is the sole release branch. Pushes to it publish the `:stable` image
+`main` is the sole release branch. Pushes to it publish the `:stable-daily` image
 tag. Configure its branch protection at the level appropriate to the fork;
 the setup checklist covers the required validation checks.
 
@@ -98,7 +98,7 @@ After the rename and secret setup, trigger a build:
 Monitor the workflow. A successful first build:
 
 - Passes `bootc container lint --fatal-warnings`
-- Publishes the `:stable` tag to GHCR
+- Publishes the `:stable-daily` tag to GHCR
 - Appears under **Packages** in your repository
 
 ## README "What Makes this Raptor Different" Section

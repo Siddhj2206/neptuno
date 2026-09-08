@@ -68,7 +68,7 @@ When forking, change `finpilot` → your image name in exactly these locations:
 | 4   | `artifacthub-repo.yml`        | `repositoryID: finpilot`                                            |
 | 5   | `custom/ujust/README.md`      | `localhost/your-repo-name:stable` in the bootc switch example    |
 | 6   | `.github/workflows/clean.yml` | `packages: finpilot`                                                |
-| 7   | `iso/iso.toml`                | `ghcr.io/USERNAME/REPO:stable` in the bootc switch URL              |
+| 7   | `iso/iso.toml`                | `ghcr.io/USERNAME/REPO:stable-daily` in the bootc switch URL          |
 
 Missing any of these causes the image to be published or cleaned up under the wrong name.
 
@@ -102,7 +102,7 @@ Users verify images with:
 cosign verify \
   --certificate-identity-regexp="https://github.com/YOUR_ORG/YOUR_REPO/.github/workflows/" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/YOUR_ORG/YOUR_REPO:stable
+  ghcr.io/YOUR_ORG/YOUR_REPO:stable-daily
 ```
 
 **Never** add a `cosign.pub` file with a placeholder — it is misleading and was removed.

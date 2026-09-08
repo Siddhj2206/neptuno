@@ -15,25 +15,45 @@
 # custom/files/usr/lib/sysusers.d/docker.conf (docker-ce's %pre groupadd
 # trips bootc lint otherwise).
 #
-# Sources: 2026-08-29 package audit vs the neptuno host layer (host-proven
-# pick set: docker-ce stack, adb, libvirt/qemu daemon trio).
+# Sources: pre-Pluto Neptuno DX layer and a 2026-08-29 package audit.
 #   - docker lives HERE (not brew): brew's docker formula is CLI-only — no
 #     dockerd daemon. Bluefin's devmode setup has this exact gap (github.com
 #     /ublue-os just/system.just INSTALL_DOCKER=1 -> `brew install docker`).
 #   - virt-manager stays a Flathub flatpak (user installs it); only the host
 #     daemon + client are native (bluefin dx precedent).
-#   - virt-host-validate / storage pools: libvirt-client covers the CLI side;
-#     qemu-kvm provides the /usr/libexec/qemu-kvm binary + KVM modules.
+#   - Fedora's libvirt-daemon-qemu requires the qemu meta-package, which pulls
+#     every architecture's system emulator. Use the individual daemon drivers
+#     and x86 QEMU packages instead.
 
 [fedora]
 packages = [
     # --- android (adb/fastboot) ---------------------------------------------
     "android-tools",
 
-    # --- virtualization: minimal host daemon (virt-manager is a flatpak) ----
+    # --- virtualization: x86_64 host daemon (virt-manager is a flatpak) -----
     "libvirt-client",
-    "libvirt-daemon-qemu",
-    "qemu-kvm",
+    "libvirt-daemon-driver-interface",
+    "libvirt-daemon-driver-network",
+    "libvirt-daemon-driver-nodedev",
+    "libvirt-daemon-driver-qemu",
+    "libvirt-daemon-driver-secret",
+    "libvirt-daemon-driver-storage-core",
+    "libvirt-daemon-proxy",
+
+    # Explicit x86 VM stack. Do not add qemu, qemu-kvm,
+    # libvirt-daemon-qemu, or qemu-user-binfmt: they pull all-architecture
+    # system or user-mode emulators.
+    "edk2-ovmf",
+    # Fedora provides the historical genisoimage command through mkisofs.
+    # Use the RPM name so the manifest post-install assertion can verify it.
+    "mkisofs",
+    "qemu-char-spice",
+    "qemu-device-display-virtio-gpu",
+    "qemu-device-display-virtio-vga",
+    "qemu-device-usb-redirect",
+    "qemu-img",
+    "qemu-system-x86",
+    "qemu-system-x86-core",
 ]
 
 # docker-ce from the official repo: https://download.docker.com/linux/fedora

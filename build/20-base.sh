@@ -3,8 +3,9 @@
 set -euo pipefail
 
 ###############################################################################
-# Base Packages — WM-AGNOSTIC desktop additions on the Silverblue GNOME base.
-# Silverblue supplies the kernel, drivers, firmware, and existing GNOME stack.
+# Base Packages — WM-AGNOSTIC Neptuno additions on the Silverblue GNOME base.
+# Silverblue supplies the kernel, drivers, firmware, GNOME desktop, audio,
+# graphics, portals, Flatpak, and other desktop fundamentals.
 # shellcheck source=/dev/null
 source /ctx/build/scripts/package-lib.sh
 
@@ -48,7 +49,7 @@ echo "::endgroup::"
 
 echo "::group:: ZRAM + Firmware Updates"
 
-# Compressed swap — zram0 sized min(ram, 8192).
+# Silverblue's zram generator — zram0 sized min(ram, 8192).
 # System location so it survives /etc reset; users can override in /etc.
 cat >/usr/lib/systemd/zram-generator.conf <<'EOF'
 [zram0]

@@ -22,7 +22,7 @@
 
 ### 3. Configure the Release Branch
 
-`main` is the only release branch and publishes the `:stable` image tag.
+`main` is the only release branch and publishes the `:stable-daily` image tag.
 Configure branch protection for `main` to require the validation checks that
 fit your repository.
 
@@ -80,7 +80,7 @@ Renovate targets `main`.
 
 After a successful `main` build, deploy the published image:
 ```bash
-sudo bootc switch --transport registry ghcr.io/YOUR_USERNAME/YOUR_REPO:stable
+sudo bootc switch --transport registry ghcr.io/YOUR_USERNAME/YOUR_REPO:stable-daily
 sudo systemctl reboot
 ```
 
@@ -95,7 +95,7 @@ secrets to configure. After the first green build, verify the signature:
 cosign verify \
   --certificate-identity-regexp="https://github.com/YOUR_USERNAME/YOUR_REPO/.github/workflows/" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/YOUR_USERNAME/YOUR_REPO:stable
+  ghcr.io/YOUR_USERNAME/YOUR_REPO:stable-daily
 ```
 
 To disable signing (not recommended), comment out the `Sign and publish`
