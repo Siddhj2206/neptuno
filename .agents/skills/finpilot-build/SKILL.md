@@ -63,11 +63,12 @@ release, update both the `FEDORA_MAJOR_VERSION` ARG and the base image tag.
 
 ### Manifest-driven package rules
 
-- **Packages live in `build/packages/*.toml`** (manifest of record + post-install assert gate) — never `dnf5 install <name>` loose in a script. Consumer scripts call `install_fedora_section` / `install_copr_sections` from `build/scripts/package-lib.sh`.
+- **Packages live in `build/packages/*.toml`** (manifest of record + post-install assert gate) — never `dnf5 install <name>` loose in a script. Consumer scripts call `install_fedora_section`, `install_copr_sections`, or `remove_fedora_section` from `build/scripts/package-lib.sh`. A `[remove]` list is idempotent: it removes only packages present in the base, then asserts every requested name is absent.
 - **tmux/gum ship via `base.toml`**: tmux smoke-tests that the DNF cache is warm, gum is required by the ujust recipes' interactive prompts. Do not remove.
 - Always use `dnf5` — never `dnf`, `yum`, or `rpm-ostree`
 - Always use `dnf5 install -y` (non-interactive)
 - COPR: `install_copr_sections` enables → installs per `["copr:owner/project"]` section; `clean-stage.sh` removes all `_copr*.repo` files. Never ship an enabled COPR.
+- `10-build.sh` copies custom unit presets after its initial `systemctl --global preset-all`. A later layer may apply presets again, so every custom user service that must remain enabled needs an explicit `custom/files/usr/lib/systemd/user-preset/*.preset` `enable` rule; a prior `systemctl --global enable` alone can be reversed by `99-default-disable.preset`.
 
 ### Compositor / GPU layers
 

@@ -11,6 +11,21 @@ source /ctx/build/scripts/package-lib.sh
 
 PKGS_TOML=/ctx/build/packages/base.toml
 
+echo "::group:: Remove Fedora Desktop Defaults"
+
+# The [remove] manifest section is the source of truth. It deliberately keeps
+# fedora-logos: without a replacement, DNF removes GDM and GNOME Shell.
+remove_fedora_section "${PKGS_TOML}" "Fedora desktop defaults"
+
+echo "::endgroup::"
+
+echo "::group:: Install Homebrew Build Prerequisites"
+
+# Homebrew's Fedora prerequisite (the Fedora equivalent of build-essential).
+install_fedora_groups "${PKGS_TOML}" fedora "Homebrew build prerequisites"
+
+echo "::endgroup::"
+
 echo "::group:: Install Base Packages"
 
 install_fedora_section "${PKGS_TOML}" "base packages"

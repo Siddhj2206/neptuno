@@ -5,7 +5,9 @@
 # Triggered by user-setup.hooks.d/30-groups.sh via pkexec
 # ublue-privileged-setup (common's polkit bridge). Naturally idempotent —
 # no version-gating needed. Group entries that the image RPMs did not
-# create are appended from /usr/lib/group (bluefin pattern).
+# create are appended from /usr/lib/group (bluefin pattern). Users come from
+# NSS rather than only /etc/passwd so accounts supplied by an identity source
+# other than local files are enrolled too.
 
 set -euo pipefail
 
@@ -20,7 +22,7 @@ for g in docker libvirt; do
     append_group "${g}"
 done
 
-mapfile -t USERS < <(awk -F: '$3 >= 1000 && $3 < 65534 { print $1 }' /etc/passwd)
+mapfile -t USERS < <(getent passwd | awk -F: '$3 >= 1000 && $3 < 65534 { print $1 }')
 for u in "${USERS[@]}"; do
     usermod -aG docker,libvirt "${u}" 2>/dev/null || true
 done

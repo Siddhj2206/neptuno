@@ -12,7 +12,30 @@
 # NetworkManager, Flatpak, firmware updates, and zram. Keep only Neptuno's
 # additions here. Multimedia is in multimedia.toml; Niri/DMS is in niri.toml.
 
+# Remove the Fedora desktop defaults replaced by Neptuno's Flatpak-first
+# application set. Keep fedora-logos out of this list: removing it would also
+# remove GDM through its system-logo dependency.
+[remove]
+packages = [
+    "default-fonts-cjk-sans",
+    "fedora-bookmarks",
+    "fedora-chromium-config",
+    "fedora-chromium-config-gnome",
+    "fedora-third-party",
+    "firefox",
+    "firefox-langpacks",
+    "gnome-shell-extension-background-logo",
+    "gnome-software",
+    "gnome-software-rpm-ostree",
+    "google-noto-sans-cjk-vf-fonts",
+    "ptyxis",
+    "totem-video-thumbnailer",
+    "yelp",
+]
+
 [fedora]
+# Fedora's build-essential equivalent; installs gcc and therefore /usr/bin/cc.
+groups = ["c-development"]
 packages = [
     # --- fonts --------------------------------------------------------------
     "adwaita-fonts-all",
@@ -49,6 +72,7 @@ packages = [
     "solaar-udev",                   # Logitech devices (udev rules only)
 
     # --- apps / helpers ------------------------------------------------------
+    "nautilus-python",               # Python extension support for Nautilus
     "waypipe",
     "distrobox",                 # dev container workflow (bluefin standard)
     "cava",

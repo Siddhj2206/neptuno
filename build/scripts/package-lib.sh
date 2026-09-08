@@ -20,6 +20,47 @@ install_fedora_section() {
 	assert_packages_present "${label}" "${packages[@]}"
 }
 
+# Install DNF package groups declared in a manifest section. DNF resolves a
+# group's package membership from the pinned Fedora repositories.
+install_fedora_groups() {
+	local manifest="$1"
+	local section="$2"
+	local label="$3"
+	local -a groups
+
+	readarray -t groups < <("${READ_PKGS}" "${manifest}" "${section}" groups)
+	if [[ ${#groups[@]} -eq 0 ]]; then
+		echo "${label}: no package groups declared."
+		return 0
+	fi
+
+	dnf5 group install -y "${groups[@]}"
+	echo "${label}: ${#groups[@]} groups installed."
+}
+
+# Remove packages from a manifest section. Only currently installed packages
+# enter the transaction, so a future Silverblue base that already drops an
+# entry does not make the image build fail. Assert every requested package is
+# absent afterwards.
+remove_fedora_section() {
+	local manifest="$1"
+	local label="$2"
+	local -a requested installed
+	local package
+
+	readarray -t requested < <("${READ_PKGS}" "${manifest}" remove)
+	for package in "${requested[@]}"; do
+		rpm -q "${package}" >/dev/null 2>&1 && installed+=("${package}")
+	done
+	if [[ ${#installed[@]} -eq 0 ]]; then
+		echo "${label}: no matching packages installed."
+		return 0
+	fi
+
+	dnf5 remove -y "${installed[@]}"
+	assert_packages_absent "${label}" "${requested[@]}"
+}
+
 # Install every ["copr:<owner>/<project>"] section of a manifest. ALL COPRs
 # are enabled FIRST, then every section's packages install in ONE
 # transaction: the explicit args win candidate selection, so cross-COPR
@@ -83,6 +124,24 @@ assert_packages_present() {
 		return 1
 	fi
 	echo "${label}: $# packages present."
+}
+
+# Assert every package argument is absent; first arg is a human label.
+assert_packages_absent() {
+	local label="$1"
+	shift
+	local remaining=()
+	local package
+
+	for package in "$@"; do
+		rpm -q "${package}" >/dev/null 2>&1 && remaining+=("${package}")
+	done
+
+	if [[ ${#remaining[@]} -gt 0 ]]; then
+		echo "ERROR: ${label} failed to remove: ${remaining[*]}" >&2
+		return 1
+	fi
+	echo "${label}: $# packages absent."
 }
 
 # Assert every package argument is provided by the given RPM VENDOR string —
