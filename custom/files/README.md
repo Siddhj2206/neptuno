@@ -30,5 +30,7 @@ custom/files/
 - Symlinks are preserved as-is (e.g. the DMS wants symlink); targets must be
   absolute paths. A target that dangles in git is expected when it ships via
   RPM at build time (dms.service arrives with the COPR package).
+- To change an inherited systemd unit's ordering, add a drop-in under
+  `usr/lib/systemd/system/<unit>.service.d/`; do not copy the whole unit.
 - Scripts (40-niri.sh) still do the *dynamic* parts: enabling units,
   `glib-compile-schemas`, `set-default graphical.target`.
