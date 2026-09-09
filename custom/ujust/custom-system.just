@@ -1,12 +1,10 @@
 # vim: set ft=make :
 # neptuno — DMS helpers
 
-# Restore DMS configs from system defaults (skel) to this user's home.
-# Existing files are backed up with a timestamp before being replaced.
-# Ported from siddhj2206/neptuno.
-# Manual counterpart of the automatic 25-skel-config.sh login hook (which is
-# version-gated and silent): run this to re-apply skel onto an EXISTING user
-# (rebasers, config resets). The hook covers fresh logins; this covers hands.
+# Restore Niri, Ghostty, and DMS configs from system defaults (skel) to this
+# user's home. Existing files are backed up with a timestamp before replacement.
+# This is intentionally the only way to apply these defaults to an existing
+# user; image updates and logins never overwrite user configuration.
 install-dms-config:
     #!/usr/bin/bash
     set -euo pipefail
@@ -93,6 +91,45 @@ install-dms-config:
             echo "  $b"
         done
     fi
+
+# Add the invoking user to the Docker and libvirt groups.
+# Group membership is never changed automatically; log out and back in afterward.
+[group('System')]
+add-dev-groups:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    USER_NAME="$(id -un)"
+    REQUIRED_GROUPS=(docker libvirt)
+    MISSING_GROUPS=()
+
+    for group in "${REQUIRED_GROUPS[@]}"; do
+        if ! getent group "${group}" >/dev/null; then
+            echo "Error: required group '${group}' does not exist"
+            exit 1
+        fi
+
+        if ! id -nG "${USER_NAME}" | grep -qw "${group}"; then
+            MISSING_GROUPS+=("${group}")
+        fi
+    done
+
+    if [[ ${#MISSING_GROUPS[@]} -eq 0 ]]; then
+        echo "${USER_NAME} already has Docker and libvirt access."
+        exit 0
+    fi
+
+    if command -v gum >/dev/null 2>&1; then
+        if ! gum confirm "Add ${USER_NAME} to: ${MISSING_GROUPS[*]}?"; then
+            echo "Cancelled."
+            exit 0
+        fi
+    fi
+
+    GROUP_LIST="$(IFS=,; echo "${MISSING_GROUPS[*]}")"
+    sudo usermod --append --groups "${GROUP_LIST}" "${USER_NAME}"
+    echo "Added ${USER_NAME} to: ${MISSING_GROUPS[*]}"
+    echo "Log out and back in before using Docker or libvirt without sudo."
 
 # Show release changelogs for the running image (bctl first, else GitHub).
 # Neptuno release changelog lookup.

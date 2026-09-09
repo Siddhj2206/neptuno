@@ -29,4 +29,6 @@ custom/config/
 - Keep the tree a faithful mirror of `~`: use `.config/…` paths, never
   absolute paths.
 - Files land in `/etc/skel` — new users get them; existing users are NOT
-  overwritten (their `~` wins).
+  overwritten (their `~` wins). To copy the Niri, Ghostty, and DMS defaults to
+  an existing user, explicitly run `ujust install-dms-config`; image updates
+  and logins never apply them automatically.

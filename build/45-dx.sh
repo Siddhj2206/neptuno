@@ -9,9 +9,8 @@ set -euo pipefail
 #
 # Daemons are socket-activated — nothing runs at boot until first use.
 #
-# Group membership (docker/libvirt) is automatic: the ublue setup hooks
-# (user-setup.hooks.d/30-groups.sh -> privileged-setup.hooks.d/10-groups.sh)
-# enroll every human user at login (bluefin devmode pattern).
+# Group membership is opt-in through `ujust add-dev-groups`; the recipe adds
+# the invoking user to docker and libvirt after explicit confirmation.
 ###############################################################################
 
 # Source helper functions

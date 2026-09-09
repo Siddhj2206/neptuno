@@ -13,7 +13,8 @@
 #
 # The docker group is declared in sysusers.d via
 # custom/files/usr/lib/sysusers.d/docker.conf (docker-ce's %pre groupadd
-# trips bootc lint otherwise).
+# trips bootc lint otherwise); users explicitly enroll with
+# `ujust add-dev-groups`.
 #
 # Sources: pre-Pluto Neptuno DX layer and a 2026-08-29 package audit.
 #   - docker lives HERE (not brew): brew's docker formula is CLI-only — no

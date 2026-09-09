@@ -36,9 +36,10 @@ Niri/DMS session. Manifests of record live in `build/packages/*.toml`.
 
 ### Configuration Changes
 
-- ublue user+privileged setup hooks (wheel/docker/libvirt group enrollment,
-  skel config restore) — `custom/files/usr/share/ublue-os/`
-- ujust recipes: `install-dms-config`, `changelogs`
+- ublue setup hooks for inherited runtime setup — `custom/files/usr/share/ublue-os/`
+- ujust recipes: `install-dms-config` (the only way to apply Niri/Ghostty/DMS
+  defaults to an existing user), `add-dev-groups` (opt in to Docker/libvirt
+  access), `changelogs`
   (`custom/ujust/custom-system.just`)
 
 _Last updated: 2026-09-05_
