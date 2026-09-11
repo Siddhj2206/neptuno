@@ -32,6 +32,15 @@ install_fedora_section "${PKGS_TOML}" "base packages"
 
 echo "::endgroup::"
 
+echo "::group:: Install Tailscale"
+
+install_third_party_repo_section \
+	"${PKGS_TOML}" \
+	"third-party:tailscale-stable" \
+	"Tailscale"
+
+echo "::endgroup::"
+
 echo "::group:: Install COPR Packages"
 
 # ghostty from the scottames/ghostty COPR (base.toml ["copr:..."] section).

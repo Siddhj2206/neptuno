@@ -120,18 +120,34 @@ always the project name: docker-ce* report `Docker`, but `containerd.io`
 reports an EMPTY vendor (containerd project packaging) and must be
 presence-asserted instead (2026-08-29 build failure).
 
-## Third-Party Repos: layer script + TOML section
+## Third-Party Repos: manifest section + shared helper
 
-For docker-ce style third-party repos, follow the 45-dx.sh pattern.
+For packages that must come from a vendor repository, declare a
+`["third-party:<repo-id>"]` section in the owning layer manifest and call
+`install_third_party_repo_section`. This keeps the repository URL, package
+set, expected packager, and cleanup filename together:
 
-**Pattern:**
+```toml
+["third-party:vendor-stable"]
+repo_url = "https://vendor.example/fedora/vendor.repo"
+repo_id = "vendor-stable"
+repo_file = "vendor.repo"
+packager = "Vendor Inc"
+packages = ["vendor-package"]
+```
 
-1. Add GPG key (if required)
-2. Create repo file in `/etc/yum.repos.d/`
-3. `dnf5 install -y` the package(s)
-4. **CRITICAL**: Remove the repo file at end of script (unless the repo is an intentional exception like negativo17 multimedia, which stays enabled)
+The helper:
 
-See `build/45-dx.sh` (docker-ce) for the complete working pattern.
+1. Adds the signed repository from `repo_url`.
+2. Installs `packages` with `dnf5 install --from-repo=<repo_id>`.
+3. Verifies every package is present and its RPM Packager contains `packager`.
+4. Disables and removes `repo_file` so the final image cannot update from it
+   outside a new image build.
+
+Prefer `assert_vendor` only when the trusted RPM's `%{VENDOR}` field is
+populated. Tailscale leaves that field empty, so the helper uses `%{PACKAGER}`
+instead. Repositories intended to remain in the image (for example,
+negativo17 multimedia) are exceptions and keep their dedicated layer flow.
 
 ## Runtime Brew: `custom/brew/*.Brewfile`
 

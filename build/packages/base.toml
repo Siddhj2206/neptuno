@@ -55,7 +55,6 @@ packages = [
 
     # --- networking / hardware ----------------------------------------------
     "firewall-config",               # firewall GUI (pulls firewalld; bluefin ships it)
-    "tailscale",                     # private overlay network (used on neptuno)
     "brightnessctl",
     "playerctl",
     "NetworkManager-tui",
@@ -95,6 +94,17 @@ packages = [
     "gum",                           # ujust interactive prompts dependency
     "just",                          # ujust recipe runner (ujust wrapper execs this binary)
     "tmux",                          # dnf cache smoke test (moved from 10-build.sh)
+]
+
+# Official Tailscale stable repository. The repo is used only while building;
+# install_third_party_repo_section removes its file before the image ships.
+["third-party:tailscale-stable"]
+repo_url = "https://pkgs.tailscale.com/stable/fedora/tailscale.repo"
+repo_id = "tailscale-stable"
+repo_file = "tailscale.repo"
+packager = "Tailscale Inc"
+packages = [
+    "tailscale",                     # private overlay network (used on neptuno)
 ]
 
 # --- default terminal (COPR) ------------------------------------------------

@@ -108,6 +108,31 @@ install_copr_sections() {
 	echo "All COPR packages present."
 }
 
+# Install packages from a named [third-party:<repo-id>] manifest section, then
+# remove the repository definition so the final image cannot update from it
+# outside a newly built image. Metadata and package source assertions are read
+# from the manifest rather than hard-coded in the calling layer.
+install_third_party_repo_section() {
+	local manifest="$1"
+	local section="$2"
+	local label="$3"
+	local repo_url repo_id repo_file packager
+	local -a packages
+
+	repo_url="$("${READ_PKGS}" "${manifest}" "${section}" repo_url)"
+	repo_id="$("${READ_PKGS}" "${manifest}" "${section}" repo_id)"
+	repo_file="$("${READ_PKGS}" "${manifest}" "${section}" repo_file)"
+	packager="$("${READ_PKGS}" "${manifest}" "${section}" packager)"
+	readarray -t packages < <("${READ_PKGS}" "${manifest}" "${section}")
+
+	dnf5 config-manager addrepo --from-repofile="${repo_url}"
+	dnf5 install -y --from-repo="${repo_id}" "${packages[@]}"
+	assert_packages_present "${label}" "${packages[@]}"
+	assert_packager "${label}" "${packager}" "${packages[@]}"
+	dnf5 config-manager setopt "${repo_id}.enabled=0"
+	rm -f "/etc/yum.repos.d/${repo_file}"
+}
+
 # Assert every package argument is installed; first arg is a human label.
 assert_packages_present() {
 	local label="$1"
@@ -162,4 +187,25 @@ assert_vendor() {
 		return 1
 	fi
 	echo "${label}: all $# packages from ${vendor}."
+}
+
+# Assert every package argument came from an expected RPM Packager substring.
+# Some trusted third-party RPMs (including Tailscale) intentionally leave the
+# RPM Vendor field empty, so vendor assertions cannot establish their source.
+assert_packager() {
+	local label="$1"
+	local packager="$2"
+	shift 2
+	local mismatched=()
+	local pkg
+
+	for pkg in "$@"; do
+		rpm -q --qf "%{NAME} %{PACKAGER}\n" "${pkg}" | grep -Fq "${packager}" || mismatched+=("${pkg}")
+	done
+
+	if [[ ${#mismatched[@]} -gt 0 ]]; then
+		echo "ERROR: ${label} not packaged by ${packager}: ${mismatched[*]}" >&2
+		return 1
+	fi
+	echo "${label}: all $# packages packaged by ${packager}."
 }

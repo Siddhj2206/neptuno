@@ -2,7 +2,7 @@
 """Read package sections from a packages TOML manifest.
 
 Usage:
-  read-packages <manifest.toml> <section> [field]   # print a list field, one per line
+  read-packages <manifest.toml> <section> [field]   # print a list or string field, one per line
   read-packages <manifest.toml> --sections [prefix] # print section names (optionally prefixed)
 
 Exit codes:
@@ -48,8 +48,11 @@ def main() -> int:
 
     field = sys.argv[3] if len(sys.argv) == 4 else "packages"
     entries = manifest[arg2].get(field)
+    if isinstance(entries, str):
+        print(entries)
+        return 0
     if not isinstance(entries, list):
-        print(f"error: section '{arg2}' has no '{field}' list", file=sys.stderr)
+        print(f"error: section '{arg2}' has no '{field}' list or string", file=sys.stderr)
         return 1
 
     for entry in entries:
