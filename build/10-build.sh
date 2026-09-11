@@ -40,6 +40,20 @@ for src in "${COMMON_CHERRY_PICKS[@]}"; do
 	}
 done
 
+# Neptuno has never used legacy rechunker. The common migration unit creates an
+# ordering cycle between local-fs.target and systemd-sysusers.service on systems
+# with separate /var mounts, which can send otherwise healthy boots to emergency
+# mode. Keep a vendor mask so future common overlay updates cannot re-enable it.
+RECHUNKER_UNIT="/usr/lib/systemd/system/rechunker-group-fix.service"
+if [[ -e "${RECHUNKER_UNIT}" || -L "${RECHUNKER_UNIT}" ]]; then
+	systemctl disable rechunker-group-fix.service
+fi
+ln -sfn /dev/null "${RECHUNKER_UNIT}"
+[[ "$(readlink "${RECHUNKER_UNIT}")" == "/dev/null" ]] || {
+	echo "ERROR: failed to mask rechunker-group-fix.service" >&2
+	exit 1
+}
+
 # presets for uupd, flatpak, brew (output kept visible: a failing preset is
 # signal, but presets may legitimately fail in containers — warn, don't die)
 systemctl preset-all || echo "WARNING: systemctl preset-all exited $?"
