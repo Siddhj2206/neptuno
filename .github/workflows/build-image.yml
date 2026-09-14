@@ -148,6 +148,20 @@ jobs:
 
       # OPTIONAL: Set ENABLE_RECHUNKING to "true" above to optimize OTA deltas.
       # This uses OCI-native chunkah and does not require bootc-base-imagectl.
+      #
+      # Workaround: bootc-build/chunka creates its config temp file as the runner
+      # user in sticky /var/tmp, then writes it with `sudo tee`. The kernel's
+      # fs.protected_regular check refuses an O_CREAT open of a file root does not
+      # own in a sticky world-writable dir, so rechunk dies with
+      # "tee: /var/tmp/chunkah-config.XXXXXX.json: Permission denied" before
+      # chunkah runs. Upstream fix is to create the file with `sudo mktemp`.
+      # Remove this step once projectbluefin/actions ships that fix and the pin
+      # moves past it.
+      - name: Relax fs.protected_regular for chunkah
+        if: env.ENABLE_RECHUNKING == 'true' && github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        shell: bash
+        run: sudo sysctl -w fs.protected_regular=0
+
       - name: Rechunk image
         if: env.ENABLE_RECHUNKING == 'true' && github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         id: rechunk-image
