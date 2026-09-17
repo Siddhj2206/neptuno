@@ -28,7 +28,7 @@
 #    - @ublue-os/brew - Homebrew integration
 #
 # 2. Base Image (edit the FROM line below):
-#    `quay.io/fedora-ostree-desktops/silverblue:45` (Fedora Silverblue with
+#    `quay.io/fedora-ostree-desktops/silverblue:44` (Fedora Silverblue with
 #    GNOME/GDM; Niri is added as a second session)
 #
 # See: https://docs.projectbluefin.io/contributing/ for architecture diagram
@@ -51,13 +51,13 @@ COPY --from=brew /system_files /oci/brew
 
 # Base Image - Fedora Silverblue supplies the supported GNOME/GDM desktop stack.
 # Niri is added as a second Wayland session by build/40-niri.sh.
-FROM quay.io/fedora-ostree-desktops/silverblue:45@sha256:045211476d12282c19a108eb3cab98e14352299b935e1fb85760ba40f3e80dd5
+FROM quay.io/fedora-ostree-desktops/silverblue:44@sha256:ece43ccc720223cc4946b72369873bc107be0a16404cd424e5c3e7824b659eea
 
 ARG IMAGE_NAME="neptuno"
 ARG IMAGE_VENDOR="siddhj2206"
 ARG UBLUE_IMAGE_TAG="stable"
 ARG BASE_IMAGE_NAME="silverblue"
-ARG FEDORA_MAJOR_VERSION="45"
+ARG FEDORA_MAJOR_VERSION="44"
 ARG VERSION=""
 ARG SHA_HEAD_SHORT=""
 
