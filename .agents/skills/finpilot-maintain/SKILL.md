@@ -164,7 +164,8 @@ digest-only PRs. If Renovate stops creating PRs, run the Renovate section of
 ### Annually
 
 - Review and bump Fedora major version (if desired)
-- Update `FEDORA_MAJOR_VERSION` ARG in `Containerfile`
+- Update the base-image `FROM` tag **and** the `FEDORA_MAJOR_VERSION` ARG together in `Containerfile` (supply the new index digest when changing the tag; Renovate owns it afterwards)
+- Probe third-party repos for the new major before pushing: COPRs (`.../results/<owner>/<project>/fedora-<N>-x86_64/`) and negativo17 serve Branched majors, but **Docker's Fedora repo is GA-only** and 404s on a pre-GA base — see `finpilot-troubleshooting`
 - Test full build and deployment cycle
 - Review and update documentation (`README.md`, `AGENTS.md`, skills)
 

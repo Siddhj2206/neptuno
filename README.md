@@ -206,7 +206,7 @@ improvements with every future finpilot user.
 Choose your base image in `Containerfile` (the `FROM` line):
 
 ```dockerfile
-FROM quay.io/fedora-ostree-desktops/silverblue:44@sha256:...
+FROM quay.io/fedora-ostree-desktops/silverblue:45@sha256:...
 ```
 
 Neptuno layers Niri/DMS on the Silverblue GNOME base. The Fedora major is
@@ -347,7 +347,7 @@ This template follows the **multi-stage build architecture** from @projectbluefi
 
 **Stage 2: Base Image** — Fedora Silverblue (digest-pinned):
 
-- `quay.io/fedora-ostree-desktops/silverblue:44` (Fedora F44 with GNOME/GDM;
+- `quay.io/fedora-ostree-desktops/silverblue:45` (Fedora F45 with GNOME/GDM;
   Neptuno adds Niri/DMS as another desktop session)
 
 ### Benefits of This Architecture
