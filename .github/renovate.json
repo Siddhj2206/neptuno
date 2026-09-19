@@ -53,6 +53,13 @@
       "matchDepNames": ["quay.io/fedora-ostree-desktops/silverblue"],
       "matchUpdateTypes": ["major"],
       "enabled": false
+    },
+    {
+      "description": "Pin the GitHub runner major — projectbluefin setup-runner only supports ubuntu-24.04",
+      "matchManagers": ["github-runner"],
+      "matchDepNames": ["ubuntu"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
     }
   ]
 }
