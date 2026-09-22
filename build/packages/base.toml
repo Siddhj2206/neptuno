@@ -34,9 +34,27 @@ packages = [
 ]
 
 [fedora]
-# Fedora's build-essential equivalent; installs gcc and therefore /usr/bin/cc.
-groups = ["c-development"]
 packages = [
+    # --- build toolchain (Homebrew source builds) ---------------------------
+    # Declared explicitly instead of pulling the c-development group (~350 MB
+    # with deps). Dropped from that group: valgrind, perf, strace, gdb, ltrace
+    # (debuggers/profilers) and ccache, cscope, ctags, indent, byacc (dev
+    # conveniences) — brew never uses them. gcc provides /usr/bin/cc; gcc-c++
+    # covers C++ source builds; autotools/bison/flex cover autotools ones.
+    "gcc",                           # C compiler (provides /usr/bin/cc)
+    "gcc-c++",                       # C++ source builds
+    "glibc-devel",                   # libc headers
+    "binutils",                      # ld, as
+    "make",
+    "pkgconf",                       # pkg-config for configure scripts
+    "autoconf",                      # autotools source builds
+    "automake",
+    "libtool",
+    "m4",
+    "bison",
+    "flex",
+    "patch",                         # some formulae patch their sources
+
     # --- fonts --------------------------------------------------------------
     "adwaita-fonts-all",
     "jetbrains-mono-fonts-all",      # dev fonts (ported from neptuno)

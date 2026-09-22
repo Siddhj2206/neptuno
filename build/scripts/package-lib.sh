@@ -20,24 +20,6 @@ install_fedora_section() {
 	assert_packages_present "${label}" "${packages[@]}"
 }
 
-# Install DNF package groups declared in a manifest section. DNF resolves a
-# group's package membership from the pinned Fedora repositories.
-install_fedora_groups() {
-	local manifest="$1"
-	local section="$2"
-	local label="$3"
-	local -a groups
-
-	readarray -t groups < <("${READ_PKGS}" "${manifest}" "${section}" groups)
-	if [[ ${#groups[@]} -eq 0 ]]; then
-		echo "${label}: no package groups declared."
-		return 0
-	fi
-
-	dnf5 group install -y "${groups[@]}"
-	echo "${label}: ${#groups[@]} groups installed."
-}
-
 # Remove packages from a manifest section. Only currently installed packages
 # enter the transaction, so a future Silverblue base that already drops an
 # entry does not make the image build fail. Assert every requested package is

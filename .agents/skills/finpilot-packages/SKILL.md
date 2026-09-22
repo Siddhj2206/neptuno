@@ -77,6 +77,7 @@ install_fedora_section "${PKGS_TOML}" "base packages"
 - Always use `-y` flag for non-interactive installs
 - For COPR packages, add a `["copr:owner/project"]` section — `install_copr_sections` (in `build/scripts/package-lib.sh`) enables → installs; `clean-stage.sh` removes all COPR repo files
 - One transaction per section for efficient layer caching
+- **Prefer explicit packages over comps groups.** Groups are not `rpm -q`-verifiable (the assert gate cannot check membership) and pull extras — the `c-development` group dragged valgrind/perf/strace/gdb (~55 MB) that brew never uses. Declare the toolchain explicitly (see the Homebrew toolchain block in `base.toml`). The `groups = [...]` field and `install_fedora_groups` helper were removed with that change
 
 ## COPR: `install_copr_sections`
 

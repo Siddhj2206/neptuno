@@ -19,13 +19,6 @@ remove_fedora_section "${PKGS_TOML}" "Fedora desktop defaults"
 
 echo "::endgroup::"
 
-echo "::group:: Install Homebrew Build Prerequisites"
-
-# Homebrew's Fedora prerequisite (the Fedora equivalent of build-essential).
-install_fedora_groups "${PKGS_TOML}" fedora "Homebrew build prerequisites"
-
-echo "::endgroup::"
-
 echo "::group:: Install Base Packages"
 
 install_fedora_section "${PKGS_TOML}" "base packages"
