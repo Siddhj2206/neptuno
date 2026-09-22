@@ -55,10 +55,6 @@ packages = [
     "flex",
     "patch",                         # some formulae patch their sources
 
-    # --- fonts --------------------------------------------------------------
-    "adwaita-fonts-all",
-    "jetbrains-mono-fonts-all",      # dev fonts (ported from neptuno)
-
     # --- terminal integration -----------------------------------------------
     "xdg-terminal-exec",
 
