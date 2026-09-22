@@ -6,9 +6,10 @@ explicitly added to the Containerfile.
 
 ## How It Works
 
-Scripts are named with a number prefix (`00-`, `10-`, `20-`, `25-`, `40-`,
-`45-`) and run in ascending order during the container build process. Each script is one
-**layer**: metadata, overlays, wm-agnostic packages, multimedia, the compositor, dx.
+Scripts are named with a number prefix (`00-`, `10-`, `20-`, `25-`, `40-`)
+and run in ascending order during the container build process. Each script is
+one **layer**: metadata, overlays, wm-agnostic packages, multimedia, the
+compositor.
 
 ## Included Scripts
 
@@ -17,19 +18,18 @@ Scripts are named with a number prefix (`00-`, `10-`, `20-`, `25-`, `40-`,
 - **`20-base.sh`** - WM-agnostic Neptuno additions (device, network, developer, terminal, and font packages) from `packages/base.toml`; COPR sections installed per-repo; wm-agnostic
 - **`25-multimedia.sh`** - Full multimedia (ffmpeg + non-FOSS codecs, mesa/VA overrides) from the negativo17 `fedora-multimedia` repo via `packages/multimedia.toml`; wm-agnostic
 - **`40-niri.sh`** - Compositor layer: niri + DMS stack from `packages/niri.toml` + dynamic wiring (greeter, first-boot units, schemas); **wm-specific — renumber/replace for a different compositor**
-- **`45-dx.sh`** - DX layer: android-tools (adb/fastboot) from `packages/dx.toml`; wm-agnostic
 - `clean-stage.sh` - Cleanup stage (build artifacts, final image hygiene)
-- `packages/` - TOML manifests (the "manifest of record": `base.toml`, `firmware.toml`, `multimedia.toml`, `niri.toml`, `dx.toml`)
+- `packages/` - TOML manifests (the "manifest of record": `base.toml`, `firmware.toml`, `multimedia.toml`, `niri.toml`)
 - `scripts/` - Shared helpers (`read-packages`, `package-lib.sh`)
 
 ## Creating Your Own Scripts
 
 Create numbered scripts between the layers above (e.g. `30-…` for a
-wm-agnostic app layer, `45-…` for compositor extras):
+wm-agnostic app layer):
 
 ```bash
 # 30-development.sh - Development tools (wm-agnostic)
-# 45-niri-extra.sh   - Compositor-specific extras
+# 45-extras.sh       - Additional packages (wm-agnostic)
 ```
 
 ### Script Template

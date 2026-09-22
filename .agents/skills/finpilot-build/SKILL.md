@@ -25,7 +25,7 @@ description: >-
 1. **Identify which `FROM` line or ARG drives your change**
 2. **All image digests** are pinned directly in `Containerfile` `FROM` lines; Renovate updates them
 3. **Run `just build`** locally before opening a PR; `just lint` to shellcheck
-4. **Add `00-` prefix** for metadata scripts, `10-` for overlay/wiring, `20-` for base packages, `25-` for multimedia, `40-` for compositor, `45-` for dx; `clean-stage.sh` always last
+4. **Add `00-` prefix** for metadata scripts, `10-` for overlay/wiring, `20-` for base packages, `25-` for multimedia, `40-` for compositor; `clean-stage.sh` always last
 
 ## Image Pinning Pattern
 
@@ -58,7 +58,6 @@ release, update both the `FEDORA_MAJOR_VERSION` ARG and the base image tag.
 | `20-base.sh`       | WM-agnostic desktop foundation from `build/packages/base.toml` + `firmware.toml`                         |
 | `25-multimedia.sh` | negativo17 multimedia + mesa overrides (versionlocked) from `build/packages/multimedia.toml`                   |
 | `40-niri.sh`       | Compositor layer (niri + DMS, COPRs) from `build/packages/niri.toml`                                           |
-| `45-dx.sh`         | Dev stack (android-tools/adb) from `build/packages/dx.toml`                                                     |
 | `clean-stage.sh`   | Always runs last: reverts `keepcache`, removes COPR repo files (keeps mesa versionlocks), disables fedora flatpak repo, clears artefacts |
 
 ### Manifest-driven package rules

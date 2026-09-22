@@ -69,7 +69,7 @@ links lives in `.agents/skills/README.md`.
 7. **NEVER** push massive changes or feature adds directly to `main` — they require a PR with passing `validate` check; small fixes and routine chores may push directly to `main`
 8. **ALWAYS** confirm with user before deviating from @ublue-os/bluefin patterns
 9. **ALWAYS** run shellcheck/YAML validation before committing
-10. **ALWAYS** follow numbered script convention: `00-`, `10-`, `20-`, `25-`, `40-`, `45-` (+ `clean-stage.sh` last)
+10. **ALWAYS** follow numbered script convention: `00-`, `10-`, `20-`, `25-`, `40-` (+ `clean-stage.sh` last)
 11. **ALWAYS** validate that new Flatpak IDs exist on Flathub before adding
 12. **NEVER** modify validation workflows without understanding impact on PR checks
 

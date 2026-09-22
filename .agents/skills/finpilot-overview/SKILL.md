@@ -48,7 +48,6 @@ customised here for a Hummingbird base + niri/DMS desktop:
 │    RUN /ctx/build/20-base.sh         (base packages)        │
 │    RUN /ctx/build/25-multimedia.sh   (multimedia)           │
 │    RUN /ctx/build/40-niri.sh         (compositor)           │
-│    RUN /ctx/build/45-dx.sh           (dev stack)            │
 │    RUN /ctx/build/clean-stage.sh     (pre-lint cleanup)     │
 │    RUN bootc container lint --fatal-warnings                │
 └─────────────────────────────────────────────────────────────┘
@@ -59,13 +58,12 @@ customised here for a Hummingbird base + niri/DMS desktop:
 ```
 ├── Containerfile          # Multi-stage build definition (base + OCI context image pins)
 ├── Justfile               # Local build automation
-├── build/                 # Build-time scripts (00/10/20/25/40/45 + clean)
+├── build/                 # Build-time scripts (00/10/20/25/40 + clean)
 │   ├── 00-image-info.sh   # image-info.json + os-release branding
 │   ├── 10-build.sh        # OCI overlays + custom tree wiring (no dnf)
 │   ├── 20-base.sh         # WM-agnostic base packages (base.toml)
 │   ├── 25-multimedia.sh   # negativo17 multimedia (multimedia.toml)
 │   ├── 40-niri.sh         # Compositor layer (niri.toml)
-│   ├── 45-dx.sh           # Dev stack (dx.toml)
 │   ├── packages/          # TOML manifests of record (one per layer)
 │   ├── scripts/           # package-lib.sh + read-packages helpers
 │   └── clean-stage.sh     # Pre-lint artifact cleanup (disables COPRs)

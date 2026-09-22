@@ -55,7 +55,7 @@ section in `build/packages/base.toml`).
 
 When adding a new pattern that others might reuse, create an `.example` file:
 
-1. **Name it** with the correct prefix: `40-` for compositor/desktop layers, `45-` for dev-stack style extras
+1. **Name it** with the correct prefix: `40-` for compositor/desktop layers, `20-`/`25-`/`30-` for wm-agnostic layers
 2. **Include comments** explaining what it does and how to customize
 3. **Follow conventions**: `set -euo pipefail`, `dnf5`, TOML manifest + `package-lib.sh` helpers, `install_copr_sections` for COPRs
 4. **Add the new example to this skill** so agents discover it
@@ -81,7 +81,7 @@ set -euo pipefail
 
 | Example                      | Shellcheck | Build Test | Additional Validation                   |
 | ---------------------------- | ---------- | ---------- | --------------------------------------- |
-| Third-party repo (`45-*.sh`) | Yes        | Yes        | Verify repo URL accessible              |
+| Third-party repo (`NN-*.sh`) | Yes        | Yes        | Verify repo URL accessible              |
 | Desktop swap (`40-*.sh`)     | Yes        | Yes        | Test in VM (`just run-vm-qcow2`)        |
 | COPR install (TOML section)  | Yes        | Yes        | Verify COPR exists and packages install |
 | NVIDIA GPU (new `40-*.sh`)   | Yes        | Yes        | Test on NVIDIA hardware; verify `nvidia-smi` after boot |

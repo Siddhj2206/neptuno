@@ -18,14 +18,16 @@ Niri/DMS session. Manifests of record live in `build/packages/*.toml`.
 ### Added Packages (Build-time)
 
 - **Base (`base.toml`)**: Neptuno device, network, developer, and terminal
-  additions; YubiKey/FIDO2 tools; Ghostty (COPR); and uupd auto-updates
-  (COPR), on top of Silverblue's existing GNOME desktop stack
+  additions; android-tools (adb/fastboot); YubiKey/FIDO2 tools; Ghostty
+  (COPR); and uupd auto-updates (COPR), on top of Silverblue's existing GNOME
+  desktop stack
 - **Multimedia (`multimedia.toml`)**: negativo17 ffmpeg + full codecs with
   mesa/VA overrides (versionlocked)
 - **Compositor (`niri.toml`)**: Niri and the DMS stack (avengemedia COPRs),
   selectable alongside GNOME in GDM
-- **DX (`dx.toml`)**: android-tools (adb/fastboot); containers are podman, and
-  VMs are not shipped (docker and the libvirt/qemu stack were trimmed for size)
+
+Containers are podman (from the Silverblue base); docker and the libvirt/qemu
+stack are not shipped (trimmed for size).
 
 ### Added Applications (Runtime)
 

@@ -70,6 +70,9 @@ packages = [
     "ifuse",                         # iPhone/iPad mounting (FUSE)
     "solaar-udev",                   # Logitech devices (udev rules only)
 
+    # --- android (adb/fastboot) ----------------------------------------------
+    "android-tools",
+
     # --- apps / helpers ------------------------------------------------------
     "nautilus-python",               # Python extension support for Nautilus
     "waypipe",
