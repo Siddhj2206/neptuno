@@ -190,6 +190,7 @@ in `finpilot-ci`.
 - Adding GUI apps via `dnf5` instead of Flatpak
 - Adding CLI tools to `build/10-build.sh` without considering runtime Brew first
 - Modifying `build/*.example` files without renaming to `.sh`
+- Removing the `niri.toml` Qt theming stack (`qt6ct`, `plasma-breeze`, `kf6-kirigami`, `kf6-qqc2-desktop-style`) as "bloat" — it is the DMS Qt/KDE theming path. `plasma-breeze` is not a base orphan; it is explicitly declared there, and the KF5/KF6 cascade it pulls (~190 MB) is intentional: DMS's `qt6ct` option needs KF6 core (`kf6-kconfig`/`kcolorscheme`/`kiconthemes`) and `kf6-qqc2-desktop-style` themes QML apps. RPM `--whatrequires` shows nothing because the install is manifest-driven, not dependency-driven
 
 ## Verification
 
