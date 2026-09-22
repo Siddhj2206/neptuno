@@ -92,45 +92,6 @@ install-dms-config:
         done
     fi
 
-# Add the invoking user to the Docker and libvirt groups.
-# Group membership is never changed automatically; log out and back in afterward.
-[group('System')]
-add-dev-groups:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    USER_NAME="$(id -un)"
-    REQUIRED_GROUPS=(docker libvirt)
-    MISSING_GROUPS=()
-
-    for group in "${REQUIRED_GROUPS[@]}"; do
-        if ! getent group "${group}" >/dev/null; then
-            echo "Error: required group '${group}' does not exist"
-            exit 1
-        fi
-
-        if ! id -nG "${USER_NAME}" | grep -qw "${group}"; then
-            MISSING_GROUPS+=("${group}")
-        fi
-    done
-
-    if [[ ${#MISSING_GROUPS[@]} -eq 0 ]]; then
-        echo "${USER_NAME} already has Docker and libvirt access."
-        exit 0
-    fi
-
-    if command -v gum >/dev/null 2>&1; then
-        if ! gum confirm "Add ${USER_NAME} to: ${MISSING_GROUPS[*]}?"; then
-            echo "Cancelled."
-            exit 0
-        fi
-    fi
-
-    GROUP_LIST="$(IFS=,; echo "${MISSING_GROUPS[*]}")"
-    sudo usermod --append --groups "${GROUP_LIST}" "${USER_NAME}"
-    echo "Added ${USER_NAME} to: ${MISSING_GROUPS[*]}"
-    echo "Log out and back in before using Docker or libvirt without sudo."
-
 # Show release changelogs for the running image (bctl first, else GitHub).
 # Neptuno release changelog lookup.
 changelogs:

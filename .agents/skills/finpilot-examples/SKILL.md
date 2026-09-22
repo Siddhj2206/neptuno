@@ -45,8 +45,9 @@ The template does not automatically discover numbered scripts. See `build/README
 No `.example` files ship in `build/` — every layer is live. The reference
 implementation for a new layer is `build/40-niri.sh` + `build/packages/niri.toml`:
 a `40-<name>.sh` script consuming a TOML manifest via `package-lib.sh`
-helpers, wired by one explicit Containerfile `RUN` block. The 45-dx.sh
-docker-ce pattern is the reference for third-party repos.
+helpers, wired by one explicit Containerfile `RUN` block. For third-party
+repos, the reference is `install_third_party_repo_section` (the tailscale
+section in `build/packages/base.toml`).
 
 ---
 

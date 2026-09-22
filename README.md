@@ -24,7 +24,8 @@ Niri/DMS session. Manifests of record live in `build/packages/*.toml`.
   mesa/VA overrides (versionlocked)
 - **Compositor (`niri.toml`)**: Niri and the DMS stack (avengemedia COPRs),
   selectable alongside GNOME in GDM
-- **DX (`dx.toml`)**: docker-ce daemon, android-tools, libvirt/qemu host daemon
+- **DX (`dx.toml`)**: android-tools (adb/fastboot); containers are podman, and
+  VMs are not shipped (docker and the libvirt/qemu stack were trimmed for size)
 
 ### Added Applications (Runtime)
 
@@ -36,10 +37,8 @@ Niri/DMS session. Manifests of record live in `build/packages/*.toml`.
 
 ### Configuration Changes
 
-- ublue setup hooks for inherited runtime setup — `custom/files/usr/share/ublue-os/`
 - ujust recipes: `install-dms-config` (the only way to apply Niri/Ghostty/DMS
-  defaults to an existing user), `add-dev-groups` (opt in to Docker/libvirt
-  access), `changelogs`
+  defaults to an existing user), `changelogs`
   (`custom/ujust/custom-system.just`)
 
 _Last updated: 2026-09-05_

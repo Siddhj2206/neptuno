@@ -2,72 +2,23 @@
 #
 # Consumed by build/45-dx.sh via build/scripts/read-packages + package-lib.sh:
 #   [fedora] -> install_fedora_section (one dnf5 transaction + assert)
-#   [docker] -> the docker-ce third-party repo section; 45-dx.sh enables the
-#               official repo, installs, then REMOVES the repo file (updates
-#               ride image rebuilds — unlike multimedia.toml, which
-#               intentionally keeps negativo17 enabled).
 #
 # Scope: host-level dev tooling that wants to be in the image (daemons,
 # device access, system services). User-level CLI tools belong in the
 # Brewfile instead (finpilot-packages rule).
 #
-# The docker group is declared in sysusers.d via
-# custom/files/usr/lib/sysusers.d/docker.conf (docker-ce's %pre groupadd
-# trips bootc lint otherwise); users explicitly enroll with
-# `ujust add-dev-groups`.
+# Containers: podman, buildah, and skopeo ship with the Silverblue base and
+# are the supported runtime here. The docker-ce daemon was removed from the
+# image to keep it light (no dockerd, no docker.socket).
+#
+# Virtualization: the libvirt/qemu host stack was removed too. virt-manager
+# was only ever a Flathub flatpak; install a VM toolchain through a
+# distrobox/toolbox container if you need one.
 #
 # Sources: pre-Pluto Neptuno DX layer and a 2026-08-29 package audit.
-#   - docker lives HERE (not brew): brew's docker formula is CLI-only — no
-#     dockerd daemon. Bluefin's devmode setup has this exact gap (github.com
-#     /ublue-os just/system.just INSTALL_DOCKER=1 -> `brew install docker`).
-#   - virt-manager stays a Flathub flatpak (user installs it); only the host
-#     daemon + client are native (bluefin dx precedent).
-#   - Fedora's libvirt-daemon-qemu requires the qemu meta-package, which pulls
-#     every architecture's system emulator. Use the individual daemon drivers
-#     and x86 QEMU packages instead.
 
 [fedora]
 packages = [
     # --- android (adb/fastboot) ---------------------------------------------
     "android-tools",
-
-    # --- virtualization: x86_64 host daemon (virt-manager is a flatpak) -----
-    "libvirt-client",
-    "libvirt-daemon-driver-interface",
-    "libvirt-daemon-driver-network",
-    "libvirt-daemon-driver-nodedev",
-    "libvirt-daemon-driver-qemu",
-    "libvirt-daemon-driver-secret",
-    "libvirt-daemon-driver-storage-core",
-    "libvirt-daemon-proxy",
-
-    # Explicit x86 VM stack. Do not add qemu, qemu-kvm,
-    # libvirt-daemon-qemu, or qemu-user-binfmt: they pull all-architecture
-    # system or user-mode emulators.
-    "edk2-ovmf",
-    # Fedora provides the historical genisoimage command through mkisofs.
-    # Use the RPM name so the manifest post-install assertion can verify it.
-    "mkisofs",
-    "qemu-char-spice",
-    "qemu-device-display-virtio-gpu",
-    "qemu-device-display-virtio-vga",
-    "qemu-device-usb-redirect",
-    "qemu-img",
-    "qemu-system-x86",
-    "qemu-system-x86-core",
-]
-
-# docker-ce from the official repo: https://download.docker.com/linux/fedora
-# (releasever pinned by the FEDORA_MAJOR_VERSION ARG — fc44 served, verified
-# 2026-08-29). gpgkey https://download.docker.com/linux/fedora/gpg.
-# Origin proof (asserted in 45-dx.sh): docker-ce* carry RPM VENDOR "Docker";
-# containerd.io has an empty vendor but a docker-repo-unique NAME (Fedora
-# ships `containerd`, no `.io` suffix), so presence-assert suffices.
-[docker]
-packages = [
-    "docker-ce",
-    "docker-ce-cli",
-    "containerd.io",
-    "docker-buildx-plugin",
-    "docker-compose-plugin",
 ]

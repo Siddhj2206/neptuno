@@ -33,7 +33,7 @@ description: >-
 | ------------------------------ | ------------------------------------------------------------- | ------------------------------------ |
 | Add a system package (dnf5)    | Append to the layer manifest                                  | `build/packages/<layer>.toml` `[fedora]` |
 | Add a COPR package             | Add a `["copr:owner/project"]` section to the layer manifest  | `build/packages/<layer>.toml`        |
-| Add a third-party repo package | Enable repo → install → remove repo (45-dx.sh docker pattern) | Layer script + `[repo]` TOML section |
+| Add a third-party repo package | `install_third_party_repo_section` (repo removed after install; tailscale pattern) | Layer manifest `["third-party:<id>"]` section |
 | Add a CLI tool (runtime)       | `brew "pkg"`                                                  | `custom/brew/default.Brewfile` (only Brewfile) |
 | Add a GUI app                  | `[Flatpak Preinstall org.app.id]`                             | `custom/flatpaks/default.preinstall` |
 | Add a user command             | Add a recipe (NO dnf5)                                        | `custom/ujust/custom-system.just`    |
@@ -116,9 +116,9 @@ each vendor assertion (assert_vendor) for third-party installs.
 
 **assert_vendor matches the raw `%{VENDOR}` field** — verify it on the host
 before asserting (`rpm -q --qf '%{NAME} %{VENDOR}\n' <pkg>`), it is not
-always the project name: docker-ce* report `Docker`, but `containerd.io`
-reports an EMPTY vendor (containerd project packaging) and must be
-presence-asserted instead (2026-08-29 build failure).
+always the project name. Some vendor RPMs leave `%{VENDOR}` EMPTY (e.g.
+Tailscale), so use `assert_packager` for those instead — see the third-party
+section below.
 
 ## Third-Party Repos: manifest section + shared helper
 

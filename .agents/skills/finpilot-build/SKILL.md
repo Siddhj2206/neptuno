@@ -58,7 +58,7 @@ release, update both the `FEDORA_MAJOR_VERSION` ARG and the base image tag.
 | `20-base.sh`       | WM-agnostic desktop foundation from `build/packages/base.toml` + `firmware.toml`                         |
 | `25-multimedia.sh` | negativo17 multimedia + mesa overrides (versionlocked) from `build/packages/multimedia.toml`                   |
 | `40-niri.sh`       | Compositor layer (niri + DMS, COPRs) from `build/packages/niri.toml`                                           |
-| `45-dx.sh`         | Dev stack (docker-ce, adb, libvirt) from `build/packages/dx.toml`                                              |
+| `45-dx.sh`         | Dev stack (android-tools/adb) from `build/packages/dx.toml`                                                     |
 | `clean-stage.sh`   | Always runs last: reverts `keepcache`, removes COPR repo files (keeps mesa versionlocks), disables fedora flatpak repo, clears artefacts |
 
 ### Manifest-driven package rules

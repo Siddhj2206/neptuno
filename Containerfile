@@ -109,8 +109,9 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     /ctx/build/40-niri.sh
 
-### DX LAYER — docker-ce (repo removed after install), adb, libvirt/qemu
-## host daemon, all socket-activated (dx.toml).
+### DX LAYER — android-tools (adb/fastboot) (dx.toml).
+## Containers are podman (base); the docker-ce daemon and the libvirt/qemu
+## host stack were removed to keep the image light.
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache/libdnf5 \
     --mount=type=cache,dst=/var/cache/rpm-ostree \

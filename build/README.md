@@ -17,7 +17,7 @@ Scripts are named with a number prefix (`00-`, `10-`, `20-`, `25-`, `40-`,
 - **`20-base.sh`** - WM-agnostic Neptuno additions (device, network, developer, terminal, and font packages) from `packages/base.toml`; COPR sections installed per-repo; wm-agnostic
 - **`25-multimedia.sh`** - Full multimedia (ffmpeg + non-FOSS codecs, mesa/VA overrides) from the negativo17 `fedora-multimedia` repo via `packages/multimedia.toml`; wm-agnostic
 - **`40-niri.sh`** - Compositor layer: niri + DMS stack from `packages/niri.toml` + dynamic wiring (greeter, first-boot units, schemas); **wm-specific — renumber/replace for a different compositor**
-- **`45-dx.sh`** - DX layer: developer experience stack — docker-ce daemon (official third-party repo, removed after install), adb, minimal libvirt/qemu host daemon — from `packages/dx.toml`; daemons socket-activated; wm-agnostic
+- **`45-dx.sh`** - DX layer: android-tools (adb/fastboot) from `packages/dx.toml`; wm-agnostic
 - `clean-stage.sh` - Cleanup stage (build artifacts, final image hygiene)
 - `packages/` - TOML manifests (the "manifest of record": `base.toml`, `firmware.toml`, `multimedia.toml`, `niri.toml`, `dx.toml`)
 - `scripts/` - Shared helpers (`read-packages`, `package-lib.sh`)
