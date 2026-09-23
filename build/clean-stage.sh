@@ -19,7 +19,16 @@ dnf5 config-manager setopt fedora-multimedia.enabled=0 2>/dev/null || true
 # (AGENTS.md rule 3) — the image ships without them. The dnf5 copr plugin
 # names repo files _copr:<host>:<owner>:<project>.repo, so this glob covers
 # current and future COPRs (ghostty, ublue-os/packages, ...).
-rm -f "${CLEAN_ROOT}/etc/yum.repos.d/_copr"*.repo
+#
+# Fedora 45 relocated packaged repo configs from /etc/yum.repos.d to
+# /usr/share/dnf5/repos.d. Sweep both the legacy and the new location; only
+# _copr* files are removed, so the distro's own repo definitions are safe
+# wherever they live.
+for repos_dir in \
+	"${CLEAN_ROOT}/etc/yum.repos.d" \
+	"${CLEAN_ROOT}/usr/share/dnf5/repos.d"; do
+	rm -f "${repos_dir}/_copr"*.repo
+done
 
 # This comes last because we can't *ever* afford to ship fedora flatpaks on the image
 systemctl disable flatpak-add-fedora-repos.service
