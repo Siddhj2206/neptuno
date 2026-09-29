@@ -84,6 +84,9 @@ packages = [
     "ifuse",                         # iPhone/iPad mounting (FUSE)
     "solaar-udev",                   # Logitech devices (udev rules only)
 
+    # --- crypto / TLS -------------------------------------------------------
+    "openssl",                       # TLS toolkit + cert/key CLI
+
     # --- android (adb/fastboot) ----------------------------------------------
     "android-tools",
 
