@@ -57,7 +57,7 @@ echo "::endgroup::"
 
 echo "::group:: Enable ublue Setup Framework"
 
-# No presets for these (bluefin enables them per-build) — enabled here so
+# No overlay preset for these (bluefin enables them per-build) — enabled here so
 # the hooks run for every user on login, rebasers included.
 systemctl enable ublue-system-setup.service
 systemctl --global enable ublue-user-setup.service

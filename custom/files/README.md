@@ -3,7 +3,7 @@
 Everything in this directory is rsynced **directly to `/`** during the build
 (`build/10-build.sh`), mirroring how `@ublue-os/brew` and `@projectbluefin/common`
 ship their overlays. It is the home for *system-level* files the image bakes:
-greetd config, PAM, systemd units/presets/wants, gsettings schema overrides.
+greetd config, PAM, systemd units/wants, gsettings schema overrides.
 
 Layout = verbatim image paths (`etc/…`, `usr/…` — no `custom/files` prefix):
 
@@ -14,12 +14,10 @@ custom/files/
 │   └── niri/config.kdl        # greeter-only niri baseline
 ├── usr/lib/systemd/system/
 │   └── flatpak-theming.service  # first-boot: override + mask commands
-├── usr/lib/systemd/user-preset/
-│   └── 90-pluto-dms.preset    # DMS user unit preset
 ├── usr/lib/systemd/user/
 │   └── niri.service.wants/dms.service   # symlink -> DMS autostart
 └── usr/share/glib-2.0/schemas/
-    └── zz0-pluto-theme.gschema.override # GTK theme defaults
+    └── zz0-neptuno-theme.gschema.override # GTK theme defaults
 ```
 
 ## Rules
@@ -35,3 +33,7 @@ custom/files/
   patch the inherited unit during the overlay phase instead.
 - Scripts (40-niri.sh) still do the *dynamic* parts: enabling units,
   `glib-compile-schemas`, `set-default graphical.target`.
+- **Enable units by name in the build scripts** (`10-build.sh`, `20-base.sh`,
+  `40-niri.sh`) — never `systemctl preset-all`. Preset-all applies every preset
+  in the image, including Fedora's catch-all `disable *`; the explicit list is
+  the visible, single source of truth for what the image enables.

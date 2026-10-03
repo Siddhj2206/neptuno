@@ -6,7 +6,7 @@ set -euo pipefail
 # Niri Layer — WM-SPECIFIC (compositor + DMS)
 ###############################################################################
 # Installs the compositor stack from packages/niri.toml and wires the dynamic
-# parts of the wm config. All static system files (systemd units/presets/wants,
+# parts of the wm config. All static system files (systemd units/wants,
 # theme gschema) live as real files in
 # custom/files/ (rsynced to / by 10-build.sh) — NOT as heredocs here.
 #
@@ -46,11 +46,11 @@ echo "::endgroup::"
 
 echo "::group:: DMS Autostart"
 
-# Single autostart path (wants-symlink + preset via custom/files/) — NEVER
-# also add spawn-at-startup "dms" "run" to the niri config: double start.
-# Runs HERE, not 10-build.sh: 10-build's preset-all runs before the DMS/niri
-# user units exist (they land via the COPR installs above).
-systemctl --global preset-all 2>/dev/null || true
+# Single autostart path (wants-symlink in custom/files + this explicit global
+# enable) — NEVER also add spawn-at-startup "dms" "run" to the niri config:
+# that is a double start. Enabled HERE, not 10-build.sh: dms.service only
+# exists after the DMS COPR install above.
+systemctl --global enable dms.service
 
 echo "::endgroup::"
 

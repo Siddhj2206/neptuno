@@ -67,7 +67,7 @@ release, update both the `FEDORA_MAJOR_VERSION` ARG and the base image tag.
 - Always use `dnf5` — never `dnf`, `yum`, or `rpm-ostree`
 - Always use `dnf5 install -y` (non-interactive)
 - COPR: `install_copr_sections` enables → installs per `["copr:owner/project"]` section; `clean-stage.sh` removes all `_copr*.repo` files. Never ship an enabled COPR.
-- `10-build.sh` copies custom unit presets after its initial `systemctl --global preset-all`. A later layer may apply presets again, so every custom user service that must remain enabled needs an explicit `custom/files/usr/lib/systemd/user-preset/*.preset` `enable` rule; a prior `systemctl --global enable` alone can be reversed by `99-default-disable.preset`.
+- **Enable units by name — never `systemctl preset-all`.** The image ships Fedora's `99-default-disable.preset` / `redhat-systemd-presets-common` (`disable *`), so a preset pass can silently flip units we do not own. `10-build.sh` enables the common/brew overlay units explicitly (`flatpak-appstream-refresh.service`, `uupd.timer`, `uupd-resume.timer`, `projectbluefin-countme.timer`, `brew-preinstall.service`), `20-base.sh` the base units, and `40-niri.sh` `dms.service` after the COPR install. Overlay preset files still ship but are not the source of truth. When common adds a preset-enabled unit, add an explicit `systemctl enable` for it here.
 
 ### Compositor / GPU layers
 

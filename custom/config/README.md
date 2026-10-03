@@ -24,7 +24,7 @@ custom/config/
 ## Rules
 
 - Only **user-level** config goes here. System-level config (greetd
-  `config.toml`, systemd units/presets, zram) belongs in `build/*.sh` or
+  `config.toml`, systemd units, zram) belongs in `build/*.sh` or
   `custom/systemd/` — not here.
 - Keep the tree a faithful mirror of `~`: use `.config/…` paths, never
   absolute paths.

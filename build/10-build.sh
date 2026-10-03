@@ -54,11 +54,19 @@ ln -sfn /dev/null "${RECHUNKER_UNIT}"
 	exit 1
 }
 
-# presets for uupd, flatpak, brew (output kept visible: a failing preset is
-# signal, but presets may legitimately fail in containers — warn, don't die)
-systemctl preset-all || echo "WARNING: systemctl preset-all exited $?"
-systemctl --global preset-all || echo "WARNING: systemctl --global preset-all exited $?"
+# Enable the units the common/brew overlays ship, one by one. Deliberately NOT
+# `systemctl preset-all`: that applies every preset in the image, including
+# Fedora's catch-all "disable *" (redhat-systemd-presets-common), so a stray
+# preset can silently flip a unit we do not own. An explicit list keeps the
+# enabled set visible and fails closed if a unit disappears from the overlay.
+#
+# The overlay preset files (common system-preset 01/02/03, user-preset
+# 01-brew-preinstall) are shipped but no longer the source of truth here.
+systemctl enable flatpak-appstream-refresh.service
+systemctl enable uupd.timer uupd-resume.timer
+systemctl enable projectbluefin-countme.timer # common also ships its .wants symlink
 systemctl enable flatpak-preinstall.service # no preset — enabled explicitly
+systemctl --global enable brew-preinstall.service
 
 echo "::endgroup::"
 
@@ -77,7 +85,7 @@ cp /ctx/custom/flatpaks/*.preinstall /usr/share/flatpak/preinstall.d/
 echo "::endgroup::"
 
 echo "::group:: Copy System Files"
-# custom/files -> / (units, session presets, gschema)
+# custom/files -> / (units, wants, gschema)
 rsync -rvKl /ctx/custom/files/ /
 echo "::endgroup::"
 
