@@ -61,11 +61,13 @@ ln -sfn /dev/null "${RECHUNKER_UNIT}"
 # enabled set visible and fails closed if a unit disappears from the overlay.
 #
 # The overlay preset files (common system-preset 01/02/03, user-preset
-# 01-brew-preinstall) are shipped but no longer the source of truth here.
+# 01-brew-preinstall; brew system-preset 01-homebrew) are shipped but no longer
+# the source of truth here.
 systemctl enable flatpak-appstream-refresh.service
 systemctl enable uupd.timer uupd-resume.timer
 systemctl enable projectbluefin-countme.timer # common also ships its .wants symlink
 systemctl enable flatpak-preinstall.service # no preset — enabled explicitly
+systemctl enable brew-setup.service brew-update.timer brew-upgrade.timer
 systemctl --global enable brew-preinstall.service
 
 echo "::endgroup::"
