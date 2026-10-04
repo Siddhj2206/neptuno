@@ -52,6 +52,11 @@ echo "::group:: DMS Autostart"
 # exists after the DMS COPR install above.
 systemctl --global enable dms.service
 
+# danksearch ships dsearch.service (WantedBy=default.target, no preset; the
+# package docs say "systemctl --user enable dsearch"). Reproduced globally so
+# it runs for every user, like dms.
+systemctl --global enable dsearch.service
+
 echo "::endgroup::"
 
 echo "::group:: Compile Theme Schemas"

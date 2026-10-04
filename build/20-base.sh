@@ -32,6 +32,11 @@ install_third_party_repo_section \
 	"third-party:tailscale-stable" \
 	"Tailscale"
 
+# Fresh installs leave the unit disabled: the RPM scriptlet runs
+# `systemctl preset`, which hits Fedora's catch-all "disable *". Bluefin enables
+# it explicitly; so do we — the daemon idles until `tailscale up`.
+systemctl enable tailscaled.service
+
 echo "::endgroup::"
 
 echo "::group:: Install COPR Packages"

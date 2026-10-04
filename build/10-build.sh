@@ -67,6 +67,7 @@ systemctl enable flatpak-appstream-refresh.service
 systemctl enable uupd.timer uupd-resume.timer
 systemctl enable projectbluefin-countme.timer # common also ships its .wants symlink
 systemctl enable flatpak-preinstall.service # no preset — enabled explicitly
+systemctl enable dconf-update.service # bluefin cherry-pick; bluefin enables it too
 systemctl enable brew-setup.service brew-update.timer brew-upgrade.timer
 systemctl --global enable brew-preinstall.service
 
