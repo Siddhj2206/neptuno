@@ -14,6 +14,7 @@
 SCRIPT="${BATS_TEST_DIRNAME}/../../build/validate-flatpaks.sh"
 
 setup() {
+    unset FLATPAK_USER_DIR
     WORKDIR="$(mktemp -d)"
     FIXTURES="${WORKDIR}/flatpaks"
     CALLS="${WORKDIR}/calls"
@@ -220,6 +221,22 @@ EOF
     run grep '^FLATPAK_USER_DIR=.*/flatpak$' "${MOCK_ENV_CALLS}"
     [ "${status}" -eq 0 ]
     [ "${#lines[@]}" -ge 2 ]
+    # Ensure the isolated directory is distinct from the test's own workdir
+    run grep "^FLATPAK_USER_DIR=${WORKDIR}" "${MOCK_ENV_CALLS}"
+    [ "${status}" -ne 0 ]
+}
+
+@test "validator overrides pre-existing FLATPAK_USER_DIR with temporary isolation dir" {
+    cat > "${FIXTURES}/base.preinstall" <<'EOF'
+[Flatpak Preinstall org.gnome.Calculator]
+Branch=stable
+EOF
+    FLATPAK_USER_DIR="/host/user/flatpak" run bash "${SCRIPT}" "${FIXTURES}"
+    [ "${status}" -eq 0 ]
+    run grep '^FLATPAK_USER_DIR=/host/user/flatpak$' "${MOCK_ENV_CALLS}"
+    [ "${status}" -ne 0 ]
+    run grep '^FLATPAK_USER_DIR=.*/flatpak$' "${MOCK_ENV_CALLS}"
+    [ "${status}" -eq 0 ]
 }
 
 @test "validator accepts blank lines and # comments" {
