@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Validate flatpak preinstall files under custom/flatpaks/ without mutating
-# the host beyond adding the flathub remote (--user, --if-not-exists).
+# the host user flatpak installation (runs inside an isolated FLATPAK_USER_DIR).
 #
 # Contract enforced per app:
 #   - every line must be a blank line, a '#' comment, a [Flatpak Preinstall
@@ -33,10 +33,6 @@ main() (
         exit 2
     fi
 
-    # Add Flathub from the checked-in descriptor rather than the live URL, so
-    # validation uses the same Url= and GPGKey= the image ships. The fixture's
-    # hash is pinned once, as FLATHUB_REPO_SHA256 in build/10-overlay.sh, and
-    # tests/template/10-overlay_test.bats keeps the two in step.
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     remote_cfg="${script_dir}/../tests/fixtures/flathub.flatpakrepo"
     if [[ ! -f "${remote_cfg}" ]]; then
@@ -44,10 +40,13 @@ main() (
         exit 1
     fi
 
-    flatpak remote-add --user --if-not-exists flathub "${remote_cfg}"
-
     workdir=$(mktemp -d)
     trap 'rm -rf -- "${workdir}"' EXIT
+
+    # Isolate user-level flatpak state so host remotes are neither inspected
+    # nor mutated, and the pinned flathub descriptor is always added fresh.
+    export FLATPAK_USER_DIR="${workdir}/flatpak"
+    flatpak remote-add --user --if-not-exists flathub "${remote_cfg}"
     # Materialize discovery so find/sort failures cannot become an empty success.
     find "${root}" -type f -iname '*.preinstall' -print0 | sort -z > "${workdir}/files"
     mapfile -d '' -t preinstalls < "${workdir}/files"
