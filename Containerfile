@@ -51,7 +51,7 @@ COPY --from=brew /system_files /oci/brew
 
 # Base Image - Fedora Silverblue supplies the supported GNOME/GDM desktop stack.
 # Niri is added as a second Wayland session by build/40-niri.sh.
-FROM quay.io/fedora-ostree-desktops/silverblue:45@sha256:56d1d6216de6cf0ccf1edeb6a4b3231b2df778c7174465b9c1a2f758f77c7e0d
+FROM quay.io/fedora-ostree-desktops/silverblue:45@sha256:db449cbd6d5452ab2b487f2a11eaa32854e59d9213da810bc345ffaf7f509baa
 
 ARG IMAGE_NAME="neptuno"
 ARG IMAGE_VENDOR="siddhj2206"
