@@ -20,6 +20,7 @@ packages = [
 
     # --- niri session utilities ---------------------------------------------
     "kanshi",                    # output layout daemon
+    "gtk-layer-shell",           # Layer Shell GTK3 library (panels/launchers)
 
     # --- storage / automount (no GNOME Shell to do this on niri) -----------
     "udiskie",                   # user-level automount daemon (user unit)
