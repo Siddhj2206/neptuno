@@ -1,14 +1,12 @@
-// niri config for pluto — copied VERBATIM from DMS embedded template.
-// Source: AvengeMedia/DankMaterialShell core/internal/config/embedded/niri.kdl
-// (this is exactly what `dms setup` / dankinstall deploy on a user system;
-// NOT kept in sync automatically — manual updates only)
-// Template version: DMS v1.6.0.
+// niri config — hand-maintained copy of the DMS template (based on v1.6.0).
+// Source: duxlabs-dev/dux-shell core/internal/config/embedded/niri.kdl
+// NOT kept in sync automatically — manual updates only.
 //
-// Pluto extensions over the template:
-//   - environment {} extended with the DMS-doc QT/Electron vars + MOZ
-//   - one explicit Mod+Return -> ghostty bind (DMS's own binds fragment is
-//     generated at first run via $TERMINAL; this covers pre-first-run)
-// DMS startup is via `systemctl --user add-wants niri.service dms` — do NOT
+// Local overrides vs the template:
+//   - Nautilus and Zen picture-in-picture float
+//   - include dms/windowrules.kdl (missing from the upstream template)
+//
+// DMS starts via the niri.service wants-symlink shipped by the image — never
 // add spawn-at-startup "dms" "run" (double-start trap).
 
 // This config is in the KDL format: https://kdl.dev
@@ -152,11 +150,6 @@ overview {
 // This line starts waybar, a commonly used bar for Wayland compositors.
 environment {
   XDG_CURRENT_DESKTOP "niri"
-  QT_QPA_PLATFORM "wayland"
-  ELECTRON_OZONE_PLATFORM_HINT "auto"
-  QT_QPA_PLATFORMTHEME "gtk3"
-  QT_QPA_PLATFORMTHEME_QT6 "gtk3"
-  MOZ_ENABLE_WAYLAND "1"
 }
 hotkey-overlay {
     skip-at-startup
@@ -215,6 +208,7 @@ window-rule {
 }
 window-rule {
     match app-id=r#"^gnome-control-center$"#
+    match app-id=r#"^pavucontrol$"#
     match app-id=r#"^nm-connection-editor$"#
     default-column-width { proportion 0.5; }
     open-floating false
@@ -243,6 +237,7 @@ window-rule {
 }
 window-rule {
     match app-id=r#"firefox$"# title="^Picture-in-Picture$"
+    match app-id=r#"zen$"# title="^Picture-in-Picture$"
     match app-id="zoom"
     open-floating true
 }
@@ -260,14 +255,6 @@ recent-windows {
     }
 }
 
-// Pluto: explicit terminal bind (DMS regenerates the dms/binds.kdl fragment
-// with $TERMINAL at first setup; this keeps a terminal available before that)
-binds {
-    Mod+Return hotkey-overlay-title="Terminal" {
-        spawn "ghostty";
-    }
-}
-
 // Include dms files
 include optional=true "dms/colors.kdl"
 include optional=true "dms/layout.kdl"
@@ -276,3 +263,4 @@ include optional=true "dms/binds.kdl"
 include optional=true "dms/outputs.kdl"
 include optional=true "dms/cursor.kdl"
 include optional=true "dms/input.kdl"
+include optional=true "dms/windowrules.kdl"

@@ -106,6 +106,24 @@ Branch=stable
 - **Find app IDs at https://flathub.org/**
 - **Validation**: `validate-flatpaks.yml` checks that app IDs exist on Flathub
 
+## Skel dotfiles: `custom/config/`
+
+`custom/config/` is rsynced verbatim to `/etc/skel` by `build/10-build.sh`; the
+tree root mirrors `~` (`.config/...`). Only user-level config belongs here.
+
+- `niri/dms/*.kdl` are the fragments `config.kdl` includes. Ship the real
+  content copied from a running system, **not** comment-only stubs: DMS does
+  not reliably regenerate them (binds especially), so the shipped copies are
+  what a new user actually gets. After changing binds/window rules in DMS
+  Settings, re-copy `~/.config/niri/dms/*.kdl` here.
+- Do not seed `~/.config/DankMaterialShell/settings.json` — that is per-user
+  DMS state, not a default.
+- Validate niri changes with `niri validate -c custom/config/.config/niri/config.kdl`
+  (includes resolve relative to the file) and ghostty changes with
+  `ghostty +validate-config --config-file=...`.
+- Files land in `/etc/skel` only for new users; existing users get them via
+  `ujust install-dms-config`.
+
 ## ujust: `custom/ujust/*.just`
 
 ujust files define user convenience commands. All `.just` files are auto-consolidated during the build.
