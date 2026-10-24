@@ -19,7 +19,7 @@ These hold for every change:
   `build/packages/*.toml`. `just test-unit` includes the manifest contract; a
   unit enabled outside a manifest fails the image build in `90-cleanup.sh`.
 - **Never reintroduce** a build-time `flatpak remote-add`, `systemctl
-  preset-all`, or a `/dev/null` unit mask. See `.agents/skills/neptuno`. 
+  preset-all`, or a `/dev/null` unit mask. See `.agents/skills/neptuno`.
 
 ## Branches and releases
 

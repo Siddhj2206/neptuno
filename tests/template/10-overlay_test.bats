@@ -44,6 +44,7 @@ setup() {
 
 	export READ_PKGS="${CTX}/build/scripts/read-packages"
 	export UNITS_ROOT="${SANDBOX}"
+	export CHERRY_PICK_ROOT="${SANDBOX}"
 	export UNITS_SNAPSHOT="${TEST_ROOT}/units.before"
 	mkdir -p "${CTX}/custom/brew" "${CTX}/custom/ujust" "${CTX}/custom/flatpaks"
 
