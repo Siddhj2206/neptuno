@@ -124,6 +124,29 @@ tree root mirrors `~` (`.config/...`). Only user-level config belongs here.
 - Files land in `/etc/skel` only for new users; existing users get them via
   `ujust install-dms-config`.
 
+## System files: `custom/files/`
+
+`custom/files/` mirrors `/` verbatim and is rsynced to the image root by
+`build/10-build.sh` (`rsync -rvKl /ctx/custom/files/ /`). Unit files, wants
+symlinks, gschema overrides, PAM/greetd config and udev rules live here, not in
+heredocs. Layout rules are in `custom/files/README.md`.
+
+- **udev rules go in `usr/lib/udev/rules.d/`** (immutable image path) and must
+  pass `udevadm verify <file>`.
+- **`TAG+="uaccess"` rules must sort before `73-seat-late.rules`** — that file
+  runs the `uaccess` builtin, so a `73`+ name tags the device after the ACL
+  pass and the tag has no effect. Use the `70-` range and
+  `ACTION!="remove", …` so the tag is re-applied on `change` events.
+- **Never tell users to join the `input` group on this image.** `input` is only
+  defined in `/usr/lib/group` and resolved via `nss-altfiles`, so
+  `usermod -aG input` exits 0 without writing a membership into `/etc/group`
+  (the only file shadow-utils edits). The image grants evdev access through
+  `70-neptuno-input-uaccess.rules` instead, which covers DMS's evdev manager
+  (Caps Lock OSD) and HEX dictation without a re-login.
+- Input device read access is keyboard-read capability (keylogger equivalent),
+  scoped by uaccess to the active seat session and revoked at logout. Keep the
+  granting rule narrow and commented.
+
 ## ujust: `custom/ujust/*.just`
 
 ujust files define user convenience commands. All `.just` files are auto-consolidated during the build.
@@ -193,5 +216,6 @@ my-custom-command:
 - [ ] Do all Flatpak entries specify `Branch=stable`?
 - [ ] Are all app IDs in `.preinstall` files verified on Flathub?
 - [ ] Does `just --list` pass without errors?
+- [ ] Do udev rules pass `udevadm verify` and sort before `73-seat-late.rules`?
 - [ ] Does `brew bundle check --file` pass for each Brewfile?
 - [ ] Is there NO `dnf5`, `dnf`, or `rpm-ostree` in any `.just` file?

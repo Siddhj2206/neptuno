@@ -16,6 +16,8 @@ custom/files/
 │   └── flatpak-theming.service  # first-boot: override + mask commands
 ├── usr/lib/systemd/user/
 │   └── niri.service.wants/dms.service   # symlink -> DMS autostart
+├── usr/lib/udev/rules.d/
+│   └── 70-neptuno-input-uaccess.rules   # active-seat ACL for /dev/input/event*
 └── usr/share/glib-2.0/schemas/
     └── zz0-neptuno-theme.gschema.override # GTK theme defaults
 ```
@@ -31,6 +33,10 @@ custom/files/
 - Use drop-ins for additive systemd overrides. Ordering dependencies from a
   main unit cannot be removed with an empty directive in a drop-in; disable or
   patch the inherited unit during the overlay phase instead.
+- udev rules live in `usr/lib/udev/rules.d/` and must sort **before**
+  `73-seat-late.rules` when they set `TAG+="uaccess"` — that file runs the
+  `uaccess` builtin, so a later number tags the device after the ACL pass.
+  Match `ACTION!="remove"` as well so the tag survives `change` events.
 - Scripts (40-niri.sh) still do the *dynamic* parts: enabling units,
   `glib-compile-schemas`, `set-default graphical.target`.
 - **Enable units by name in the build scripts** (`10-build.sh`, `20-base.sh`,
