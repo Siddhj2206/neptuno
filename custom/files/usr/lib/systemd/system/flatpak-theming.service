@@ -1,0 +1,15 @@
+[Unit]
+Description=Neptuno flatpak theming overrides and masks
+After=local-fs.target
+ConditionPathExists=!/var/lib/flatpak/masked/org.gtk.Gtk3theme.adw-gtk3
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/flatpak override --system --filesystem=xdg-data/themes
+ExecStart=/usr/bin/flatpak override --system --socket=wayland --env=MOZ_ENABLE_WAYLAND=1 org.mozilla.firefox
+ExecStart=/usr/bin/flatpak override --system --socket=wayland --env=MOZ_ENABLE_WAYLAND=1 app.zen_browser.zen
+ExecStart=/usr/bin/flatpak mask org.gtk.Gtk3theme.adw-gtk3
+ExecStart=/usr/bin/flatpak mask org.gtk.Gtk3theme.adw-gtk3-dark
+
+[Install]
+WantedBy=multi-user.target

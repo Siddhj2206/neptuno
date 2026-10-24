@@ -9,6 +9,7 @@ recursive, so recipes can be grouped into subdirectories by topic.
 
 - `custom-apps.just` — Homebrew shortcuts
 - `custom-system.just` — system configuration
+- `neptuno.just` — Neptuno's release changelog lookup
 
 ## Writing a recipe
 
@@ -18,7 +19,7 @@ recursive, so recipes can be grouped into subdirectories by topic.
 install-default-apps:
     #!/usr/bin/env bash
     set -euo pipefail
-    brew bundle --file /usr/share/ublue-os/homebrew/default.Brewfile
+    brew bundle --file /usr/share/ublue-os/homebrew/preinstall.d/default.Brewfile
 ```
 
 - `[group('…')]` puts the recipe in a section of `ujust --list`.

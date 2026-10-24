@@ -1,0 +1,71 @@
+// DMS Window Rules - Managed by Dux Shell
+// Do not edit manually - changes may be overwritten
+
+// @id=wr_1788864078024203131 @name=com.mitchellh.ghostty
+window-rule {
+    match app-id="^com.mitchellh.ghostty$"
+    background-effect {
+        blur true
+        xray true
+    }
+}
+
+// @id=wr_1788864144802260868 @name=app.zen_browser.zen
+window-rule {
+    match app-id="^app.zen_browser.zen$"
+    open-maximized true
+}
+
+// @id=wr_1788864245344097316 @name=dev.zed.Zed
+window-rule {
+    match app-id="^dev.zed.*$"
+    open-maximized true
+}
+
+// @id=wr_1788864295420911024 @name=Floating Windows
+window-rule {
+    match is-floating=true
+    geometry-corner-radius 12
+}
+
+// @id=wr_1788864853404948597 @name=re.sonny.Junction
+window-rule {
+    match app-id="^re.sonny.Junction$"
+    open-floating true
+}
+
+// @id=wr_1788949434404971607 @name=helium
+window-rule {
+    match app-id="^helium$"
+    open-maximized true
+}
+
+// @id=wr_1790184598776277331 @name=ai.opencode.desktop
+window-rule {
+    match app-id="^ai.opencode.desktop$"
+    open-maximized true
+}
+
+// @id=wr_1791020741509884017 @name=com.t3tools.T3Code
+window-rule {
+    match app-id="^com.t3tools.T3Code$"
+    open-maximized true
+}
+
+// @id=wr_1792571184030662117 @name=Zero Border Radius
+window-rule {
+    match is-floating=false
+    geometry-corner-radius 0
+}
+
+// @id=dms-floating-windows @name=DMS Floating Windows
+window-rule {
+    match app-id="^(dev\\.duxlabs\\.shell|com\\.danklinux\\.dms)$"
+    open-floating true
+}
+
+// @id=dms-window-opaque @name=DMS Window Opaque
+window-rule {
+    match app-id="^(dev\\.duxlabs\\.shell|com\\.danklinux\\.dms)$"
+    opacity 1.00
+}

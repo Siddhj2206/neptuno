@@ -1,11 +1,45 @@
-# custom/files
+# System Files — image root mirror
 
-System files overlaid onto the image root.
+Everything in this directory is rsynced **directly to `/`** during the build
+(`build/10-build.sh`), mirroring how `@ublue-os/brew` and `@projectbluefin/common`
+ship their overlays. It is the home for *system-level* files the image bakes:
+greetd config, PAM, systemd units/wants, gsettings schema overrides.
 
-The tree under `custom/files/` mirrors the image filesystem, so
-`custom/files/usr/lib/systemd/system/foo.service` lands at
-`/usr/lib/systemd/system/foo.service`. Use it for systemd units, presets,
-tmpfiles.d and sysusers.d entries, and other system payloads the template ships.
+Layout = verbatim image paths (`etc/…`, `usr/…` — no `custom/files` prefix):
 
-`custom/config/` is the seam for new-user configuration instead. The `customize`
-skill decides which seam a given file belongs in.
+```
+custom/files/
+├── etc/greetd/
+│   ├── config.toml            # greetd -> dms-greeter -> niri session
+│   └── niri/config.kdl        # greeter-only niri baseline
+├── usr/lib/systemd/system/
+│   └── flatpak-theming.service  # first-boot: override + mask commands
+├── usr/lib/systemd/user/
+│   └── niri.service.wants/dms.service   # symlink -> DMS autostart
+├── usr/lib/udev/rules.d/
+│   └── 70-neptuno-input-uaccess.rules   # active-seat ACL for /dev/input/event*
+└── usr/share/glib-2.0/schemas/
+    └── zz0-neptuno-theme.gschema.override # GTK theme defaults
+```
+
+## Rules
+
+- **System-level only.** User-level defaults (`~/.config/…`) go in
+  `custom/config/` (→ `/etc/skel`), not here.
+- Layout must be an exact mirror of `/` — `etc/` and `usr/` subtrees only.
+- Symlinks are preserved as-is (e.g. the DMS wants symlink); targets must be
+  absolute paths. A target that dangles in git is expected when it ships via
+  RPM at build time (dms.service arrives with the COPR package).
+- Use drop-ins for additive systemd overrides. Ordering dependencies from a
+  main unit cannot be removed with an empty directive in a drop-in; disable or
+  patch the inherited unit during the overlay phase instead.
+- udev rules live in `usr/lib/udev/rules.d/` and must sort **before**
+  `73-seat-late.rules` when they set `TAG+="uaccess"` — that file runs the
+  `uaccess` builtin, so a later number tags the device after the ACL pass.
+  Match `ACTION!="remove"` as well so the tag survives `change` events.
+- Scripts (40-niri.sh) still do the *dynamic* parts: enabling units,
+  `glib-compile-schemas`, `set-default graphical.target`.
+- **Enable units by name in the build scripts** (`10-build.sh`, `20-base.sh`,
+  `40-niri.sh`) — never `systemctl preset-all`. Preset-all applies every preset
+  in the image, including Fedora's catch-all `disable *`; the explicit list is
+  the visible, single source of truth for what the image enables.

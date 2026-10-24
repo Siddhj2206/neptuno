@@ -1,16 +1,20 @@
 # Homebrew
 
-Brewfiles declared here are copied into the image at
-`/usr/share/ublue-os/homebrew/`. Users install them after boot; nothing is
-installed at build time.
+Brewfiles declared here are copied into
+`/usr/share/ublue-os/homebrew/preinstall.d/` and installed on first login by
+`brew-preinstall.service`, which is content-addressed: editing a Brewfile
+re-applies it, and removing an entry uninstalls that package without touching
+packages the user added.
 
 ## Files
 
-- `default.Brewfile` — the essential CLI tools
-- `development.Brewfile` — the development stack
+- `default.Brewfile` — the CLI tools every Neptuno user gets
 
 The image also ships `/usr/share/ublue-os/homebrew/fonts.Brewfile`, a curated
 font set from Common's shared layer, so this directory does not need its own.
+
+Anything that must exist before first login — login shells, systemd services,
+desktop integration — belongs in `build/packages/*.toml`, not here.
 
 ## Adding one
 
@@ -41,15 +45,22 @@ pre-commit hook calls the same script.
 ## Using them
 
 ```bash
-brew bundle --file /usr/share/ublue-os/homebrew/default.Brewfile
+brew bundle --file /usr/share/ublue-os/homebrew/preinstall.d/default.Brewfile
 ```
 
 or, on an image built from this template:
 
 ```bash
 ujust install-default-apps
-ujust install-dev-tools
 ```
 
-Homebrew itself is pre-staged at build time and unpacked on first boot by
-`brew-setup.service`.
+Homebrew itself is pre-staged at build time. `brew-setup.service` (a system
+unit) unpacks the tarball on first boot; `brew-preinstall.service` (a user
+unit) installs the managed set at graphical login. There is no systemd ordering
+between the two managers: the user unit is gated on the brew binary existing, so
+a login that beats the unpack retries on the next login.
+
+`brew-preinstall.service` is enabled with `systemctl --global enable`. That call
+is load-bearing: common's `01-brew-preinstall.preset` is inert in a
+Containerfile build, because systemd applies presets only for the system manager
+on a machine's first boot.

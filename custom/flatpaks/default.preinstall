@@ -1,32 +1,94 @@
-# Flatpak applications installed on first boot.
-#
-# Format: an INI file read by `flatpak preinstall`, one section per app:
-#
-#   [Flatpak Preinstall APP_ID]
-#   Branch=stable
-#
-# Comments must start with '#'; the parser is GKeyFile, so a ';' line is a
-# syntax error, and flatpak discards the entire file when one line is malformed.
-# See: https://docs.flatpak.org/en/latest/flatpak-command-reference.html#flatpak-preinstall
-#
-# App IDs are listed at https://flathub.org/ and verified by
-# `just validate-flatpaks` before a change can land.
+# Default Flatpak applications for Neptuno (GNOME and Niri/DMS desktop)
+# Installed on first boot by flatpak-preinstall.service (common overlay). The
+# Flathub remote comes from the pinned descriptor installed by 10-overlay.sh.
+# All entries verified on Flathub 2026-08-28.
+# Format: INI with [Flatpak Preinstall NAME] sections.
 
-# Email, calendar and newsgroup client. Fedora ships no mail client by default.
-[Flatpak Preinstall org.mozilla.Thunderbird]
+# --- browser ---------------------------------------------------------------
+[Flatpak Preinstall org.mozilla.firefox]
 Branch=stable
 
-# Audit and restrict the permissions of installed Flatpaks. There is no RPM
-# equivalent, so this only makes sense as a Flatpak.
+# --- GNOME apps (native rpm NOT required — good flatpak citizens) -----------
+[Flatpak Preinstall org.gnome.TextEditor]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Calculator]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.FileRoller]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Loupe]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Papers]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.baobab]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Logs]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.SimpleScan]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Snapshot]
+Branch=stable
+
+# --- utilities ---------------------------------------------------------------
+[Flatpak Preinstall it.mijorus.smile]
+Branch=stable
+
+[Flatpak Preinstall io.github.flattool.Warehouse]
+Branch=stable
+
 [Flatpak Preinstall com.github.tchx84.Flatseal]
 Branch=stable
 
-# Browse and install GNOME Shell extensions. The packaged gnome-extensions-app
-# can only configure extensions that are already installed.
-[Flatpak Preinstall com.mattjakeman.ExtensionManager]
+[Flatpak Preinstall io.missioncenter.MissionCenter]
 Branch=stable
 
-# Add another by appending a section, for example:
-#
-# [Flatpak Preinstall io.github.flattool.Warehouse]
-# Branch=stable
+# --- app store (bluefin/zirconium preinstall) --------------------------------
+[Flatpak Preinstall io.github.kolunmi.Bazaar]
+Branch=stable
+
+# --- more GNOME set (ported from neptuno) ------------------------------------
+[Flatpak Preinstall org.gnome.Calendar]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Weather]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Maps]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Firmware]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Showtime]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Decibels]
+Branch=stable
+
+# --- containers -----------------------------------------------------------------
+[Flatpak Preinstall io.podman_desktop.PodmanDesktop]
+Branch=stable
+
+# --- host-proven picks (2026-08-29 audit vs neptuno host) ------------------------
+[Flatpak Preinstall io.mpv.Mpv]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.DejaDup]
+Branch=stable
+
+[Flatpak Preinstall app.zen_browser.zen]
+Branch=stable
+
+[Flatpak Preinstall it.mijorus.gearlever]
+Branch=stable
+
+# NOTE: org.gtk.Gtk3theme.adw-gtk3{-dark} are intentionally NOT preinstalled —
+# they are MASKED (40-niri.sh) so the system theme (adw-gtk3 via gschema +
+# xdg-data/themes override) always wins in flatpak apps.

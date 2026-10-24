@@ -4,9 +4,9 @@
 ####################
 ## Homebrew shortcuts.
 ##
-## Every Brewfile in custom/brew/ is copied to /usr/share/ublue-os/homebrew/ at
-## build time. Add a recipe here for each one, so users install it with `ujust`
-## instead of remembering the path.
+## Every Brewfile in custom/brew/ is copied to
+## /usr/share/ublue-os/homebrew/preinstall.d/ and installed on first login. The
+## recipe below is a manual re-run; it is not part of first-boot setup.
 ##
 ## See custom/brew/README.md.
 
@@ -15,11 +15,4 @@
 install-default-apps:
     #!/usr/bin/env bash
     echo "Installing default applications via Homebrew..."
-    brew bundle --file /usr/share/ublue-os/homebrew/default.Brewfile
-
-# Install development tools via Homebrew
-[group('Apps')]
-install-dev-tools:
-    #!/usr/bin/env bash
-    echo "Installing development tools via Homebrew..."
-    brew bundle --file /usr/share/ublue-os/homebrew/development.Brewfile
+    brew bundle --file /usr/share/ublue-os/homebrew/preinstall.d/default.Brewfile
