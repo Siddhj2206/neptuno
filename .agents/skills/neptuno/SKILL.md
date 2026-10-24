@@ -68,6 +68,8 @@ Enable explicitly, never by applying presets, and never mask.
 ## Validation
 
 `just test-unit` (contract + template suites), `just lint`, `just check`, then
-`just build`. The manifest contract tests live in
+`just build`. The overlay suite sandboxes paths through `CHERRY_PICK_ROOT`;
+an assert that reads an absolute host path will pass on a Neptuno host and fail
+on CI, so give every new path assert a sandbox root. The manifest contract tests live in
 `tests/contract/manifests_test.bats`; the overlay and cleanup suites cover the
 enablement wiring.

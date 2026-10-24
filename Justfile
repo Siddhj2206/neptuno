@@ -137,7 +137,7 @@ sudoif command *args:
 # registry already has that version, and a clean worktree also stamps the short
 # HEAD SHA.
 #
-# Example: just build finpilot stable-testing
+# Example: just build neptuno stable-testing
 
 # Build the image using the specified parameters
 [group('Image')]

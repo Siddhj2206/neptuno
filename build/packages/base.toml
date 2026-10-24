@@ -110,7 +110,7 @@ packages = [
     "fish",                          # default user shell
     "zsh",                           # alternate shell
 
-    # --- finpilot housekeeping -----------------------------------------------
+    # --- image housekeeping -------------------------------------------------
     "gum",                           # ujust interactive prompts dependency
     "just",                          # ujust recipe runner (ujust wrapper execs this binary)
     "fzf",                           # ujust --choose before Homebrew exists
