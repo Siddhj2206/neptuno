@@ -1,0 +1,162 @@
+# Neptuno base package manifest — WM-agnostic desktop additions.
+#
+# Consumed by build/20-base.sh via build/scripts/read-packages + package-lib.sh:
+#   [fedora]                 -> install_fedora_section (one dnf5 transaction)
+#   ["copr:<owner>/<project>"] -> install_copr_sections (per-COPR; COPRs are
+#                                 disabled by clean-stage.sh — AGENTS.md rule 3)
+#
+# Every entry is verified present post-install (assert gate in package-lib.sh);
+# adding a package that does not exist FAILS the build on purpose.
+#
+# Silverblue already provides GNOME, audio, graphics, fonts, XDG portals,
+# NetworkManager, Flatpak, firmware updates, and zram. Keep only Neptuno's
+# additions here. Multimedia is in multimedia.toml; Niri/DMS is in niri.toml.
+
+# Remove the Fedora desktop defaults replaced by Neptuno's Flatpak-first
+# application set. Keep fedora-logos out of this list: removing it would also
+# remove GDM through its system-logo dependency.
+[remove]
+packages = [
+    "default-fonts-cjk-sans",
+    "fedora-bookmarks",
+    "fedora-chromium-config",
+    "fedora-chromium-config-gnome",
+    "fedora-third-party",
+    "firefox",
+    "firefox-langpacks",
+    "gnome-shell-extension-background-logo",
+    "gnome-software",
+    "gnome-software-rpm-ostree",
+    "google-noto-sans-cjk-vf-fonts",
+    "ptyxis",
+    "totem-video-thumbnailer",
+    "yelp",
+]
+
+[fedora]
+packages = [
+    # --- build toolchain (Homebrew source builds) ---------------------------
+    # Declared explicitly instead of pulling the c-development group (~350 MB
+    # with deps). Dropped from that group: valgrind, perf, strace, gdb, ltrace
+    # (debuggers/profilers) and ccache, cscope, ctags, indent, byacc (dev
+    # conveniences) — brew never uses them. gcc provides /usr/bin/cc; gcc-c++
+    # covers C++ source builds; autotools/bison/flex cover autotools ones.
+    "gcc",                           # C compiler (provides /usr/bin/cc)
+    "gcc-c++",                       # C++ source builds
+    "glibc-devel",                   # libc headers
+    "binutils",                      # ld, as
+    "make",
+    "pkgconf",                       # pkg-config for configure scripts
+    "autoconf",                      # autotools source builds
+    "automake",
+    "libtool",
+    "m4",
+    "bison",
+    "flex",
+    "patch",                         # some formulae patch their sources
+
+    # --- terminal integration -----------------------------------------------
+    "xdg-terminal-exec",
+
+    # --- YubiKey / FIDO2 ----------------------------------------------------
+    "pam-u2f",                       # FIDO2/U2F PAM auth module
+    "pamu2fcfg",                     # FIDO2 credential enrollment tool
+    "pam_yubico",                    # YubiKey OTP PAM module
+    "ykpers",                        # YubiKey personalization tools
+    "ykclient",                      # YubiKey client library
+    "yubikey-manager",               # ykman CLI
+    "python3-yubikey-manager",       # ykman python stack
+
+    # --- networking / hardware ----------------------------------------------
+    "firewall-config",               # firewall GUI (pulls firewalld; bluefin ships it)
+    "brightnessctl",
+    "playerctl",
+    "NetworkManager-tui",
+    "ddcutil",                       # monitor control (DMS brightness backend)
+    "input-remapper",                # input remapping daemon
+    "lm_sensors",
+    "powertop",
+    "smartmontools",
+    "evtest",
+    "libva-utils",                   # vainfo — VA-API verification
+    "igt-gpu-tools",                 # intel_gpu_top & friends
+    "libratbag-ratbagd",             # mouse configuration daemon
+    "ifuse",                         # iPhone/iPad mounting (FUSE)
+    "solaar-udev",                   # Logitech devices (udev rules only)
+
+    # --- crypto / TLS -------------------------------------------------------
+    "openssl",                       # TLS toolkit + cert/key CLI
+
+    # --- android (adb/fastboot) ----------------------------------------------
+    "android-tools",
+
+    # --- apps / helpers ------------------------------------------------------
+    "nautilus-python",               # Python extension support for Nautilus
+    "waypipe",
+    "distrobox",                 # dev container workflow (bluefin standard)
+    "cava",
+    "qt6-qtmultimedia",
+    "git-credential-libsecret",      # git × gnome-keyring credential helper
+    "fastfetch",
+
+    # --- theming / tray (wm-agnostic) ----------------------------------------
+    "adw-gtk3-theme",
+    "libappindicator-gtk3",
+    "libayatana-appindicator-gtk3",
+    "7zip-standalone",               # 7z CLI (FileRoller covers GUI only)
+    "borgbackup",                    # dedup backup tool (RPM home)
+
+    # --- shells (RPM, not brew: a login shell must exist before first login) --
+    "fish",                          # default user shell
+    "zsh",                           # alternate shell
+
+    # --- finpilot housekeeping -----------------------------------------------
+    "gum",                           # ujust interactive prompts dependency
+    "just",                          # ujust recipe runner (ujust wrapper execs this binary)
+    "fzf",                           # ujust --choose before Homebrew exists
+    "jq",                            # ublue setup hooks and ujust recipes
+    "tmux",                          # dnf cache smoke test (moved from 10-build.sh)
+]
+
+# Official Tailscale stable repository. The repo is used only while building;
+# install_third_party_repo_section removes its file before the image ships.
+["third-party:tailscale-stable"]
+repo_url = "https://pkgs.tailscale.com/stable/fedora/tailscale.repo"
+repo_id = "tailscale-stable"
+repo_file = "tailscale.repo"
+packager = "Tailscale Inc"
+packages = [
+    "tailscale",                     # private overlay network (used on neptuno)
+]
+
+# --- default terminal (COPR) ------------------------------------------------
+# ghostty is not in Fedora (COPR scottames/ghostty); default terminal via
+# niri keybind + xdg-terminal-exec wiring in 40-niri.sh.
+["copr:scottames/ghostty"]
+packages = ["ghostty"]
+
+# --- auto-updates (COPR) ---------------------------------------------------
+# oversteer-udev is COPR-only, not Fedora (rpm Vendor = "Fedora Copr").
+# uupd itself is installed by 20-packages-and-services.sh; its timers are
+# enabled from [services] below once the package is present.
+["copr:ublue-os/packages"]
+packages = ["oversteer-udev"]
+
+# --- systemd enablement -----------------------------------------------------
+# Package-provided units for this layer; 25-neptuno-packages.sh applies them
+# after the installs. Overlay units live in overlay.toml, compositor units in
+# niri.toml, and 90-cleanup.sh audits the union of all manifests.
+[services]
+system = [
+    "uupd.timer",
+    "uupd-resume.timer",
+    "tailscaled.service",
+    "gdm.service",
+    "fwupd-refresh.timer",
+    "lm_sensors.service",
+]
+# Units a package enables by preset that this image does not want running.
+# Disabled explicitly so the choice is ours, not the RPM scriptlet's.
+disabled = [
+    "smartd.service",
+]

@@ -1,7 +1,7 @@
 ###############################################################################
 # PROJECT NAME CONFIGURATION
 ###############################################################################
-# Name: finpilot
+# Name: neptuno
 #
 # The authoritative name at publish time is the repository name: build-image.yml
 # derives IMAGE_NAME from ${{ github.event.repository.name }} and pushes the
@@ -35,8 +35,8 @@
 
 # OCI context images - imported below and pinned directly in their FROM lines.
 # The base image is pinned in the FROM line below and updated by Renovate.
-FROM ghcr.io/projectbluefin/common:latest@sha256:b7e3487cafe8b21e10bb514f218406548f4c1abef5e444963094cbf2ec60e4b1 AS common
-FROM ghcr.io/ublue-os/brew:latest@sha256:e9a72571b7644b6277f0638b6a3c5e497e265e1098ab91224567acbdeb8b74ea AS brew
+FROM ghcr.io/projectbluefin/common:latest@sha256:c1b6fa45db27963f322e079db3211462010168bd5e709695f3362e5073aa3667 AS common
+FROM ghcr.io/ublue-os/brew:latest@sha256:393b567da078f0f0638450c388e229011dae06f94a90017cb7525b57d9faa46e AS brew
 
 # Context stage - combine local and imported OCI container resources
 FROM scratch AS ctx
@@ -48,14 +48,15 @@ COPY custom /custom
 COPY --from=common /system_files /oci/common
 COPY --from=brew /system_files /oci/brew
 
-# Base Image - GNOME included (Fedora official OSTree desktop)
+# Base Image - GNOME included (Fedora official OSTree desktop). Neptuno adds
+# Niri/DMS as a second session in 40-niri.sh; GDM stays the display manager.
 # Renovate will keep the digest pin up to date.
-FROM quay.io/fedora-ostree-desktops/silverblue:44@sha256:e6a514d1c6c243371aa41d96e4c179d729d8996660ae5035294be32397367fa6
+FROM quay.io/fedora-ostree-desktops/silverblue:45@sha256:d4f57b41b728f1bfaf29a402f0d5a3e303b837ab4328b511e09c724b29822e3d
 
 # Image identity - these define how bootc, fastfetch, and the ublue ecosystem
 # recognize your image. Change these to match your project name.
-ARG IMAGE_NAME="finpilot"
-ARG IMAGE_VENDOR="projectbluefin"
+ARG IMAGE_NAME="neptuno"
+ARG IMAGE_VENDOR="siddhj2206"
 ARG UBLUE_IMAGE_TAG="stable"
 # Supplied by `just build` from the base image's FROM line.
 ARG BASE_IMAGE_NAME=""
@@ -69,8 +70,9 @@ ARG VERSION=""
 ##   - Files from @projectbluefin/common at /oci/common (includes branding/artwork content)
 ##   - Files from @ublue-os/brew at /oci/brew
 ## Scripts run in the order of the RUN blocks below: image identity, runtime
-## overlays, default packages and services, then cleanup. An activated example
-## gets its own block between the package phase and the cleanup phase.
+## overlays, default packages, Neptuno's package layer, the Niri compositor
+## layer, then cleanup. An activated example gets its own block between the
+## package phases and the cleanup phase.
 
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/boot \
@@ -105,6 +107,26 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     /ctx/build/20-packages-and-services.sh
 
+### NEPTUNO PACKAGE LAYER
+## WM-agnostic additions: base manifest, Tailscale, ghostty/uupd COPRs, and the
+## negativo17 multimedia stack. Manifests: build/packages/{base,multimedia}.toml.
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache/libdnf5 \
+    --mount=type=cache,dst=/var/cache/rpm-ostree \
+    --mount=type=tmpfs,dst=/boot \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build/25-neptuno-packages.sh
+
+### NIRI COMPOSITOR LAYER
+## niri + DMS (avengemedia COPRs), selectable alongside GNOME in GDM.
+## Manifest: build/packages/niri.toml.
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache/libdnf5 \
+    --mount=type=cache,dst=/var/cache/rpm-ostree \
+    --mount=type=tmpfs,dst=/boot \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build/40-niri.sh
+
 ### CLEANUP
 ## Finalises package and Flatpak sources, then prunes build artifacts before
 ## linting. /run is deliberately not mounted as tmpfs here: the script must
@@ -128,10 +150,10 @@ RUN rm -rf /opt && ln -s /var/opt /opt
 ## builds and CI supply the dynamic values through `just build`; keeping these
 ## ARGs late prevents a new version or timestamp from invalidating package and
 ## overlay layers above.
-ARG IMAGE_DESC="My Customized Universal Blue Image"
+ARG IMAGE_DESC="Neptuno - GNOME and Niri/DMS desktop on Fedora Silverblue"
 ARG IMAGE_CREATED=""
 ARG IMAGE_LOGO_URL="https://avatars.githubusercontent.com/u/120078124?s=200&v=4"
-ARG IMAGE_KEYWORDS="bootc,ublue,universal-blue"
+ARG IMAGE_KEYWORDS="bootc,ublue,gnome,niri,dms,silverblue"
 ARG IMAGE_REF="main"
 ## The commit the image was built from. It is declared here, with the other
 ## volatile metadata, so a new commit only invalidates the label layer.

@@ -16,10 +16,11 @@ set -euo pipefail
 # Order is the contract. Every step writes over the one above it, so a later
 # step deliberately wins:
 #
-#   1. common/shared     reusable runtime infrastructure
-#   2. ublue-os/brew     the Homebrew mechanism and its shell integration
-#   3. custom/files      the override seam: mirrors / and may replace anything
-#   4. custom/config     per-user defaults, seeded into /etc/skel/.config
+#   1. common/shared        reusable runtime infrastructure
+#   2. common/bluefin       targeted cherry-picks (never overlaid wholesale)
+#   3. ublue-os/brew        the Homebrew mechanism and its shell integration
+#   4. custom/files         the override seam: mirrors / and may replace anything
+#   5. custom/config        per-user defaults, seeded into /etc/skel/.config
 #
 # The declaration seams write into directories the overlays above created:
 # custom/brew/*.Brewfile, custom/ujust/ (any depth), and
@@ -27,13 +28,26 @@ set -euo pipefail
 # A custom file sharing a name with an inherited one overrides it. That follows
 # the same precedence rule; it is not a collision to guard against.
 #
-# common/bluefin/ is imported into the build context but never overlaid:
-# shared/ is reusable runtime infrastructure, while bluefin/ is product
-# opinion, and nvidia/ is a paired hardware feature that must ship with a real
-# driver installation.
+# common/bluefin/ is imported into the build context but never overlaid
+# wholesale: shared/ is reusable runtime infrastructure, while bluefin/ is
+# product opinion and nvidia/ is a paired hardware feature that must ship with
+# a real driver installation.
+#
+# Enablement is declared in packages/overlay.toml, not in this script; see
+# build/README.md and build/scripts/systemd-units.
 ###############################################################################
 
 shopt -s nullglob
+
+# Record the base image's enabled units before any overlay lands. 90-cleanup.sh
+# diffs against this snapshot, so a unit can only become enabled through a
+# manifest's [services] section — never through an overlay symlink or an RPM
+# scriptlet we did not choose.
+"${UNITS_BIN:-/ctx/build/scripts/systemd-units}" snapshot "${UNITS_SNAPSHOT:-/var/tmp/neptuno-units.before}" \
+	--root "${UNITS_ROOT:-/}"
+
+# shellcheck source=/dev/null
+source /ctx/build/scripts/package-lib.sh
 
 echo "::group:: Overlay shared Common runtime files"
 
@@ -50,6 +64,37 @@ echo "::group:: Overlay shared Common runtime files"
 # scope — is only worth doing once the image is signed with a key the policy
 # can name; a keyless GitHub Actions identity is unmatchable here.
 rsync -rvK /ctx/oci/common/shared/ /
+
+echo "::endgroup::"
+
+echo "::group:: Overlay Bluefin cherry-picks"
+
+# common/bluefin is product opinion, not shared infrastructure, so it is
+# cherry-picked by path instead of overlaid wholesale. Every path is asserted
+# after the copy: a rename in common must fail this build with the missing path
+# named, rather than silently dropping the integration.
+#
+# The bluefin/just directory is deliberately NOT taken wholesale: Neptuno owns
+# its ujust recipes, and importing Bluefin's changelog.just would duplicate the
+# `changelogs` recipe for no gain.
+COMMON_CHERRY_PICKS=(
+	/ctx/oci/common/bluefin/./usr/libexec/bonedigger-report
+	/ctx/oci/common/bluefin/./usr/lib/systemd/system/dconf-update.service
+	/ctx/oci/common/bluefin/./usr/share/flatpak/preinstall.d/bazaar.preinstall
+	/ctx/oci/common/bluefin/./etc/bazaar/
+	/ctx/oci/common/bluefin/./usr/lib/systemd/user/bazaar.service
+	/ctx/oci/common/bluefin/./usr/share/ublue-os/flatpak-overrides/io.github.kolunmi.Bazaar
+	/ctx/oci/common/bluefin/./usr/lib/tmpfiles.d/bazaar-flatpak.conf
+)
+rsync -rvK --relative "${COMMON_CHERRY_PICKS[@]}" /
+
+for src in "${COMMON_CHERRY_PICKS[@]}"; do
+	common_path="/${src#/ctx/oci/common/bluefin/./}"
+	test -e "${common_path}" || {
+		echo "ERROR: common cherry-pick missing: ${common_path}" >&2
+		exit 1
+	}
+done
 
 echo "::endgroup::"
 
@@ -82,9 +127,18 @@ if [[ -d /ctx/custom/config ]]; then
 	rsync -a --exclude=/README.md /ctx/custom/config/ /etc/skel/.config/
 fi
 
-# Brewfiles consumed by first-user Homebrew setup.
-mkdir -p /usr/share/ublue-os/homebrew/
-cp /ctx/custom/brew/*.Brewfile /usr/share/ublue-os/homebrew/
+# Brewfiles consumed by first-user Homebrew setup. Neptuno auto-installs its
+# curated set on first login, so they belong in preinstall.d (the content-hashed
+# brew-preinstall service reads only that directory). Upstream finpilot copies
+# them to the parent dir, where they are declaration-only.
+mkdir -p /usr/share/ublue-os/homebrew/preinstall.d/
+cp /ctx/custom/brew/*.Brewfile /usr/share/ublue-os/homebrew/preinstall.d/
+
+# The copy is the only link between custom/brew and the runtime preinstaller.
+compgen -G "/usr/share/ublue-os/homebrew/preinstall.d/*.Brewfile" >/dev/null || {
+	echo "ERROR: no Brewfiles landed in preinstall.d" >&2
+	exit 1
+}
 
 # Merge custom ujust recipes into the file the shared ujust entry point imports.
 # Walk the tree so a fork can organise recipes into subdirectories, and sort the
@@ -133,24 +187,19 @@ rm -f "${flathub_tmp}"
 
 echo "::endgroup::"
 
-echo "::group:: Enable runtime services"
+echo "::group:: Enable overlay services"
 
-# Units the overlays above provide. Enabling them here is what makes the Brew
-# and Flatpak declarations take effect, and it matches how Bluefin's cleanup
-# phase wires the same shared services.
-systemctl enable brew-setup.service
-systemctl enable brew-update.timer
-systemctl enable brew-upgrade.timer
-systemctl --global enable brew-preinstall.service
-systemctl enable flatpak-preinstall.service
-systemctl enable flatpak-appstream-refresh.service
+# Units the overlays above provide. The [services] section of overlay.toml is
+# the single enablement path: it makes the Brew and Flatpak declarations take
+# effect, wires the first-boot setup framework, and turns on rootless podman.
+# Nothing here is enabled implicitly, and 90-cleanup.sh audits the result.
+enable_services_section /ctx/build/packages/overlay.toml "overlay services"
 
-# First-boot setup framework.
-systemctl enable ublue-system-setup.service
-systemctl --global enable ublue-user-setup.service
-
-# Rootless container management for the reference image.
-systemctl enable podman.socket
+# common ships 01-brew-preinstall.preset, but systemd applies presets only for
+# the system manager on a machine's first boot. In a Containerfile build that
+# preset is inert for user units, so the explicit global enable above is the
+# only thing that turns brew-preinstall on. Fail closed if it did not take.
+systemctl --global is-enabled brew-preinstall.service >/dev/null
 
 echo "::endgroup::"
 

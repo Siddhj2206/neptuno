@@ -1,0 +1,31 @@
+# Neptuno overlay service manifest.
+#
+# The overlay phase installs no packages, but it does provide the unit files
+# these services need (common/shared, ublue-os/brew, and custom/files). Declaring
+# them here keeps the image's enablement in TOML: 10-overlay.sh applies this
+# file, and 90-cleanup.sh audits the union of every build/packages/*.toml.
+#
+# Applying this file before the package phases is deliberate: these units exist
+# as soon as the overlays land, and enabling is a symlink operation, not a
+# service start.
+
+[services]
+system = [
+    # common/shared
+    "flatpak-appstream-refresh.service",
+    "flatpak-preinstall.service",
+    "projectbluefin-countme.timer",
+    "podman.socket",
+    "ublue-system-setup.service",
+    # common/bluefin cherry-pick (10-overlay.sh)
+    "dconf-update.service",
+    # ublue-os/brew
+    "brew-setup.service",
+    "brew-update.timer",
+    "brew-upgrade.timer",
+]
+user = [
+    # first-login Homebrew preinstall for every new user
+    "brew-preinstall.service",
+    "ublue-user-setup.service",
+]

@@ -31,7 +31,50 @@ setup() {
 
 	mkdir -p "${STUB_BIN}" "${TEST_ROOT}/logs"
 	mkdir -p "${CTX}/oci/common/shared" "${CTX}/oci/brew"
+	mkdir -p "${CTX}/build/scripts" "${CTX}/build/packages"
+
+	# The overlay applies overlay.toml through the shared manifest helpers, and
+	# snapshots the enabled set through build/scripts/systemd-units. Copy all three verbatim and
+	# point the helpers at the sandbox.
+	cp "${REPO_ROOT}/build/scripts/systemd-units" "${CTX}/build/scripts/systemd-units"
+	cp "${REPO_ROOT}/build/scripts/read-packages" "${CTX}/build/scripts/read-packages"
+	cp "${REPO_ROOT}/build/scripts/package-lib.sh" "${CTX}/build/scripts/package-lib.sh"
+	cp "${REPO_ROOT}/build/packages/overlay.toml" "${CTX}/build/packages/overlay.toml"
+	chmod +x "${CTX}/build/scripts/systemd-units" "${CTX}/build/scripts/read-packages"
+
+	export READ_PKGS="${CTX}/build/scripts/read-packages"
+	export UNITS_ROOT="${SANDBOX}"
+	export UNITS_SNAPSHOT="${TEST_ROOT}/units.before"
 	mkdir -p "${CTX}/custom/brew" "${CTX}/custom/ujust" "${CTX}/custom/flatpaks"
+
+	# common/bluefin cherry-pick sources. The overlay asserts every path after
+	# the copy, so the fixture must provide all of them.
+	for cherry in \
+		usr/libexec/bonedigger-report \
+		usr/lib/systemd/system/dconf-update.service \
+		usr/share/flatpak/preinstall.d/bazaar.preinstall \
+		etc/bazaar/bazaar.yaml \
+		usr/lib/systemd/user/bazaar.service \
+		usr/share/ublue-os/flatpak-overrides/io.github.kolunmi.Bazaar \
+		usr/lib/tmpfiles.d/bazaar-flatpak.conf; do
+		mkdir -p "$(dirname "${CTX}/oci/common/bluefin/${cherry}")"
+		printf 'cherry-pick\n' >"${CTX}/oci/common/bluefin/${cherry}"
+	done
+
+	# The rsync stub logs without copying, so create the cherry-pick destinations
+	# the post-copy assertions look for. The assertions themselves are covered by
+	# the missing-path test below.
+	for dest in \
+		usr/libexec/bonedigger-report \
+		usr/lib/systemd/system/dconf-update.service \
+		usr/share/flatpak/preinstall.d/bazaar.preinstall \
+		etc/bazaar/bazaar.yaml \
+		usr/lib/systemd/user/bazaar.service \
+		usr/share/ublue-os/flatpak-overrides/io.github.kolunmi.Bazaar \
+		usr/lib/tmpfiles.d/bazaar-flatpak.conf; do
+		mkdir -p "$(dirname "${SANDBOX}/${dest}")"
+		printf 'cherry-pick\n' >"${SANDBOX}/${dest}"
+	done
 
 	# Representative build context contents.
 	printf 'shared-payload\n' >"${CTX}/oci/common/shared/.keep"
@@ -107,7 +150,7 @@ teardown() {
 	[[ "$output" == *"::group:: Overlay Brew integration files"* ]]
 	[[ "$output" == *"::group:: Copy template custom declarations"* ]]
 	[[ "$output" == *"::group:: Add the Flathub remote descriptor"* ]]
-	[[ "$output" == *"::group:: Enable runtime services"* ]]
+	[[ "$output" == *"::group:: Enable overlay services"* ]]
 	[[ "$output" == *"::endgroup::"* ]]
 }
 
@@ -122,14 +165,17 @@ teardown() {
 	# Order is the contract: every step writes over the one above it, so the
 	# template's own seams deliberately win over the inherited payloads.
 	[ "${calls[0]}" = "-rvK ${CTX}/oci/common/shared/ /" ]
-	[ "${calls[1]}" = "-rvK ${CTX}/oci/brew/ /" ]
-	[[ "${calls[2]}" == *"${CTX}/custom/files/ /"* ]]
-	[[ "${calls[3]}" == *"${CTX}/custom/config/ ${SANDBOX}/etc/skel/.config/"* ]]
+	# index 1 is the targeted bluefin/ cherry-pick
+	[ "${calls[2]}" = "-rvK ${CTX}/oci/brew/ /" ]
+	[[ "${calls[3]}" == *"${CTX}/custom/files/ /"* ]]
+	[[ "${calls[4]}" == *"${CTX}/custom/config/ ${SANDBOX}/etc/skel/.config/"* ]]
 
 	# bluefin/ is product opinion and nvidia/ is a paired hardware feature, so
-	# neither is ever overlaid.
-	! grep -q 'common/bluefin' "${RSYNC_LOG}"
+	# neither is ever overlaid wholesale. The cherry-pick uses --relative and
+	# names each path instead.
+	! grep -q 'bluefin/ /' "${RSYNC_LOG}"
 	! grep -q 'nvidia' "${RSYNC_LOG}"
+	grep -q -- '--relative' "${RSYNC_LOG}"
 }
 
 @test "10-overlay: custom/files mirrors the image root and drops its own README" {
@@ -139,17 +185,28 @@ teardown() {
 	mapfile -t calls <"${RSYNC_LOG}"
 	# The override seam copies to the image root, so a payload can replace
 	# anything the inherited layers wrote. Its own README must not ship.
-	[[ "${calls[2]}" == *"${CTX}/custom/files/ /"* ]]
-	[[ "${calls[2]}" == *"--exclude=/README.md"* ]]
+	[[ "${calls[3]}" == *"${CTX}/custom/files/ /"* ]]
+	[[ "${calls[3]}" == *"--exclude=/README.md"* ]]
 }
 
-@test "10-overlay: copies every Brewfile into the ublue-os homebrew dir" {
+@test "10-overlay: a missing Bluefin cherry-pick fails the build" {
+	rm -f "${SANDBOX}/usr/share/flatpak/preinstall.d/bazaar.preinstall"
+
+	run bash "${SCRIPT}"
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"cherry-pick missing"* ]]
+}
+
+@test "10-overlay: copies every Brewfile into homebrew/preinstall.d" {
 	run bash "${SCRIPT}"
 	[ "$status" -eq 0 ]
 
-	[ -f "${HOMEBREW_DIR}/default.Brewfile" ]
-	[ -f "${HOMEBREW_DIR}/development.Brewfile" ]
-	grep -q 'brew "tmux"' "${HOMEBREW_DIR}/default.Brewfile"
+	# brew-preinstall only reads preinstall.d; a Brewfile in the parent dir is a
+	# declaration, not an install. Neptuno wants first-login auto-install.
+	[ -f "${HOMEBREW_DIR}/preinstall.d/default.Brewfile" ]
+	[ -f "${HOMEBREW_DIR}/preinstall.d/development.Brewfile" ]
+	grep -q 'brew "tmux"' "${HOMEBREW_DIR}/preinstall.d/default.Brewfile"
+	[ ! -f "${HOMEBREW_DIR}/default.Brewfile" ]
 }
 
 @test "10-overlay: consolidates only .just files into 60-custom.just" {
@@ -235,8 +292,8 @@ teardown() {
 	# seam's own README documents the seam instead of shipping into every new
 	# user's home.
 	mapfile -t calls <"${RSYNC_LOG}"
-	[[ "${calls[3]}" == *"${CTX}/custom/config/ ${SANDBOX}/etc/skel/.config/"* ]]
-	[[ "${calls[3]}" == *"--exclude=/README.md"* ]]
+	[[ "${calls[4]}" == *"${CTX}/custom/config/ ${SANDBOX}/etc/skel/.config/"* ]]
+	[[ "${calls[4]}" == *"--exclude=/README.md"* ]]
 }
 
 @test "10-overlay: a missing custom/config directory is not an error" {
@@ -247,21 +304,33 @@ teardown() {
 	[ ! -d "${SANDBOX}/etc/skel" ]
 }
 
-@test "10-overlay: enables exactly the brew, flatpak, setup and podman units" {
+@test "10-overlay: enables exactly the units overlay.toml declares" {
 	run bash "${SCRIPT}"
 	[ "$status" -eq 0 ]
 
 	mapfile -t calls <"${SYSTEMCTL_LOG}"
-	[ "${#calls[@]}" -eq 9 ]
-	[ "${calls[0]}" = "enable brew-setup.service" ]
-	[ "${calls[1]}" = "enable brew-update.timer" ]
-	[ "${calls[2]}" = "enable brew-upgrade.timer" ]
-	[ "${calls[3]}" = "--global enable brew-preinstall.service" ]
-	[ "${calls[4]}" = "enable flatpak-preinstall.service" ]
-	[ "${calls[5]}" = "enable flatpak-appstream-refresh.service" ]
-	[ "${calls[6]}" = "enable ublue-system-setup.service" ]
-	[ "${calls[7]}" = "--global enable ublue-user-setup.service" ]
-	[ "${calls[8]}" = "enable podman.socket" ]
+	[ "${#calls[@]}" -eq 12 ]
+	[ "${calls[0]}" = "enable flatpak-appstream-refresh.service" ]
+	[ "${calls[1]}" = "enable flatpak-preinstall.service" ]
+	[ "${calls[2]}" = "enable projectbluefin-countme.timer" ]
+	[ "${calls[3]}" = "enable podman.socket" ]
+	[ "${calls[4]}" = "enable ublue-system-setup.service" ]
+	[ "${calls[5]}" = "enable dconf-update.service" ]
+	[ "${calls[6]}" = "enable brew-setup.service" ]
+	[ "${calls[7]}" = "enable brew-update.timer" ]
+	[ "${calls[8]}" = "enable brew-upgrade.timer" ]
+	[ "${calls[9]}" = "--global enable brew-preinstall.service" ]
+	[ "${calls[10]}" = "--global enable ublue-user-setup.service" ]
+	# User-scope presets are inert in a Containerfile build, so the global
+	# enable is asserted rather than assumed.
+	[ "${calls[11]}" = "--global is-enabled brew-preinstall.service" ]
+}
+
+@test "10-overlay: snapshots the enabled set before any overlay lands" {
+	run bash "${SCRIPT}"
+	[ "$status" -eq 0 ]
+
+	[ -f "${UNITS_SNAPSHOT}" ]
 }
 
 @test "10-overlay: ships the Flathub remote descriptor once its hash matches the pin" {

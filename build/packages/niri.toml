@@ -1,0 +1,75 @@
+# Neptuno Niri layer manifest — WM-specific.
+#
+# Consumed by build/40-niri.sh via build/scripts/package-lib.sh:
+#   [fedora]                  -> one dnf5 install transaction
+#   ["copr:<owner>/<project>"] -> enabled + installed per COPR (disabled by
+#                                 90-cleanup.sh — AGENTS.md rule 3)
+#   [services]                -> enabled after install (see build/scripts/systemd-units)
+#
+# Swap story: replacing the compositor (e.g. hyprland) = new script
+# (40-hyprland.sh) + this manifest + the wm bits in custom/config — the
+# base/multimedia layers stay untouched.
+#
+#   - niri IS in Fedora proper — no COPR needed.
+#   - satty (screenshot editor) skipped; DMS screenshot works without it.
+
+[fedora]
+packages = [
+    # --- compositor ---------------------------------------------------------
+    "niri",                      # pulls its xwayland-satellite requirement
+
+    # --- niri session utilities ---------------------------------------------
+    "kanshi",                    # output layout daemon
+    "gtk-layer-shell",           # Layer Shell GTK3 library (panels/launchers)
+
+    # --- storage / automount (no GNOME Shell to do this on niri) -----------
+    "udiskie",                   # user-level automount daemon (user unit)
+
+    # --- Qt theming stack (tunaOS set; DMS writes qt6ct colors via matugen) --
+    "qt6ct",
+    "plasma-breeze",
+    "kf6-kirigami",
+    "kf6-qqc2-desktop-style",
+
+    # --- DMS ecosystem ----------------------------------------------------------
+    "khal",                          # calendar backend for DMS calendar
+]
+
+# One COPR per section (one bad name kills the transaction); clean-stage.sh
+# disables them in the final image (AGENTS.md rule 3).
+["copr:avengemedia/dms"]
+packages = [
+    "dms",
+    "dms-cli",
+]
+
+["copr:avengemedia/danklinux"]
+packages = [
+    "quickshell-git",            # full-feature quickshell (polkit/idle support)
+    "matugen",                   # wallpaper -> theme generation
+    "danksearch",                # spotlight search backend
+    "dgop",                      # DMS go helpers
+    "material-symbols-fonts",
+]
+
+# --- systemd enablement -----------------------------------------------------
+# Applied by 40-niri.sh after the COPRs install, because the units only exist
+# once the packages are present. `units check` audits the result in cleanup.
+[services]
+system = [
+    "flatpak-theming.service",   # custom/files unit; first-boot Flatpak theming
+]
+
+# --- unit wants -------------------------------------------------------------
+# Units pulled in by a specific target instead of enabled for every session.
+# dms.service is WantedBy=graphical-session.target, so `systemctl --global
+# enable` would also start the shell inside a GNOME session; linking it to
+# niri.service keeps it with the compositor. The target is data, not a schema
+# keyword, so a future compositor only changes this block.
+[[wants]]
+scope = "user"
+target = "niri.service"
+units = [
+    "dms.service",               # DMS shell
+    "dsearch.service",           # danksearch backend
+]

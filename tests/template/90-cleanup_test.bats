@@ -46,6 +46,14 @@ setup() {
 	export CLEAN_ROOT="${SANDBOX}"
 	export DNF5_LOG SYSTEMCTL_LOG
 
+	# The enablement audit reads the real helper and manifests, but the
+	# filesystem it inspects is the sandbox.
+	export UNITS_BIN="${SCRIPT_DIR}/../../build/scripts/systemd-units"
+	export UNITS_MANIFESTS="${SCRIPT_DIR}/../../build/packages"
+	export UNITS_ROOT="${SANDBOX}"
+	export UNITS_SNAPSHOT="${TEST_ROOT}/units.before"
+	: >"${UNITS_SNAPSHOT}"
+
 	cat >"${STUB_BIN}/dnf5" <<'EOF'
 #!/usr/bin/bash
 printf '%s\n' "$*" >> "${DNF5_LOG}"
@@ -101,15 +109,14 @@ run_cleanup() {
 	[ "${calls[1]}" = "versionlock clear" ]
 }
 
-@test "90-cleanup: disables and masks the fedora flatpak service and the base updater" {
+@test "90-cleanup: disables the fedora flatpak service and the base updater" {
 	run_cleanup
 	[ "$status" -eq 0 ]
 
 	mapfile -t calls <"${SYSTEMCTL_LOG}"
-	[ "${#calls[@]}" -eq 3 ]
+	[ "${#calls[@]}" -eq 2 ]
 	[ "${calls[0]}" = "disable flatpak-add-fedora-repos.service" ]
-	[ "${calls[1]}" = "mask flatpak-add-fedora-repos.service" ]
-	[ "${calls[2]}" = "disable rpm-ostreed-automatic.timer" ]
+	[ "${calls[1]}" = "disable rpm-ostreed-automatic.timer" ]
 }
 
 @test "90-cleanup: removes the flatpak-add-fedora-repos unit file" {
@@ -233,4 +240,25 @@ EOF
 
 	run_cleanup
 	[ "$status" -eq 0 ]
+}
+
+@test "90-cleanup: fails when a unit is enabled outside the manifests" {
+	mkdir -p "${SANDBOX}/usr/lib/systemd/system/multi-user.target.wants"
+	ln -s /usr/lib/systemd/system/stray.service \
+		"${SANDBOX}/usr/lib/systemd/system/multi-user.target.wants/stray.service"
+
+	run_cleanup
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"stray.service"* ]]
+}
+
+@test "90-cleanup: disables COPRs in the Fedora 45 repo location too" {
+	mkdir -p "${SANDBOX}/usr/share/dnf5/repos.d"
+	printf '[copr]\nenabled=1\n' \
+		>"${SANDBOX}/usr/share/dnf5/repos.d/_copr:copr.fedorainfracloud.org:scottames:ghostty.repo"
+
+	run_cleanup
+	[ "$status" -eq 0 ]
+	grep -q '^enabled=0' \
+		"${SANDBOX}/usr/share/dnf5/repos.d/_copr:copr.fedorainfracloud.org:scottames:ghostty.repo"
 }

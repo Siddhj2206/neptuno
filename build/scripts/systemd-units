@@ -1,0 +1,129 @@
+#!/usr/bin/python3
+"""Snapshot and audit systemd enablement for the image build.
+
+The image policy is explicit enablement: a unit runs only when a manifest's
+[services] section names it. This script makes that policy enforceable.
+
+  units snapshot <file>                 record the enabled set before overlays
+  units declared <manifest>...          print the union of [services] entries
+  units check <snapshot> <manifest>...  fail when something was enabled that
+                                        the snapshot and manifests do not name
+
+Enablement is read from the *.wants and *.requires symlink directories rather
+than from `systemctl`, so the audit works in a build container with no running
+systemd, and a test can point --root at a fixture tree.
+
+Exit codes: 0 ok, 1 violation or unreadable input, 2 usage.
+"""
+
+import argparse
+import sys
+import tomllib
+from pathlib import Path
+
+UNIT_DIRS = (
+    "etc/systemd/system",
+    "usr/lib/systemd/system",
+    "etc/systemd/user",
+    "usr/lib/systemd/user",
+)
+
+
+def enabled_units(root: Path) -> set[str]:
+    """Collect unit names from every wants/requires directory under root."""
+    units: set[str] = set()
+    for relative in UNIT_DIRS:
+        base = root / relative
+        if not base.is_dir():
+            continue
+        for wants in base.glob("*.wants"):
+            units.update(entry.name for entry in wants.iterdir() if entry.is_symlink() or entry.is_file())
+        for requires in base.glob("*.requires"):
+            units.update(entry.name for entry in requires.iterdir() if entry.is_symlink() or entry.is_file())
+    return units
+
+
+def manifest_services(manifest: Path) -> set[str]:
+    with manifest.open("rb") as handle:
+        data = tomllib.load(handle)
+    services = data.get("services", {})
+    if not isinstance(services, dict):
+        raise ValueError(f"{manifest}: [services] must be a table")
+    declared: set[str] = set()
+    for scope in ("system", "user"):
+        entries = services.get(scope, [])
+        if not isinstance(entries, list) or not all(isinstance(item, str) for item in entries):
+            raise ValueError(f"{manifest}: [services].{scope} must be a list of unit names")
+        declared.update(entries)
+
+    disabled = services.get("disabled", [])
+    if not isinstance(disabled, list) or not all(isinstance(item, str) for item in disabled):
+        raise ValueError(f"{manifest}: [services].disabled must be a list of unit names")
+    conflicts = declared & set(disabled)
+    if conflicts:
+        raise ValueError(f"{manifest}: units both enabled and disabled: {sorted(conflicts)}")
+
+    wants = data.get("wants", [])
+    if not isinstance(wants, list):
+        raise ValueError(f"{manifest}: [[wants]] must be an array of tables")
+    for item in wants:
+        if not isinstance(item, dict):
+            raise ValueError(f"{manifest}: every [[wants]] entry must be a table")
+        units = item.get("units", [])
+        if not isinstance(units, list) or not all(isinstance(unit, str) and unit for unit in units):
+            raise ValueError(f"{manifest}: [[wants]] needs a units list of names")
+        declared.update(units)
+    return declared
+
+
+def read_snapshot(path: Path) -> set[str]:
+    return {line.strip() for line in path.read_text().splitlines() if line.strip()}
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(add_help=True)
+    parser.add_argument("command", choices=("snapshot", "declared", "check"))
+    parser.add_argument("paths", nargs="+")
+    parser.add_argument("--root", default="/", help="filesystem root to read (tests use a fixture)")
+    args = parser.parse_args()
+
+    root = Path(args.root)
+
+    try:
+        if args.command == "snapshot":
+            if len(args.paths) != 1:
+                parser.error("snapshot takes exactly one output file")
+            Path(args.paths[0]).write_text("\n".join(sorted(enabled_units(root))) + "\n")
+            return 0
+
+        if args.command == "declared":
+            declared: set[str] = set()
+            for raw in args.paths:
+                declared |= manifest_services(Path(raw))
+            for unit in sorted(declared):
+                print(unit)
+            return 0
+
+        snapshot_path, *manifests = args.paths
+        if not manifests:
+            parser.error("check takes a snapshot file and at least one manifest")
+
+        before = read_snapshot(Path(snapshot_path))
+        declared: set[str] = set()
+        for raw in manifests:
+            declared |= manifest_services(Path(raw))
+
+        unexpected = sorted(enabled_units(root) - before - declared)
+        if unexpected:
+            print("::error::units enabled outside the manifests:", file=sys.stderr)
+            for unit in unexpected:
+                print(f"  {unit}", file=sys.stderr)
+            return 1
+        return 0
+    except (OSError, ValueError, tomllib.TOMLDecodeError) as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
