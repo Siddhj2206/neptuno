@@ -3,6 +3,6 @@
 # Examples: https://artifacthub.io/packages/search?ts_query_web=ublue&sort=relevance&page=1
 
 repositoryID: neptuno
-owners: # TODO: (optional, used to claim repository ownership on Artifact Hub)
+owners:
   - name: Siddhant
     email: siddhj2206@users.noreply.github.com
