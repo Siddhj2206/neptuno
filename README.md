@@ -1,43 +1,61 @@
-# finpilot
+# neptuno
 
-A template for building your own bootc operating system image, assembled the
-same way Bluefin, Aurora, and Bluefin LTS are: from shared OCI layers rather
-than by modifying an existing image. The desktop configuration comes from
+A bootc operating system image assembled the same way Bluefin, Aurora, and
+Bluefin LTS are: from shared OCI layers rather than by modifying an existing
+image. The desktop configuration comes from
 [`projectbluefin/common`](https://github.com/projectbluefin/common), Homebrew
-from [`ublue-os/brew`](https://github.com/ublue-os/brew), and the rest is yours.
+from [`ublue-os/brew`](https://github.com/ublue-os/brew), and the Neptuno delta
+is declared in `build/packages/*.toml`.
 
-It is built to be driven by hand or by an agent.
+The base is Fedora Silverblue (GNOME/GDM). Niri with DankMaterialShell is added
+as a second, selectable session rather than replacing the desktop.
 
 > Be the one who moves, not the one who is moved.
 
 ## What Makes this Raptor Different?
 
-Here are the changes from [Base Image Name]. This image is based on
-[Bluefin/Bazzite/Aurora/etc] and includes these customizations:
+Neptuno combines the Fedora Silverblue GNOME desktop with an additional
+Niri/DMS session. Manifests of record live in `build/packages/*.toml`; every
+declared package is asserted present after install.
 
 ### Added Packages (Build-time)
 
-- List the packages you install at build time
+- **Base (`base.toml`)**: device, network, developer, and terminal additions;
+  android-tools (adb/fastboot); YubiKey/FIDO2 tools; Ghostty (COPR); and uupd
+  auto-updates (COPR), on top of Silverblue's GNOME stack
+- **Multimedia (`multimedia.toml`)**: negativo17 ffmpeg and the full codec set,
+  with Mesa/VA overrides versionlocked to the same repository
+- **Compositor (`niri.toml`)**: Niri and the DMS stack (avengemedia COPRs),
+  selectable alongside GNOME in GDM
+
+Containers are podman (from the Silverblue base); docker and the libvirt/qemu
+stack are not shipped.
 
 ### Added Applications (Runtime)
 
-- **CLI tools (Homebrew)**: list them
-- **GUI apps (Flatpak)**: list them
+- **CLI tools (Homebrew, auto-installed on first login)**: fish and zsh,
+  starship, neovim, lazygit, atuin, eza/bat/fd/ripgrep/zoxide, htop/btop/nvtop,
+  gh, bun, uv (`custom/brew/default.Brewfile`)
+- **GUI apps (Flatpak preinstall)**: Firefox, Zen Browser, and the niri/DMS
+  tooling (`custom/flatpaks/default.preinstall`)
 
 ### Removed or Disabled
 
-- List anything removed from the base image
+- Fedora's desktop defaults replaced by the Flatpak set: firefox, gnome-software,
+  ptyxis, yelp, totem-video-thumbnailer, and the CJK font fallbacks
+- Build-time COPRs and the negativo17 repository are disabled before the image
+  ships; `build/90-cleanup.sh` fails the build if one is still enabled
 
 ### Configuration Changes
 
-- Systemd services enabled or disabled
-- Desktop environment changes
-- Other notable modifications
+- Flatpak remote is the pinned Flathub descriptor, not a build-time
+  `remote-add` (which would be pruned with `/var`)
+- systemd units are enabled only through `[services]` in `build/packages/*.toml`;
+  `build/units` audits the enabled set in cleanup and fails on anything else
+- ujust recipes: `install-config` (the only way to apply Niri/Ghostty/DMS
+  defaults to an existing user) and `changelogs`
 
-_Last updated: [date]_
-
-> This section is what tells your users how your image differs from its base.
-> Update it whenever you add or remove a package, app, or service.
+_Last updated: 2026-10-24_
 
 ## Quick start
 
@@ -164,10 +182,9 @@ sudo systemctl reboot
 Then, as your user:
 
 ```bash
-ujust install-default-apps    # Homebrew: the default Brewfile
-ujust install-dev-tools       # Homebrew: the development Brewfile
-ujust configure-dev-groups    # add yourself to docker and libvirt
-ujust install-config          # re-apply the image defaults, backing up yours
+ujust install-config          # re-apply the Niri/DMS/Ghostty defaults, backing up yours
+ujust install-default-apps    # re-run the Homebrew default set (normally first login)
+ujust changelogs              # release notes for the running image
 ```
 
 First boot unpacks Homebrew and installs the declared Flatpaks; both need a

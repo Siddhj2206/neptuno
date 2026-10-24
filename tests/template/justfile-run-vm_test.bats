@@ -291,7 +291,7 @@ host_has_ovmf() {
 	unstub qemu-system-x86_64
 	run_recipe run-vm-qcow2
 	[ "$status" -eq 0 ]
-	[ "$(cat "${LOGS}/build.log")" = "build-qcow2 localhost/finpilot stable" ]
+	[ "$(cat "${LOGS}/build.log")" = "build-qcow2 localhost/neptuno stable" ]
 	grep -Fxq "${SANDBOX}/output/qcow2/disk.qcow2:/boot.qcow2" "${LOGS}/podman.args"
 }
 

@@ -2,7 +2,7 @@
 
 Working notes for agents in this repository. `overview` maps how the image is
 assembled and says which skill covers what; the procedures live under
-`.agents/skills/`.
+`.agents/skills/`. Neptuno's delta is in `.agents/skills/neptuno`.
 
 ## Gates
 
@@ -15,6 +15,11 @@ These hold for every change:
   files. The `validate` status check runs shellcheck and hadolint on a pull
   request.
 - **Confirm before pushing** — show the diff and wait.
+- **Declare, then enable.** Packages and units belong in
+  `build/packages/*.toml`. `just test-unit` includes the manifest contract; a
+  unit enabled outside a manifest fails the image build in `90-cleanup.sh`.
+- **Never reintroduce** a build-time `flatpak remote-add`, `systemctl
+  preset-all`, or a `/dev/null` unit mask. See `.agents/skills/neptuno`. 
 
 ## Branches and releases
 

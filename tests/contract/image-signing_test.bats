@@ -21,7 +21,7 @@ IMAGE_INFO_SRC="${REPO_ROOT}/build/00-image-info.sh"
 # Comments in the build scripts discuss the policy at length; only executable
 # lines can change what the image ships.
 grep_code() {
-    grep -nE "$1" "${REPO_ROOT}"/build/*.sh "${REPO_ROOT}"/build/*.sh.example |
+    grep -nE "$1" "${REPO_ROOT}"/build/*.sh "${REPO_ROOT}"/build/scripts/*.sh |
         grep -vE ':[0-9]+:[[:space:]]*#'
 }
 

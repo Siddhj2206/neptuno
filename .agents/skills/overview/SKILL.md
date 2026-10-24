@@ -38,7 +38,7 @@ defines three things:
 |---|---|
 | `Containerfile` | Image assembly: identity, base image, and phases. |
 | `Justfile` | Build, VM, release, and test recipes. |
-| `build/` | Build-time scripts: the phases, helpers, and the `.example` catalogue. |
+| `build/` | Build-time scripts: the phases and helpers. |
 | `custom/brew/` | Brewfiles, installed at runtime. |
 | `custom/flatpaks/` | Flatpak preinstall declarations, installed on first boot. |
 | `custom/ujust/` | `ujust` recipes. |

@@ -200,7 +200,7 @@ podman_build_args() {
     local args
     args="$(podman_build_args)"
     [[ "${args}" == *"--build-arg IMAGE_NAME=finpilot"* ]]
-    [[ "${args}" == *"--build-arg IMAGE_VENDOR=projectbluefin"* ]]
+    [[ "${args}" == *"--build-arg IMAGE_VENDOR=siddhj2206"* ]]
     [[ "${args}" == *"--build-arg UBLUE_IMAGE_TAG=stable"* ]]
     [[ "${args}" == *"--build-arg BASE_IMAGE_NAME=silverblue"* ]]
 }
@@ -314,14 +314,14 @@ podman_build_args() {
     [ "$status" -eq 0 ]
     local args
     args="$(podman_build_args)"
-    [[ "${args}" == *"--cache-from ghcr.io/projectbluefin/finpilot"* ]]
+    [[ "${args}" == *"--cache-from ghcr.io/siddhj2206/finpilot"* ]]
     [[ "${args}" != *"--cache-to"* ]]
 }
 
 @test "build: writes the layer cache when REGISTRY_CACHE_WRITE=1" {
     REGISTRY_CACHE_WRITE=1 run_just build finpilot stable
     [ "$status" -eq 0 ]
-    [[ "$(podman_build_args)" == *"--cache-to ghcr.io/projectbluefin/finpilot"* ]]
+    [[ "$(podman_build_args)" == *"--cache-to ghcr.io/siddhj2206/finpilot"* ]]
 }
 
 @test "build: skips cache args entirely when the cache ref is unreachable" {

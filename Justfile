@@ -1,7 +1,7 @@
-export IMAGE_NAME := env("IMAGE_NAME", "finpilot")
+export IMAGE_NAME := env("IMAGE_NAME", "neptuno")
 export DEFAULT_TAG := env("DEFAULT_TAG", "stable")
 export PODMAN := env("PODMAN", "podman")
-export REPO_ORG := env("GITHUB_REPOSITORY_OWNER", "projectbluefin")
+export REPO_ORG := env("GITHUB_REPOSITORY_OWNER", "siddhj2206")
 export bib_image := env("BIB_IMAGE", "ghcr.io/osbuild/bootc-image-builder:latest@sha256:58b4b6daa38a05ba1ab2899b259e59ab3bfa07ad032307401489bb23866944f9")
 export qemu_image := env("QEMU_IMAGE", "ghcr.io/qemus/qemu:7.50@sha256:e7f6fda52503a546fd649670ba46e4bc23dc6dcef275bc3fac48877fbbc430df")
 export vm_ram := env("VM_RAM", "8192")
@@ -227,6 +227,13 @@ build $target_image=IMAGE_NAME $tag=DEFAULT_TAG:
             CACHE_ARGS+=("--cache-to" "${cache_ref}")
         fi
     fi
+
+    # A build launched from a systemd user session inherits NOTIFY_SOCKET, and
+    # buildah bind-mounts that socket into the container at
+    # /run/user/<uid>/systemd/notify. The mount cannot be removed from the image
+    # layer, so bootc container lint fails its nonempty-run check. The build has
+    # nothing to notify.
+    unset NOTIFY_SOCKET
 
     ${PODMAN} build \
         "${BUILD_ARGS[@]}" \

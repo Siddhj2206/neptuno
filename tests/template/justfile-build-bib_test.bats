@@ -7,7 +7,7 @@
 # a machine can boot, and nothing exercised it. Its decisions are invisible
 # until an ISO is in a user's hands: an ISO built against the local build tag
 # gives the installed system a `bootc switch` origin pointing at
-# `localhost/finpilot`, which no host can ever pull an update from, and the
+# `localhost/neptuno`, which no host can ever pull an update from, and the
 # recipe deliberately re-derives the published reference from the image's own
 # image-info.json to avoid exactly that. It also builds under `sudo podman run`
 # into a temporary directory inside the repository, so a failure that skips the
@@ -56,7 +56,7 @@ setup() {
 
     # What the `podman run --entrypoint /usr/bin/cat` of image-info.json
     # reports. The ISO path reads the published reference out of this.
-    export STUB_IMAGE_INFO='{"image-ref":"ostree-image-signed:docker://ghcr.io/projectbluefin/finpilot","image-tag":"stable"}'
+    export STUB_IMAGE_INFO='{"image-ref":"ostree-image-signed:docker://ghcr.io/siddhj2206/neptuno","image-tag":"stable"}'
     # Exit status for the BIB `podman run`; non-zero drives the cleanup trap.
     export STUB_BIB_STATUS=0
 
@@ -168,14 +168,14 @@ bib_run_args() {
 }
 
 @test "build-iso builds against the published reference from image-info.json" {
-    # An ISO built against localhost/finpilot installs a system whose bootc
-    # origin is localhost/finpilot, which never updates. The recipe reads the
+    # An ISO built against localhost/neptuno installs a system whose bootc
+    # origin is localhost/neptuno, which never updates. The recipe reads the
     # real reference out of the image instead of hardcoding one.
     run_just build-iso
     [ "$status" -eq 0 ]
     args="$(bib_run_args)"
-    [[ "${args}" == *"ghcr.io/projectbluefin/finpilot:stable"* ]]
-    [[ "${args}" != *"localhost/finpilot:stable"* ]]
+    [[ "${args}" == *"ghcr.io/siddhj2206/neptuno:stable"* ]]
+    [[ "${args}" != *"localhost/neptuno:stable"* ]]
 }
 
 @test "build-iso strips the ostree transport prefix from image-ref" {
@@ -193,7 +193,7 @@ bib_run_args() {
     # BIB is given a reference that must resolve in local storage.
     run_just build-iso
     [ "$status" -eq 0 ]
-    grep -qF "tag localhost/finpilot:stable ghcr.io/projectbluefin/finpilot:stable" "${PODMAN_LOG}"
+    grep -qF "tag localhost/neptuno:stable ghcr.io/siddhj2206/neptuno:stable" "${PODMAN_LOG}"
 }
 
 @test "build-qcow2 never reads image-info.json and never re-tags" {
@@ -205,7 +205,7 @@ bib_run_args() {
     [ "$status" -ne 0 ]
     run grep -q '^tag ' "${PODMAN_LOG}"
     [ "$status" -ne 0 ]
-    [[ "$(bib_run_args)" == *"localhost/finpilot:stable"* ]]
+    [[ "$(bib_run_args)" == *"localhost/neptuno:stable"* ]]
 }
 
 @test "build-qcow2 honours an explicit target image and tag" {
