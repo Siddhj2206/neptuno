@@ -77,19 +77,25 @@ echo "::group:: Overlay Bluefin cherry-picks"
 # The bluefin/just directory is deliberately NOT taken wholesale: Neptuno owns
 # its ujust recipes, and importing Bluefin's changelog.just would duplicate the
 # `changelogs` recipe for no gain.
-COMMON_CHERRY_PICKS=(
-	/ctx/oci/common/bluefin/./usr/libexec/bonedigger-report
-	/ctx/oci/common/bluefin/./usr/lib/systemd/system/dconf-update.service
-	/ctx/oci/common/bluefin/./usr/share/flatpak/preinstall.d/bazaar.preinstall
-	/ctx/oci/common/bluefin/./etc/bazaar/
-	/ctx/oci/common/bluefin/./usr/lib/systemd/user/bazaar.service
-	/ctx/oci/common/bluefin/./usr/share/ublue-os/flatpak-overrides/io.github.kolunmi.Bazaar
-	/ctx/oci/common/bluefin/./usr/lib/tmpfiles.d/bazaar-flatpak.conf
-)
-rsync -rvK --relative "${COMMON_CHERRY_PICKS[@]}" /
+# CHERRY_PICK_ROOT prefixes the post-copy assertion paths. It is empty in the
+# image build and set to the test sandbox by the overlay suite, so the assert
+# never depends on files that only exist on a Neptuno host.
+CHERRY_PICK_ROOT="${CHERRY_PICK_ROOT:-}"
 
-for src in "${COMMON_CHERRY_PICKS[@]}"; do
-	common_path="/${src#/ctx/oci/common/bluefin/./}"
+COMMON_CHERRY_PICK_ROOT=/ctx/oci/common/bluefin
+COMMON_CHERRY_PICKS=(
+	usr/libexec/bonedigger-report
+	usr/lib/systemd/system/dconf-update.service
+	usr/share/flatpak/preinstall.d/bazaar.preinstall
+	etc/bazaar/
+	usr/lib/systemd/user/bazaar.service
+	usr/share/ublue-os/flatpak-overrides/io.github.kolunmi.Bazaar
+	usr/lib/tmpfiles.d/bazaar-flatpak.conf
+)
+rsync -rvK --relative "${COMMON_CHERRY_PICKS[@]/#/${COMMON_CHERRY_PICK_ROOT}/./}" /
+
+for relative in "${COMMON_CHERRY_PICKS[@]}"; do
+	common_path="${CHERRY_PICK_ROOT}/${relative}"
 	test -e "${common_path}" || {
 		echo "ERROR: common cherry-pick missing: ${common_path}" >&2
 		exit 1
