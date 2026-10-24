@@ -57,22 +57,16 @@ stack are not shipped.
 
 _Last updated: 2026-10-24_
 
-## Quick start
+## Install
 
-1. **Create your repository** — "Use this template" on GitHub.
-2. **Rename the project.** The published name is your repository name. Three
-   files carry it as a literal, and `just test-contract` fails if they disagree:
+```bash
+sudo bootc switch --transport registry ghcr.io/siddhj2206/neptuno:stable
+sudo systemctl reboot
+```
 
-   - `Containerfile` — the `# Name:` comment and `ARG IMAGE_NAME`
-   - `Justfile` — the `IMAGE_NAME` default
-   - `artifacthub-repo.yml` — `repositoryID`
-
-   Grep for `finpilot` afterwards to catch the prose and the examples.
-3. **Finish setup.** [The `onboarding` skill](.agents/skills/onboarding/SKILL.md)
-   carries the rest — enabling Actions, auto-merge and workflow permissions, the
-   Renovate token, the `stable` branch, branch protection on both branches, and
-   the labels. Every step has a `gh` command and a GitHub-website route, and the
-   skill ends by auditing that each setting matches.
+`main` publishes `:stable-testing` for candidates; `stable` only ever receives a
+promoted digest. See [Using your image](#using-your-image) for the first-login
+steps and [Releases](#releases) for the promotion model.
 
 ## What's included
 
@@ -96,8 +90,8 @@ _Last updated: 2026-10-24_
 
 ## Customize
 
-Pick your base image on the `Containerfile`'s `FROM` line; the template defaults
-to Fedora Silverblue. That line is the only place the base is chosen: `just build`
+Pick your base image on the `Containerfile`'s `FROM` line; Neptuno is based on
+Fedora Silverblue 45. That line is the only place the base is chosen: `just build`
 reads the image name and the tag from it, and the Fedora major comes from the
 base image itself during the build.
 
@@ -134,9 +128,9 @@ key to generate or store.
 
 ```bash
 cosign verify \
-  --certificate-identity-regexp="https://github.com/your-username/your-repo-name/.github/workflows/" \
+  --certificate-identity-regexp="https://github.com/siddhj2206/neptuno/.github/workflows/" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/your-username/your-repo-name:stable
+  ghcr.io/siddhj2206/neptuno:stable
 ```
 
 Unsigned images fail the promotion gate, so `main → stable` reports
@@ -175,7 +169,7 @@ sides together, so changing one without the other fails the suite.
 Switch to a built image:
 
 ```bash
-sudo bootc switch --transport registry ghcr.io/your-username/your-repo-name:stable-testing
+sudo bootc switch --transport registry ghcr.io/siddhj2206/neptuno:stable-testing
 sudo systemctl reboot
 ```
 
