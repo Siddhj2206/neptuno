@@ -11,8 +11,8 @@ prefix auto-discovery. The numbers communicate intent.
 | `00-image-info.sh` | Writes the image identity into `os-release` and `image-info.json`: the base image name, the Fedora major derived from the base's `os-release`, the version string, and the tag. |
 | `10-overlay.sh` | Overlays `projectbluefin/common`'s shared layer and the Brew integration, copies this template's declarations (Brewfiles, ujust recipes, Flatpak preinstalls, `/etc/skel` seeds), and enables the units that consume them. Installs no packages. |
 | `20-packages-and-services.sh` | Installs the template's default RPMs and uupd, and enables the update timers. |
-| `25-neptuno-packages.sh` | Neptuno's WM-agnostic package layer, driven by `packages/base.toml` and `packages/multimedia.toml`: removals, base packages, Tailscale, COPRs, the negativo17 codec stack, zram, and the base service list. |
-| `40-niri.sh` | Neptuno's compositor layer, driven by `packages/niri.toml`: niri, DMS, the COPR stack, theme schema compilation, and the compositor service list. |
+| `25-neptuno-packages.sh` | Neptuno's WM-agnostic package layer, driven by `packages/base.toml` and `packages/multimedia.toml`: removals, base packages, Tailscale, the uupd COPR, the negativo17 codec stack, zram, and the base service list. |
+| `40-niri.sh` | Neptuno's compositor layer, driven by `packages/niri.toml`: niri, DMS, ghostty, the COPR stack, theme schema compilation, and the compositor service list. |
 | `90-cleanup.sh` | Finalises package and Flatpak sources, prunes build artifacts, audits systemd enablement, and prepares for `bootc container lint`. |
 
 Helpers, not phases: `copr-helpers.sh` and `scripts/package-lib.sh` (sourced),

@@ -108,7 +108,7 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     /ctx/build/20-packages-and-services.sh
 
 ### NEPTUNO PACKAGE LAYER
-## WM-agnostic additions: base manifest, Tailscale, ghostty/uupd COPRs, and the
+## WM-agnostic additions: base manifest, Tailscale, the uupd COPR, and the
 ## negativo17 multimedia stack. Manifests: build/packages/{base,multimedia}.toml.
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache/libdnf5 \
@@ -118,7 +118,8 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     /ctx/build/25-neptuno-packages.sh
 
 ### NIRI COMPOSITOR LAYER
-## niri + DMS (avengemedia COPRs), selectable alongside GNOME in GDM.
+## niri + DMS (avengemedia COPRs, ghostty included), selectable alongside GNOME
+## in GDM.
 ## Manifest: build/packages/niri.toml.
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache/libdnf5 \

@@ -12,6 +12,10 @@
 #
 #   - niri IS in Fedora proper — no COPR needed.
 #   - satty (screenshot editor) skipped; DMS screenshot works without it.
+#   - ghostty is not in Fedora. It ships from the danklinux COPR because the
+#     upstream scottames/ghostty COPR stopped at fedora-44; the terminal is the
+#     DMS/niri default (Mod+T, xdg-terminal-exec), so it installs with this
+#     layer instead of base.toml.
 
 [fedora]
 packages = [
@@ -45,6 +49,7 @@ packages = [
 
 ["copr:avengemedia/danklinux"]
 packages = [
+    "ghostty",                   # default terminal (not in Fedora proper)
     "quickshell-git",            # full-feature quickshell (polkit/idle support)
     "matugen",                   # wallpaper -> theme generation
     "danksearch",                # spotlight search backend

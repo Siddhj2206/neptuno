@@ -6,7 +6,7 @@ set -euo pipefail
 # Neptuno package layer
 ###############################################################################
 # WM-agnostic RPM additions on the Silverblue GNOME base: the base manifest,
-# the Tailscale third-party repo, the ghostty/uupd COPRs, and Bluefin's
+# the Tailscale third-party repo, the uupd COPR, and Bluefin's
 # negativo17 multimedia pattern. Compositor packages live in 40-niri.sh.
 #
 # Package installs belong to the package phases, never to 10-overlay.sh, so a
@@ -46,9 +46,9 @@ echo "::endgroup::"
 
 echo "::group:: Install COPR packages"
 
-# ghostty (scottames/ghostty) and ublue-os/packages (oversteer-udev).
-# uupd itself is installed by 20-packages-and-services.sh through the isolated
-# COPR helper.
+# ublue-os/packages (oversteer-udev). ghostty moved to the DMS COPR in
+# niri.toml (danklinux still builds it for Fedora 45). uupd itself is installed
+# by 20-packages-and-services.sh through the isolated COPR helper.
 install_copr_sections "${BASE_TOML}"
 
 echo "::endgroup::"

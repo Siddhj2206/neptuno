@@ -255,10 +255,10 @@ EOF
 @test "90-cleanup: disables COPRs in the Fedora 45 repo location too" {
 	mkdir -p "${SANDBOX}/usr/share/dnf5/repos.d"
 	printf '[copr]\nenabled=1\n' \
-		>"${SANDBOX}/usr/share/dnf5/repos.d/_copr:copr.fedorainfracloud.org:scottames:ghostty.repo"
+		>"${SANDBOX}/usr/share/dnf5/repos.d/_copr:copr.fedorainfracloud.org:avengemedia:danklinux.repo"
 
 	run_cleanup
 	[ "$status" -eq 0 ]
 	grep -q '^enabled=0' \
-		"${SANDBOX}/usr/share/dnf5/repos.d/_copr:copr.fedorainfracloud.org:scottames:ghostty.repo"
+		"${SANDBOX}/usr/share/dnf5/repos.d/_copr:copr.fedorainfracloud.org:avengemedia:danklinux.repo"
 }
