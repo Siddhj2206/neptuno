@@ -21,12 +21,12 @@ declared package is asserted present after install.
 ### Added Packages (Build-time)
 
 - **Base (`base.toml`)**: device, network, developer, and terminal additions;
-  android-tools (adb/fastboot); YubiKey/FIDO2 tools; Ghostty (COPR); and uupd
-  auto-updates (COPR), on top of Silverblue's GNOME stack
+  android-tools (adb/fastboot); YubiKey/FIDO2 tools; and uupd auto-updates
+  (COPR), on top of Silverblue's GNOME stack
 - **Multimedia (`multimedia.toml`)**: negativo17 ffmpeg and the full codec set,
   with Mesa/VA overrides versionlocked to the same repository
-- **Compositor (`niri.toml`)**: Niri and the DMS stack (avengemedia COPRs),
-  selectable alongside GNOME in GDM
+- **Compositor (`niri.toml`)**: Niri, the DMS stack, and Ghostty (avengemedia
+  COPRs), selectable alongside GNOME in GDM
 
 Containers are podman (from the Silverblue base); docker and the libvirt/qemu
 stack are not shipped.
