@@ -11,7 +11,8 @@
 #
 # Policy: only USER tools live here. System tools (build-time, systemd
 # services, first boot before brew, desktop integration) stay in the base
-# image (build/packages/base.toml) — e.g. ghostty is native on purpose.
+# image (build/packages/*.toml) — e.g. ghostty is native on purpose
+# (niri.toml, from the danklinux COPR).
 #
 # All entries verified in Homebrew core with Linux bottles, 2026-08-29
 # (host-proven set: every formula runs on the neptuno host today).

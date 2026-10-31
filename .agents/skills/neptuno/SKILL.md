@@ -10,6 +10,12 @@ Fedora Silverblue 45 (GNOME/GDM) plus Niri with DankMaterialShell as a second
 session. GDM stays the display manager. The base pin is the `FROM` line in
 `Containerfile`; Renovate holds the major, so bump it deliberately.
 
+ghostty is not in Fedora and the upstream `scottames/ghostty` COPR stops at
+fedora-44, so the terminal installs from `avengemedia/danklinux` in `niri.toml`
+(the same COPR as DMS). Moving it back to `base.toml` means a COPR section that
+only ever resolves the stale Fedora 45 build, or a second COPR with no Fedora 45
+build at all.
+
 ## Manifests are the declaration of record
 
 `build/packages/*.toml` carries packages, removals, repositories, and systemd
@@ -18,9 +24,9 @@ enablement. No layer may install or enable anything that is not declared there.
 | File | Applied by | Contents |
 |---|---|---|
 | `overlay.toml` | `10-overlay.sh` | services whose units arrive with the overlays |
-| `base.toml` | `25-neptuno-packages.sh` | removals, base RPMs, Tailscale, ghostty/uupd COPRs, base services |
+| `base.toml` | `25-neptuno-packages.sh` | removals, base RPMs, Tailscale, the uupd COPR, base services |
 | `multimedia.toml` | `25-neptuno-packages.sh` | negativo17 codec stack and Mesa/VA overrides |
-| `niri.toml` | `40-niri.sh` | niri, DMS COPRs, compositor services |
+| `niri.toml` | `40-niri.sh` | niri, DMS and ghostty COPRs, compositor services |
 
 Schema: `[remove].packages`, `[fedora].packages`,
 `["copr:<owner>/<project>"].packages`, `["third-party:<id>"]` with
