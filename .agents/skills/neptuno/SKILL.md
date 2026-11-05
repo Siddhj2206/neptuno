@@ -11,8 +11,8 @@ session. GDM stays the display manager. The base pin is the `FROM` line in
 `Containerfile`; Renovate holds the major, so bump it deliberately.
 
 ghostty is not in Fedora and the upstream `scottames/ghostty` COPR stops at
-fedora-44, so the terminal installs from `avengemedia/danklinux` in `niri.toml`
-(the same COPR as DMS). Moving it back to `base.toml` means a COPR section that
+fedora-44, so the terminal installs from `duxlabs/dux-repo` in `niri.toml`
+(the COPR that carries the DMS dependencies; formerly `avengemedia/danklinux`). Moving it back to `base.toml` means a COPR section that
 only ever resolves the stale Fedora 45 build, or a second COPR with no Fedora 45
 build at all.
 

@@ -118,7 +118,7 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     /ctx/build/25-neptuno-packages.sh
 
 ### NIRI COMPOSITOR LAYER
-## niri + DMS (avengemedia COPRs, ghostty included), selectable alongside GNOME
+## niri + DMS (duxlabs COPRs, ghostty included), selectable alongside GNOME
 ## in GDM.
 ## Manifest: build/packages/niri.toml.
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
