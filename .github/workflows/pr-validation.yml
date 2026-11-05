@@ -15,7 +15,9 @@ permissions: {}
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    # Pinned to 24.04: validate-pr apt-installs shellcheck=0.9.0-1 (noble), which
+    # ubuntu-latest (26.04) does not carry, so the job failed before linting.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       # The promotion check below reads refs and commits through the API.
