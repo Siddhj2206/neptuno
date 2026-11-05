@@ -56,6 +56,7 @@ packages = [
     "patch",                         # some formulae patch their sources
 
     # --- terminal integration -----------------------------------------------
+    # The terminal itself is ghostty, installed with the DMS stack in niri.toml.
     "xdg-terminal-exec",
 
     # --- YubiKey / FIDO2 ----------------------------------------------------
@@ -128,12 +129,6 @@ packager = "Tailscale Inc"
 packages = [
     "tailscale",                     # private overlay network (used on neptuno)
 ]
-
-# --- default terminal (COPR) ------------------------------------------------
-# ghostty is not in Fedora (COPR scottames/ghostty); default terminal via
-# niri keybind + xdg-terminal-exec wiring in 40-niri.sh.
-["copr:scottames/ghostty"]
-packages = ["ghostty"]
 
 # --- auto-updates (COPR) ---------------------------------------------------
 # oversteer-udev is COPR-only, not Fedora (rpm Vendor = "Fedora Copr").

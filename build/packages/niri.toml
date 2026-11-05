@@ -12,6 +12,10 @@
 #
 #   - niri IS in Fedora proper — no COPR needed.
 #   - satty (screenshot editor) skipped; DMS screenshot works without it.
+#   - ghostty is not in Fedora. It ships from the duxlabs/dux-repo COPR because the
+#     upstream scottames/ghostty COPR stopped at fedora-44; the terminal is the
+#     DMS/niri default (Mod+T, xdg-terminal-exec), so it installs with this
+#     layer instead of base.toml.
 
 [fedora]
 packages = [
@@ -37,18 +41,19 @@ packages = [
 
 # One COPR per section (one bad name kills the transaction); clean-stage.sh
 # disables them in the final image (AGENTS.md rule 3).
-["copr:avengemedia/dms"]
+["copr:duxlabs/dms"]
 packages = [
     "dms",
     "dms-cli",
 ]
 
-["copr:avengemedia/danklinux"]
+["copr:duxlabs/dux-repo"]
 packages = [
+    "ghostty",                   # default terminal (not in Fedora proper)
     "quickshell-git",            # full-feature quickshell (polkit/idle support)
     "matugen",                   # wallpaper -> theme generation
-    "danksearch",                # spotlight search backend
-    "dgop",                      # DMS go helpers
+    "dux-search",                # spotlight search backend (dsearch.service)
+    "dux-gop",                   # DMS go helpers (dgop binary)
     "material-symbols-fonts",
 ]
 
@@ -71,5 +76,5 @@ scope = "user"
 target = "niri.service"
 units = [
     "dms.service",               # DMS shell
-    "dsearch.service",           # danksearch backend
+    "dsearch.service",           # dux-search backend
 ]
