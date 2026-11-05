@@ -35,8 +35,8 @@
 
 # OCI context images - imported below and pinned directly in their FROM lines.
 # The base image is pinned in the FROM line below and updated by Renovate.
-FROM ghcr.io/projectbluefin/common:latest@sha256:c1b6fa45db27963f322e079db3211462010168bd5e709695f3362e5073aa3667 AS common
-FROM ghcr.io/ublue-os/brew:latest@sha256:393b567da078f0f0638450c388e229011dae06f94a90017cb7525b57d9faa46e AS brew
+FROM ghcr.io/projectbluefin/common:latest@sha256:65415cbbaf39f190a586d556caf072ab4510a2726554c09e38b2d3931c5de6d5 AS common
+FROM ghcr.io/ublue-os/brew:latest@sha256:974ce5e4d6d5fceb6151910957515a42c0eefced4ea386fdfadb0fbad84499a5 AS brew
 
 # Context stage - combine local and imported OCI container resources
 FROM scratch AS ctx
@@ -51,7 +51,7 @@ COPY --from=brew /system_files /oci/brew
 # Base Image - GNOME included (Fedora official OSTree desktop). Neptuno adds
 # Niri/DMS as a second session in 40-niri.sh; GDM stays the display manager.
 # Renovate will keep the digest pin up to date.
-FROM quay.io/fedora-ostree-desktops/silverblue:45@sha256:d4f57b41b728f1bfaf29a402f0d5a3e303b837ab4328b511e09c724b29822e3d
+FROM quay.io/fedora-ostree-desktops/silverblue:45@sha256:63250009d4529db0a33d965fde9405f720c3a27dba76bb913fa7f4f321889e76
 
 # Image identity - these define how bootc, fastfetch, and the ublue ecosystem
 # recognize your image. Change these to match your project name.
@@ -108,7 +108,7 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     /ctx/build/20-packages-and-services.sh
 
 ### NEPTUNO PACKAGE LAYER
-## WM-agnostic additions: base manifest, Tailscale, ghostty/uupd COPRs, and the
+## WM-agnostic additions: base manifest, Tailscale, the uupd COPR, and the
 ## negativo17 multimedia stack. Manifests: build/packages/{base,multimedia}.toml.
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache/libdnf5 \
@@ -118,7 +118,8 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     /ctx/build/25-neptuno-packages.sh
 
 ### NIRI COMPOSITOR LAYER
-## niri + DMS (avengemedia COPRs), selectable alongside GNOME in GDM.
+## niri + DMS (duxlabs COPRs, ghostty included), selectable alongside GNOME
+## in GDM.
 ## Manifest: build/packages/niri.toml.
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache/libdnf5 \
