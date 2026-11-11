@@ -51,7 +51,7 @@ COPY --from=brew /system_files /oci/brew
 # Base Image - GNOME included (Fedora official OSTree desktop). Neptuno adds
 # Niri/DMS as a second session in 40-niri.sh; GDM stays the display manager.
 # Renovate will keep the digest pin up to date.
-FROM quay.io/fedora-ostree-desktops/silverblue:45@sha256:659ddd4e57a1f459d99659645dcb554b25f5661469f551c8e4f096acf2d77264
+FROM quay.io/fedora-ostree-desktops/silverblue:45@sha256:ad5218dd7e8fac92af0639b4c2fbd948b724a46efe9eb6210c7aad41aeb5290a
 
 # Image identity - these define how bootc, fastfetch, and the ublue ecosystem
 # recognize your image. Change these to match your project name.
