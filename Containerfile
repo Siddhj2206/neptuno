@@ -35,8 +35,8 @@
 
 # OCI context images - imported below and pinned directly in their FROM lines.
 # The base image is pinned in the FROM line below and updated by Renovate.
-FROM ghcr.io/projectbluefin/common:latest@sha256:65415cbbaf39f190a586d556caf072ab4510a2726554c09e38b2d3931c5de6d5 AS common
-FROM ghcr.io/ublue-os/brew:latest@sha256:974ce5e4d6d5fceb6151910957515a42c0eefced4ea386fdfadb0fbad84499a5 AS brew
+FROM ghcr.io/projectbluefin/common:latest@sha256:84c665e4d59c0bfafb606c7e6b2cbecabc829fd07a9edd015a85c9d6aa802a6b AS common
+FROM ghcr.io/ublue-os/brew:latest@sha256:2993b28cf9a54efebdc418ef42228618f5c68e8b931430f2d60eddc190e30016 AS brew
 
 # Context stage - combine local and imported OCI container resources
 FROM scratch AS ctx
@@ -51,7 +51,7 @@ COPY --from=brew /system_files /oci/brew
 # Base Image - GNOME included (Fedora official OSTree desktop). Neptuno adds
 # Niri/DMS as a second session in 40-niri.sh; GDM stays the display manager.
 # Renovate will keep the digest pin up to date.
-FROM quay.io/fedora-ostree-desktops/silverblue:45@sha256:63250009d4529db0a33d965fde9405f720c3a27dba76bb913fa7f4f321889e76
+FROM quay.io/fedora-ostree-desktops/silverblue:45@sha256:f8ee4d23056b1f86fd2c9dd8a90b5a92c5712e0b1926dbf695cfcd41a31ac681
 
 # Image identity - these define how bootc, fastfetch, and the ublue ecosystem
 # recognize your image. Change these to match your project name.
