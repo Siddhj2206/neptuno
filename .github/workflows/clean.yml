@@ -15,7 +15,7 @@ on:
 
 permissions: {}
 
-# Never runs while a build is publishing to the same package.
+# Shares build.yml's main group, so it never prunes while a build publishes.
 concurrency:
   group: build-refs/heads/main
   cancel-in-progress: false

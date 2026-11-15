@@ -10,6 +10,7 @@ on:
     inputs:
       tag:
         description: Image tag to embed (it installs, then updates from :latest)
+        type: string
         default: latest
 
 permissions: {}
