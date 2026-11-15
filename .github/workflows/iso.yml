@@ -31,6 +31,16 @@ jobs:
       - name: Set up just
         uses: ./.github/actions/setup-just
 
+      # Ubuntu's root podman storage is not what osbuild can mount
+      # (osbuild/bootc-image-builder#446); osbuild's own action resets it to
+      # plain overlay storage the same way.
+      - name: Configure root container storage
+        run: |
+          sudo rm -rf /var/lib/containers/storage
+          sudo mkdir -p /etc/containers
+          printf '[storage]\ndriver = "overlay"\nrunroot = "/run/containers/storage"\ngraphroot = "/var/lib/containers/storage"\n' |
+            sudo tee /etc/containers/storage.conf >/dev/null
+
       - name: Pull payload
         env:
           TAG: ${{ inputs.tag }}
