@@ -87,6 +87,14 @@ jobs:
       - name: Set up just
         uses: ./.github/actions/setup-just
 
+      # Refresh the lists first: the runner bakes them in, and a rotated-out
+      # package 404s. Timeouts keep a slow mirror from eating the job.
+      - name: Install flatpak
+        run: |
+          apt_opts=(-qq -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::Retries=3)
+          sudo timeout 180 apt-get update "${apt_opts[@]}"
+          sudo timeout 300 apt-get install -y --no-install-recommends "${apt_opts[@]}" flatpak >/dev/null
+
       - name: Install bats
         env:
           # renovate: datasource=github-releases depName=bats-core/bats-core

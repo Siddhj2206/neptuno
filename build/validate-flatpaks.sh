@@ -14,7 +14,7 @@
 #     branch fails instead of passing on the app-id alone)
 #
 # Single implementation of the flatpak validation contract; the CI workflow
-# (.github/workflows/validate-flatpaks.yml) and `just validate-flatpaks` are
+# (build.yml, static job) and `just validate-flatpaks` are
 # thin callers.
 
 main() (

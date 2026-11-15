@@ -113,7 +113,9 @@ test-boot image=("localhost/" + IMAGE_NAME + ":latest"):
     #!/usr/bin/bash
     set -euo pipefail
     command -v bcvk >/dev/null || { echo "bcvk not found (https://github.com/bootc-dev/bcvk)" >&2; exit 1; }
-    state="$(bcvk ephemeral run-ssh "{{ image }}" -- \
+    # The image keeps sshd off (doc/product.md D2); bcvk talks to the VM over
+    # SSH, so the test VM alone starts it from the kernel command line.
+    state="$(bcvk ephemeral run-ssh --memory 4G --karg systemd.wants=sshd.service "{{ image }}" \
         'systemctl is-system-running --wait; systemctl --failed --no-legend --plain' || true)"
     echo "${state}"
     [[ "$(head -n1 <<<"${state}")" == running ]]
