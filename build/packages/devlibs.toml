@@ -1,0 +1,22 @@
+# Host development libraries (doc/product.md 5.3): a plain `cargo build` works
+# on the host. GUI and compositor stacks go in the `neptuno devbox` distrobox
+# (D6). libgit2-devel is left out: Fedora 45 only ships the versioned
+# libgit2_1.9-devel, and git2-rs vendors libgit2 by default.
+
+[fedora]
+packages = [
+    "gcc",
+    "gcc-c++",
+    "make",
+    "pkgconf-pkg-config",
+    "openssl-devel",
+    "sqlite-devel",
+    "zlib-ng-compat-devel",
+    "fontconfig-devel",
+    "freetype-devel",
+    "alsa-lib-devel",
+    "systemd-devel",                 # provides libudev.pc
+    "dbus-devel",
+    "libssh2-devel",
+    "libcurl-devel",
+]

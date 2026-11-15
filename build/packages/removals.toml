@@ -1,0 +1,51 @@
+# Removals and unwanted base units (doc/product.md sections 4, 5.4 and 17.3).
+#
+# [remove]             -> remove_fedora_section; only installed names enter the
+#                         transaction, and every name must be absent afterwards.
+# [services].disabled  -> disable_services_section. A unit that no longer exists
+#                         in the base is skipped with a warning, so a base that
+#                         drops one of these does not break the daily build.
+
+[remove]
+packages = [
+    # Japanese input is ibus-mozc (desktop.toml). The rest of base-atomic's
+    # engines are unused, and removing them keeps the ibus engine list to one.
+    "ibus-anthy",
+    "ibus-chewing",
+    "ibus-hangul",
+    "ibus-libpinyin",
+    "ibus-m17n",
+    "ibus-typing-booster",
+]
+
+[services]
+disabled = [
+    # Enabled by base-atomic presets, wrong for an AMD laptop (section 4).
+    "thermald.service",
+    "intel_lpmd.service",
+    "mcelog.service",
+    "qemu-guest-agent.service",
+    "vmtoolsd.service",
+    "vgauthd.service",
+    "vboxservice.service",
+    "ModemManager.service",
+    "mdmonitor.service",
+    "lvm2-monitor.service",
+    "systemd-homed.service",
+    "sssd.service",
+    "sssd-kcm.socket",
+    # Adds Fedora's OCI Flatpak remote; Flathub is the only remote (7.2).
+    "flatpak-add-fedora-repos.service",
+    "fedora-third-party-refresh.service",
+    # Boot path and idle wakeups (17.3).
+    "NetworkManager-wait-online.service",
+    "flatpak-appstream-refresh.service",
+    "fedora-atomic-desktop-appstream-cache-refresh.service",  # 12.7 s at boot; neptuno-appstream-refresh.timer replaces it
+    "dnf-makecache.timer",
+    "raid-check.timer",
+    "rpm-ostree-countme.timer",
+    "unbound-anchor.timer",
+    # D2: printing is socket-activated; no browsing daemon. sshd stays off.
+    "cups-browsed.service",
+    "sshd.service",
+]

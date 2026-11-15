@@ -1,0 +1,15 @@
+# Zenbook UM3402YA hardware support (doc/product.md 5.2, D5, D12).
+
+[fedora]
+packages = [
+    # D12: fingerprint. 30-desktop.sh turns on authselect's with-fingerprint.
+    "fprintd",
+    "fprintd-pam",
+]
+
+# D5: asusctl from the asus-linux project's own COPR. It ships a system daemon,
+# a udev rule and D-Bus policy, so it must be an image RPM, not a Nix package.
+["copr:lukenukem/asus-linux"]
+packages = ["asusctl"]
+# asusd.service is static: asusctl's udev rule starts it (SYSTEMD_WANTS) when
+# the asus-nb-wmi driver binds, so there is nothing to enable.

@@ -1,0 +1,28 @@
+#!/usr/bin/bash
+# Replace the @NEPTUNO_NIRI_DEFAULTS@ marker in the skel niri config with a
+# commented-out copy of base.kdl, so a new account sees the image's defaults
+# and can uncomment one to edit it. Generated at build time so it always
+# matches the base.kdl the image ships.
+#
+# Usage: render-niri-skel <base.kdl> <skel config.kdl>   (edits in place)
+set -euo pipefail
+
+base="$1"
+config="$2"
+marker='// @NEPTUNO_NIRI_DEFAULTS@'
+
+grep -qxF "${marker}" "${config}" || {
+	echo "ERROR: ${config} has no ${marker} line" >&2
+	exit 1
+}
+
+block="$(mktemp)"
+trap 'rm -f "${block}"' EXIT
+# Skip base.kdl's leading header comment; comment out everything else.
+awk 'body || !/^\/\/|^$/ { body = 1 } body { print ($0 == "" ? "//" : "// " $0) }' "${base}" >"${block}"
+
+awk -v marker="${marker}" -v block="${block}" '
+	$0 == marker { while ((getline line < block) > 0) print line; next }
+	{ print }
+' "${config}" >"${config}.new"
+mv "${config}.new" "${config}"

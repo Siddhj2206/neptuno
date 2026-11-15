@@ -1,0 +1,108 @@
+# Desktop session (doc/product.md 5.1, 5.5, 6): niri, DMS, greetd, portals,
+# keyring, files, theming and input.
+#
+# COPR sections: every COPR is enabled for one transaction, then disabled.
+# install_copr_sections limits each COPR to the packages named in its section
+# plus [<section>].deps, so a newer COPR rebuild of a Fedora package (dux-repo
+# also carries greetd, cava, quickshell and xwayland-satellite) never replaces
+# Fedora's build by accident.
+
+[fedora]
+packages = [
+    # --- compositor and login -------------------------------------------------
+    "niri",                          # pulls xwayland-satellite
+    "greetd",
+    "greetd-selinux",
+    "xdg-terminal-exec",
+
+    # --- portals, secrets ------------------------------------------------------
+    "xdg-desktop-portal-gnome",      # ScreenCast, Screenshot, FileChooser, GlobalShortcuts
+    "oo7-daemon",
+    "oo7-portal",
+    "pam_oo7",
+    "oo7-cli",
+    "gcr",                           # gcr-ssh-agent.socket and the prompter
+    "gnome-control-center",          # GlobalShortcutsProvider for niri (6.2); launcher entry hidden
+
+    # --- files, storage, thumbnails --------------------------------------------
+    "nautilus",
+    "gvfs",
+    "gvfs-fuse",
+    "gvfs-mtp",
+    "gvfs-smb",
+    "gvfs-afc",
+    "glycin-thumbnailer",
+    "gst-thumbnailers",
+    "papers-thumbnailer",
+    "gnome-disk-utility",
+    "gnome-text-editor",
+    "udiskie",
+
+    # --- input, theming, fonts --------------------------------------------------
+    "libnotify",
+    "qt6ct",
+    "adw-gtk3-theme",
+    "kf6-qqc2-desktop-style",
+    "plasma-breeze",
+    "kf6-kirigami",
+    "ibus-mozc",
+    "google-noto-sans-fonts",
+    "jetbrains-mono-fonts",
+    "rsms-inter-fonts",
+
+    # --- DMS optional extras (Recommends; weak deps are off) -------------------
+    "cava",
+    "kf6-kimageformats",             # AVIF/HEIC/JXL wallpapers; flagged by DMS's system check
+    "qt6-qtmultimedia",
+    "khal",
+    "cups-pk-helper",
+]
+
+["copr:duxlabs/dms"]
+packages = [
+    "dms",
+    "dms-cli",
+]
+
+["copr:duxlabs/dux-repo"]
+packages = [
+    "quickshell-git",                # D15. Never alongside the stable quickshell.
+    "dux-greeter",                   # provides dms-greeter
+    "matugen",
+    "dux-search",                    # dsearch.service
+    "dux-gop",                       # dgop
+    "ghostty",
+    "material-symbols-fonts",
+]
+# Packages this COPR may also supply as dependencies of the ones above. Fedora
+# has gtk4-layer-shell 1.3.0 and the COPR builds ghostty against its own copy;
+# allowing both lets dnf pick whichever satisfies ghostty. Extend this list
+# only when a build fails on a dependency that exists only in this COPR.
+deps = [
+    "gtk4-layer-shell",
+]
+
+[services]
+system = [
+    "greetd.service",
+]
+user = [
+    "gcr-ssh-agent.socket",
+    "oo7-daemon.service",            # pending S3: pam_oo7 auto_start may make this redundant
+]
+# Links a package ships in its own /usr/lib targets. They are listed so the
+# enablement audit accepts them; 40-services.sh leaves them alone. These only
+# activate inside gnome-session, which Neptuno never starts.
+static = [
+    "org.gnome.SettingsDaemon.XSettings.service",   # gnome-settings-daemon, via gnome-control-center
+]
+
+# Units that start with the compositor rather than with every user session.
+[[wants]]
+scope = "user"
+target = "niri.service"
+units = [
+    "dms.service",
+    "dsearch.service",
+    "udiskie.service",               # system_files/desktop; udiskie ships no unit
+]

@@ -49,8 +49,11 @@ def manifest_services(manifest: Path) -> set[str]:
     services = data.get("services", {})
     if not isinstance(services, dict):
         raise ValueError(f"{manifest}: [services] must be a table")
+    unknown = set(services) - {"system", "user", "static", "disabled"}
+    if unknown:
+        raise ValueError(f"{manifest}: unknown [services] keys {sorted(unknown)}")
     declared: set[str] = set()
-    for scope in ("system", "user"):
+    for scope in ("system", "user", "static"):
         entries = services.get(scope, [])
         if not isinstance(entries, list) or not all(isinstance(item, str) for item in entries):
             raise ValueError(f"{manifest}: [services].{scope} must be a list of unit names")

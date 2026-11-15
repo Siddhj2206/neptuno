@@ -30,16 +30,12 @@ setup() {
 	mkdir -p "${SANDBOX}/tmp/leftover"
 	mkdir -p "${SANDBOX}/boot/efi"
 	mkdir -p "${SANDBOX}/run/dnf"
-	touch "${SANDBOX}/usr/lib/systemd/system/flatpak-add-fedora-repos.service"
-	touch "${SANDBOX}/.gitkeep"
 	touch "${SANDBOX}/run/dnf/state"
 
 	# One repository file per shape the script disables, plus a Fedora repo it
 	# must leave alone.
 	printf '[copr]\nenabled=1\n' \
 		>"${REPOS_DIR}/_copr:copr.fedorainfracloud.org:ublue-os:packages.repo"
-	printf '[rpmfusion]\nenabled=1\n' >"${REPOS_DIR}/rpmfusion-free.repo"
-	printf '[multimedia]\nenabled=1\n' >"${REPOS_DIR}/fedora-multimedia.repo"
 	printf '[fedora]\nenabled=1\n' >"${REPOS_DIR}/fedora.repo"
 
 	export PATH="${STUB_BIN}:${PATH}"
@@ -94,37 +90,18 @@ run_cleanup() {
 	run_cleanup
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"::group:: Finalise package repositories"* ]]
-	[[ "$output" == *"::group:: Finalise Flatpak sources"* ]]
+	[[ "$output" == *"::group:: Audit systemd enablement"* ]]
 	[[ "$output" == *"::group:: Prune build artifacts"* ]]
 	[[ "$output" == *"::endgroup::"* ]]
 }
 
-@test "90-cleanup: restores dnf5 upstream defaults and clears versionlock" {
+@test "90-cleanup: restores dnf5 upstream defaults" {
 	run_cleanup
 	[ "$status" -eq 0 ]
 
 	mapfile -t calls <"${DNF5_LOG}"
-	[ "${#calls[@]}" -eq 2 ]
+	[ "${#calls[@]}" -eq 1 ]
 	[ "${calls[0]}" = "config-manager unsetopt keepcache install_weak_deps" ]
-	[ "${calls[1]}" = "versionlock clear" ]
-}
-
-@test "90-cleanup: disables the fedora flatpak service and the base updater" {
-	run_cleanup
-	[ "$status" -eq 0 ]
-
-	mapfile -t calls <"${SYSTEMCTL_LOG}"
-	[ "${#calls[@]}" -eq 2 ]
-	[ "${calls[0]}" = "disable flatpak-add-fedora-repos.service" ]
-	[ "${calls[1]}" = "disable rpm-ostreed-automatic.timer" ]
-}
-
-@test "90-cleanup: removes the flatpak-add-fedora-repos unit file" {
-	[ -f "${SANDBOX}/usr/lib/systemd/system/flatpak-add-fedora-repos.service" ]
-
-	run_cleanup
-	[ "$status" -eq 0 ]
-	[ ! -e "${SANDBOX}/usr/lib/systemd/system/flatpak-add-fedora-repos.service" ]
 }
 
 @test "90-cleanup: disables every third-party repository and leaves Fedora's alone" {
@@ -132,8 +109,6 @@ run_cleanup() {
 	[ "$status" -eq 0 ]
 
 	grep -q '^enabled=0' "${REPOS_DIR}/_copr:copr.fedorainfracloud.org:ublue-os:packages.repo"
-	grep -q '^enabled=0' "${REPOS_DIR}/rpmfusion-free.repo"
-	grep -q '^enabled=0' "${REPOS_DIR}/fedora-multimedia.repo"
 	grep -q '^enabled=1' "${REPOS_DIR}/fedora.repo"
 }
 
@@ -159,12 +134,6 @@ run_cleanup() {
 	chmod 700 "${REPOS_DIR}"
 }
 
-@test "90-cleanup: removes the root .gitkeep placeholder" {
-	run_cleanup
-	[ "$status" -eq 0 ]
-	[ ! -e "${SANDBOX}/.gitkeep" ]
-}
-
 @test "90-cleanup: removes /var subdirectories other than cache" {
 	run_cleanup
 	[ "$status" -eq 0 ]
@@ -172,11 +141,11 @@ run_cleanup() {
 	[ -d "${SANDBOX}/var/cache" ]
 }
 
-@test "90-cleanup: keeps libdnf5 and rpm-ostree cache dirs, drops the rest" {
+@test "90-cleanup: keeps the libdnf5 cache dir, drops the rest" {
 	run_cleanup
 	[ "$status" -eq 0 ]
 	[ -d "${SANDBOX}/var/cache/libdnf5" ]
-	[ -d "${SANDBOX}/var/cache/rpm-ostree" ]
+	[ ! -e "${SANDBOX}/var/cache/rpm-ostree" ]
 	[ ! -e "${SANDBOX}/var/cache/dnf" ]
 }
 

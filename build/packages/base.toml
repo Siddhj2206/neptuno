@@ -1,157 +1,121 @@
-# Neptuno base package manifest — WM-agnostic desktop additions.
+# Base system (doc/product.md 5.2): shells, CLI glue, power, security keys,
+# containers, networking, Nix, and the system services that come with them.
 #
-# Consumed by build/20-base.sh via build/scripts/read-packages + package-lib.sh:
-#   [fedora]                 -> install_fedora_section (one dnf5 transaction)
-#   ["copr:<owner>/<project>"] -> install_copr_sections (per-COPR; COPRs are
-#                                 disabled by clean-stage.sh — AGENTS.md rule 3)
-#
-# Every entry is verified present post-install (assert gate in package-lib.sh);
-# adding a package that does not exist FAILS the build on purpose.
-#
-# Silverblue already provides GNOME, audio, graphics, fonts, XDG portals,
-# NetworkManager, Flatpak, firmware updates, and zram. Keep only Neptuno's
-# additions here. Multimedia is in multimedia.toml; Niri/DMS is in niri.toml.
-
-# Remove the Fedora desktop defaults replaced by Neptuno's Flatpak-first
-# application set. Keep fedora-logos out of this list: removing it would also
-# remove GDM through its system-logo dependency.
-[remove]
-packages = [
-    "default-fonts-cjk-sans",
-    "fedora-bookmarks",
-    "fedora-chromium-config",
-    "fedora-chromium-config-gnome",
-    "fedora-third-party",
-    "firefox",
-    "firefox-langpacks",
-    "gnome-shell-extension-background-logo",
-    "gnome-software",
-    "gnome-software-rpm-ostree",
-    "google-noto-sans-cjk-vf-fonts",
-    "ptyxis",
-    "totem-video-thumbnailer",
-    "yelp",
-]
+# Every name is asserted installed after the transaction; a typo fails the
+# build on purpose. Versions are not pinned: the daily rebuild floats them.
 
 [fedora]
 packages = [
-    # --- build toolchain (Homebrew source builds) ---------------------------
-    # Declared explicitly instead of pulling the c-development group (~350 MB
-    # with deps). Dropped from that group: valgrind, perf, strace, gdb, ltrace
-    # (debuggers/profilers) and ccache, cscope, ctags, indent, byacc (dev
-    # conveniences) — brew never uses them. gcc provides /usr/bin/cc; gcc-c++
-    # covers C++ source builds; autotools/bison/flex cover autotools ones.
-    "gcc",                           # C compiler (provides /usr/bin/cc)
-    "gcc-c++",                       # C++ source builds
-    "glibc-devel",                   # libc headers
-    "binutils",                      # ld, as
-    "make",
-    "pkgconf",                       # pkg-config for configure scripts
-    "autoconf",                      # autotools source builds
-    "automake",
-    "libtool",
-    "m4",
-    "bison",
-    "flex",
-    "patch",                         # some formulae patch their sources
+    # --- shells and CLI glue --------------------------------------------------
+    "fish",                          # default login shell
+    "zsh",
+    "bash-completion",
+    "just",                          # runs /usr/share/neptuno/justfile (`neptuno`)
+    "jq",
+    "fzf",
+    "gum",
+    "tmux",
+    "fastfetch",
+    "git",
+    "git-credential-libsecret",      # libsecret speaks to oo7 through the Secret Service
+    "7zip-standalone",
+    "distrobox",
+    "NetworkManager-tui",
 
-    # --- terminal integration -----------------------------------------------
-    # The terminal itself is ghostty, installed with the DMS stack in niri.toml.
-    "xdg-terminal-exec",
-
-    # --- YubiKey / FIDO2 ----------------------------------------------------
-    "pam-u2f",                       # FIDO2/U2F PAM auth module
-    "pamu2fcfg",                     # FIDO2 credential enrollment tool
-    "pam_yubico",                    # YubiKey OTP PAM module
-    "ykpers",                        # YubiKey personalization tools
-    "ykclient",                      # YubiKey client library
-    "yubikey-manager",               # ykman CLI
-    "python3-yubikey-manager",       # ykman python stack
-
-    # --- networking / hardware ----------------------------------------------
-    "firewall-config",               # firewall GUI (pulls firewalld; bluefin ships it)
+    # --- power and hardware ---------------------------------------------------
+    "tuned",
+    "tuned-ppd",                     # org.freedesktop.UPower.PowerProfiles for DMS
     "brightnessctl",
     "playerctl",
-    "NetworkManager-tui",
-    "ddcutil",                       # monitor control (DMS brightness backend)
-    "input-remapper",                # input remapping daemon
+    "ddcutil",
     "lm_sensors",
     "powertop",
     "smartmontools",
-    "evtest",
-    "libva-utils",                   # vainfo — VA-API verification
-    "igt-gpu-tools",                 # intel_gpu_top & friends
-    "libratbag-ratbagd",             # mouse configuration daemon
-    "ifuse",                         # iPhone/iPad mounting (FUSE)
-    "solaar-udev",                   # Logitech devices (udev rules only)
-
-    # --- crypto / TLS -------------------------------------------------------
-    "openssl",                       # TLS toolkit + cert/key CLI
-
-    # --- android (adb/fastboot) ----------------------------------------------
+    "libva-utils",
     "android-tools",
+    "steam-devices",
+    "evtest",
+    "libinput",
+    "xdg-user-dirs",
 
-    # --- apps / helpers ------------------------------------------------------
-    "nautilus-python",               # Python extension support for Nautilus
-    "waypipe",
-    "distrobox",                 # dev container workflow (bluefin standard)
-    "cava",
-    "qt6-qtmultimedia",
-    "git-credential-libsecret",      # git × gnome-keyring credential helper
-    "fastfetch",
+    # --- security keys --------------------------------------------------------
+    "pam-u2f",
+    "pamu2fcfg",
+    "yubikey-manager",
 
-    # --- theming / tray (wm-agnostic) ----------------------------------------
-    "adw-gtk3-theme",
-    "libappindicator-gtk3",
-    "libayatana-appindicator-gtk3",
-    "7zip-standalone",               # 7z CLI (FileRoller covers GUI only)
-    "borgbackup",                    # dedup backup tool (RPM home)
+    # --- containers (D4: rootless podman behind the docker CLI) ---------------
+    "podman-docker",
+    "docker-compose",
 
-    # --- shells (RPM, not brew: a login shell must exist before first login) --
-    "fish",                          # default user shell
-    "zsh",                           # alternate shell
+    # --- kept from today's image (D16) ----------------------------------------
+    "input-remapper",
+    "firewall-config",
+    "NetworkManager-openvpn",
+    "NetworkManager-openconnect",
+    "openvpn",
+    "fuse",                          # FUSE 2, for host AppImages
+    "fuse-libs",
+    "zenity",
+    "tcpdump",
 
-    # --- image housekeeping -------------------------------------------------
-    "gum",                           # ujust interactive prompts dependency
-    "just",                          # ujust recipe runner (ujust wrapper execs this binary)
-    "fzf",                           # ujust --choose before Homebrew exists
-    "jq",                            # ublue setup hooks and ujust recipes
-    "tmux",                          # dnf cache smoke test (moved from 10-build.sh)
+    # --- Nix (D7, Plan A: daemon with /var/lib/nix bind-mounted on /nix) ------
+    "nix",
+    "nix-core",
+    "nix-daemon",
+    "nix-system",
 ]
 
-# Official Tailscale stable repository. The repo is used only while building;
-# install_third_party_repo_section removes its file before the image ships.
+# Official Tailscale repository. Fedora 45 does not package tailscale. The repo
+# is used only while building; install_third_party_repo_section removes it.
 ["third-party:tailscale-stable"]
 repo_url = "https://pkgs.tailscale.com/stable/fedora/tailscale.repo"
 repo_id = "tailscale-stable"
 repo_file = "tailscale.repo"
 packager = "Tailscale Inc"
-packages = [
-    "tailscale",                     # private overlay network (used on neptuno)
-]
+packages = ["tailscale"]
 
-# --- auto-updates (COPR) ---------------------------------------------------
-# oversteer-udev is COPR-only, not Fedora (rpm Vendor = "Fedora Copr").
-# uupd itself is installed by 20-packages-and-services.sh; its timers are
-# enabled from [services] below once the package is present.
-["copr:ublue-os/packages"]
-packages = ["oversteer-udev"]
+# topgrade (owner's updater: bootc, Flatpak, Nix, firmware, containers in one
+# run). Fedora does not package it; lilay/topgrade tracks upstream releases.
+# ~/.config/topgrade.toml is seeded from /etc/skel.
+["copr:lilay/topgrade"]
+packages = ["topgrade"]
 
-# --- systemd enablement -----------------------------------------------------
-# Package-provided units for this layer; 25-neptuno-packages.sh applies them
-# after the installs. Overlay units live in overlay.toml, compositor units in
-# niri.toml, and 90-cleanup.sh audits the union of all manifests.
 [services]
 system = [
-    "uupd.timer",
-    "uupd-resume.timer",
-    "tailscaled.service",
-    "gdm.service",
+    "NetworkManager.service",
+    "systemd-resolved.service",
+    "firewalld.service",
+    "bluetooth.service",
+    "tuned.service",
+    "tuned-ppd.service",
+    "upower.service",
+    "cups.socket",
+    "cups.path",
+    "avahi-daemon.service",          # printer discovery (D2)
+    "fstrim.timer",
+    "smartd.service",                # disk health; skips itself in VMs
     "fwupd-refresh.timer",
-    "lm_sensors.service",
+    "bootloader-update.service",     # keeps the Secure Boot shim current
+    "tailscaled.service",
+    # Nix (system_files/shared): the bind mount, then the daemon. The socket is
+    # left off: rhbz#2525943 reports it failing under SELinux.
+    "nix.mount",
+    "nix-daemon.service",
+    # Updates (section 10) and Flatpak (7.2, 17.3), all from system_files/shared.
+    "neptuno-ensure-homes.service",   # homes Anaconda's bootc install leaves missing
+    "bootc-fetch-apply-updates.timer",
+    "neptuno-flatpak-preinstall.timer",
+    "neptuno-flatpak-update.timer",
+    "neptuno-appstream-refresh.timer",
 ]
-# Units a package enables by preset that this image does not want running.
-# Disabled explicitly so the choice is ours, not the RPM scriptlet's.
 disabled = [
-    "smartd.service",
+    "lm_sensors.service",            # loads modules from an empty sysconfig; a no-op
+]
+user = [
+    "xdg-user-dirs.service",         # creates ~/Documents etc. at first login
+    "podman.socket",                 # rootless docker-compose (DOCKER_HOST)
+    "neptuno-update-notify.path",
+    "neptuno-update-notify.timer",
+    "neptuno-nix-upgrade.timer",
+    "neptuno-nix-clean.timer",
 ]
