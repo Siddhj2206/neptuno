@@ -17,7 +17,6 @@ locally with the same command.
 |---|---|---|
 | `build.yml` | pull request, push to `main`, daily 05:17 UTC, dispatch | Static checks and a full image build + test on every run; on `main` also push, sign, verify, tag and write a release. |
 | `clean.yml` | weekly, dispatch (dry run by default) | GHCR retention and release pruning. |
-| `iso.yml` | dispatch | Offline installer ISO around a published tag, as a 7-day artifact. |
 
 Renovate is the hosted Mend app (no workflow, no token).
 
@@ -102,4 +101,13 @@ the newest 30. A manual dispatch is a dry run unless unticked.
 - Measured only locally: chunkah rootless (96 layers, largest 270 MB) and the
   content tests. The bcvk boot test and the cosign v3 / GHCR referrer fallback
   are first verified on the first CI run.
-- The ISO is a short-lived artifact; it has no permanent home yet.
+- There is no ISO workflow yet; `just build-iso` is local only. A first
+  `iso.yml` (dispatch, `just iso` around the published tag) was dropped
+  until it can be finished. On `ubuntu-26.04` osbuild failed with
+  `mount: /run/osbuild/containers/storage: permission denied` and
+  `fchownat ... Operation not permitted`. Resetting root storage to overlay
+  (osbuild/bootc-image-builder#446) and setting
+  `kernel.apparmor_restrict_unprivileged_userns=0` did not fix it; `just iso`
+  now adds `--security-opt apparmor=unconfined` on AppArmor hosts, which was
+  never tested in CI. The ISO is also about 4 GB, over the 2 GiB
+  release-asset limit, so it needs a home besides a release.

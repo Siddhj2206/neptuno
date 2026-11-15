@@ -95,7 +95,7 @@ system_files/
 flatpaks/default.preinstall
 iso/                         # image-builder configs
 tests/                       # bats contract + image-content checks
-.github/workflows/{build.yml,clean.yml,iso.yml}   # Renovate is the hosted app
+.github/workflows/{build.yml,clean.yml}   # Renovate is the hosted app
 doc/product.md               # this file
 AGENTS.md, .agents/skills/   # rewritten for the new layout
 ```
@@ -881,7 +881,7 @@ working reference.
 |---|---|
 | `build.yml` | Pull requests, pushes to `main`, a daily 05:17 UTC cron and dispatch, in one file. `static` (shellcheck, `just check`, bats, Flathub IDs, hadolint, actionlint, zizmor, the Renovate validator) runs in parallel with `build` (`just build`, `just rechunk`, `just test-image`, `just test-boot`). Docs-only pull requests skip the image build. On `main`, `build` pushes by digest to `:candidate`; `publish` signs keyless, `cosign verify`s against the exact workflow identity (section 11) and copies the digest to `:45.YYYYMMDD` and `:latest`; `release` writes a GitHub release with the package diff since the previous one. A red run, or a failed sign or verify, never moves `:latest`. A single `required` job is the status a ruleset requires. |
 | `clean.yml` | Weekly. `dataaxiom/ghcr-cleanup-action` keeps the newest 30 dated tags; deletes untagged digests older than 14 days and orphaned signature artifacts (GHCR has no referrers API, so cosign v3 stores them as `sha256-*` tags). `stable`/`stable-testing` are excluded until cutover. Releases are pruned to 30. Dispatch defaults to a dry run. |
-| `iso.yml` | Dispatch only. Builds the installer around a published tag (it never rebuilds the image) and uploads the ISO as a 7-day artifact; at about 4 GB it is over the 2 GiB release-asset limit. |
+| ISO | Not in CI yet (owner decision, 2026-11-15): `just build-iso` is local. osbuild's mounts failed inside podman on the Ubuntu runner; the attempts are in `.agents/skills/ci`. |
 | Renovate | The hosted Mend app, no workflow. `config:best-practices` plus semantic commits, weekly. Non-majors automerge through platform automerge behind `required`, which really builds and boots the image. Base-image digests skip the schedule; Fedora majors are disabled; actions wait 3 days and only `actions/*` and `sigstore/*` automerge. |
 
 The daily cron is not skipped when nothing changed: Fedora updates land almost

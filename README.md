@@ -19,8 +19,8 @@ sudo bootc switch ghcr.io/siddhj2206/neptuno:latest
 sudo systemctl reboot
 ```
 
-Or build the offline installer ISO (`just build-iso` locally, or the `ISO`
-workflow) and install from USB.
+Or build the offline installer ISO locally (`just build-iso`) and install
+from USB.
 
 ## Updates
 
