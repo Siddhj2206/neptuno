@@ -116,7 +116,7 @@ test-boot image=("localhost/" + IMAGE_NAME + ":latest"):
     # The image keeps sshd off (doc/product.md D2); bcvk talks to the VM over
     # SSH, so the test VM alone starts it from the kernel command line.
     state="$(bcvk ephemeral run-ssh --memory 4G --karg systemd.wants=sshd.service "{{ image }}" \
-        'systemctl is-system-running --wait; systemctl --failed --no-legend --plain' | tr -d '\r' || true)"
+        'export SYSTEMD_COLORS=0; systemctl is-system-running --wait; systemctl --failed --no-legend --plain --no-pager' | tr -d '\r' || true)"
     echo "${state}"
     [[ "$(head -n1 <<<"${state}")" == running ]]
 

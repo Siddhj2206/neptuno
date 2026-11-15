@@ -96,7 +96,8 @@ system = [
     "smartd.service",                # disk health; skips itself in VMs
     # Intel CPU support, enabled by base-atomic presets. On AMD each one exits
     # cleanly at boot (thermald and intel_lpmd: unsupported CPU; mcelog: a
-    # Condition skips it when edac_mce_amd is loaded).
+    # Condition skips it when edac_mce_amd is loaded; a drop-in skips it in
+    # VMs, where that module is absent).
     "thermald.service",
     "intel_lpmd.service",
     "mcelog.service",
