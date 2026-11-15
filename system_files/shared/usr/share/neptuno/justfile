@@ -74,8 +74,10 @@ verify:
     repo="$(jq -r '."image-name"' /usr/share/neptuno/image-info.json)"
     vendor="$(jq -r '."image-vendor"' /usr/share/neptuno/image-info.json)"
     echo "Verifying ${name}@${digest}"
-    podman run --rm ghcr.io/sigstore/cosign/cosign:v2.4.1 verify \
-        --certificate-identity "https://github.com/${vendor}/${repo}/.github/workflows/build.yml@refs/heads/main" \
+    # GitHub keeps the owner's capitalisation in the certificate; image names
+    # are lowercase, so match case-insensitively.
+    podman run --rm ghcr.io/sigstore/cosign/cosign:v3.1.4@sha256:0f06154836d2de34f887a5c273506d52ca43edaa1d9e53e6510fa78a48f69c2d verify \
+        --certificate-identity-regexp "(?i)^https://github\\.com/${vendor}/${repo}/\\.github/workflows/build\\.yml@refs/heads/main\$" \
         --certificate-oidc-issuer https://token.actions.githubusercontent.com \
         "${name}@${digest}" >/dev/null
     echo "Signature OK"

@@ -2,7 +2,8 @@ export IMAGE_NAME := env("IMAGE_NAME", "neptuno")
 export IMAGE_VENDOR := env("IMAGE_VENDOR", env("GITHUB_REPOSITORY_OWNER", "siddhj2206"))
 export PODMAN := env("PODMAN", "podman")
 export bib_image := env("BIB_IMAGE", "ghcr.io/osbuild/bootc-image-builder:latest@sha256:5e99d31c1e4d7a3f89e8d8d19dfb9e86be8572e7c8c7d61a1a0988e5b1989861")
-export rechunker := env("RECHUNKER", "quay.io/fedora/fedora-bootc:45@sha256:17227a17c0bb9222918881e27f254e219eb3808ceb4399e26322bbd2e77932bc")
+export chunkah := env("CHUNKAH", "quay.io/coreos/chunkah:v0.7.1@sha256:71e593421c5de7dcc7c8c5c50e98d3bac572055a76f399f61a491d123c20a523")
+export bcvk_version := env("BCVK_VERSION", "0.22.0")
 export image_builder := env("IMAGE_BUILDER", "ghcr.io/osbuild/image-builder-cli:latest@sha256:84da35257bdec0627c05cf305a9d698dbcc502b758fa1f7a6bd3afebab8436fe")
 export vm_ram := env("VM_RAM", "8192")
 export vm_cpus := env("VM_CPUS", "4")
@@ -76,26 +77,56 @@ build:
     unset NOTIFY_SOCKET
     ${PODMAN} build "${args[@]}" --pull=newer --tag "localhost/${IMAGE_NAME}:latest" .
 
-# Copy the image into root's storage (where the disk and ISO builders read it) and rechunk it there
+# Rechunk localhost/<IMAGE_NAME>:latest in place, then lint it
 [group('Image')]
 rechunk:
     #!/usr/bin/bash
     set -euo pipefail
     image="localhost/${IMAGE_NAME}:latest"
-    # One RUN layer holds every RPM we add (about 2 GB). Rechunking splits the
-    # image into per-package layers (at most 96, none over ~0.5 GB): smaller
-    # update downloads, and the ISO installer can stage each layer in RAM.
-    ${PODMAN} save --format oci-archive "${image}" | sudo podman load
-    sudo podman run --rm --privileged --security-opt label=type:unconfined_t \
-        -v /var/lib/containers:/var/lib/containers "${rechunker}" \
-        rpm-ostree compose build-chunked-oci --bootc --format-version=2 --max-layers=96 \
-        --from="${image}" --output="containers-storage:${image}"
-    sudo podman run --rm "${image}" bootc container lint
-    sudo podman image prune -f
+    # One RUN layer holds every RPM we add (about 2 GB). chunkah splits the
+    # image into content-based layers (one per package group, at most 96):
+    # smaller update downloads, and the ISO installer can stage each layer in
+    # RAM. --prune /sysroot/ drops the base's OSTree repo, which bootc does not
+    # need in a container image, and the ostree labels go with it.
+    work="$(mktemp -d -p /var/tmp neptuno-chunkah.XXXXXX)"
+    trap 'rm -rf "${work}"' EXIT
+    ${PODMAN} inspect "${image}" > "${work}/config.json"
+    ${PODMAN} run --rm --mount="type=image,src=${image},dest=/chunkah" \
+        -v "${work}:/run/out:Z" "${chunkah}" build \
+        --config /run/out/config.json --prune /sysroot/ --max-layers 96 \
+        --label ostree.commit- --label ostree.final-diffid- \
+        --output oci:/run/out/image
+    id="$(${PODMAN} pull -q "oci:${work}/image")"
+    ${PODMAN} tag "${id}" "${image}"
+    ${PODMAN} image prune -f >/dev/null
+    ${PODMAN} run --rm "${image}" bootc container lint --fatal-warnings
+    ${PODMAN} image inspect "${image}" --format '{{{{len .RootFS.Layers}} layers'
+
+# Run the image content tests (packages, repos, units, configs) against the local image
+[group('Image')]
+test-image image=("localhost/" + IMAGE_NAME + ":latest"):
+    ${PODMAN} run --rm --network=none -v "${PWD}:/src:ro,z" "{{ image }}" /src/tests/image/check.sh
+
+# Boot the local image in an ephemeral VM (bcvk, no disk image) and check systemd reaches running
+[group('Image')]
+test-boot image=("localhost/" + IMAGE_NAME + ":latest"):
+    #!/usr/bin/bash
+    set -euo pipefail
+    command -v bcvk >/dev/null || { echo "bcvk not found (https://github.com/bootc-dev/bcvk)" >&2; exit 1; }
+    state="$(bcvk ephemeral run-ssh "{{ image }}" -- \
+        'systemctl is-system-running --wait; systemctl --failed --no-legend --plain' || true)"
+    echo "${state}"
+    [[ "$(head -n1 <<<"${state}")" == running ]]
+
+# Copy the local image into root's storage, where the disk and ISO builders read it
+[private]
+root-copy target=("localhost/" + IMAGE_NAME + ":latest"):
+    ${PODMAN} save --format oci-archive "localhost/${IMAGE_NAME}:latest" | sudo podman load
+    sudo podman tag "localhost/${IMAGE_NAME}:latest" "{{ target }}"
 
 # Build a qcow2 test disk (test user: neptuno/neptuno) into output/, from the rechunked image
 [group('VM')]
-build-qcow2: rechunk
+build-qcow2: rechunk root-copy
     #!/usr/bin/bash
     set -euo pipefail
     mkdir -p output
@@ -107,16 +138,19 @@ build-qcow2: rechunk
         "${bib_image}" --type qcow2 --use-librepo=True --rootfs=btrfs "localhost/${IMAGE_NAME}:latest"
     sudo chown -R "$(id -u):$(id -g)" output
 
-# Build the offline installer ISO into output/iso (Anaconda + one embedded copy of the rechunked image)
+# Build the offline installer ISO from the local image (it installs, then updates from ghcr.io/<vendor>/<name>:latest)
 [group('VM')]
-build-iso: rechunk
+build-iso: rechunk (root-copy "ghcr.io/" + IMAGE_VENDOR + "/" + IMAGE_NAME + ":latest") (iso "ghcr.io/" + IMAGE_VENDOR + "/" + IMAGE_NAME + ":latest")
+
+# Build the installer ISO into output/iso around a payload image already in root's storage
+[group('VM')]
+iso payload:
     #!/usr/bin/bash
     set -euo pipefail
-    payload="ghcr.io/${IMAGE_VENDOR}/${IMAGE_NAME}:latest"
-    # The payload keeps its registry name so the kickstart's containers-storage
-    # source and the update target match.
-    sudo podman tag "localhost/${IMAGE_NAME}:latest" "${payload}"
-    sudo podman build --pull=newer --tag localhost/neptuno-installer:latest iso/installer
+    # The payload keeps its registry name: the kickstart installs it from the
+    # ISO's containers-storage, and bootc then follows the same ref for updates.
+    sudo podman build --pull=newer --build-arg "PAYLOAD={{ payload }}" \
+        --tag localhost/neptuno-installer:latest iso/installer
     sudo rm -rf output/iso && mkdir -p output/iso
     sudo podman run --rm --privileged --net=host \
         --security-opt label=type:unconfined_t \
@@ -124,7 +158,7 @@ build-iso: rechunk
         -v /var/lib/containers/storage:/var/lib/containers/storage \
         "${image_builder}" build --output-dir /output \
         --bootc-ref localhost/neptuno-installer:latest \
-        --bootc-installer-payload-ref "${payload}" \
+        --bootc-installer-payload-ref "{{ payload }}" \
         --bootc-default-fs btrfs generic-iso
     sudo chown -R "$(id -u):$(id -g)" output
 

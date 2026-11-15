@@ -95,7 +95,7 @@ system_files/
 flatpaks/default.preinstall
 iso/                         # image-builder configs
 tests/                       # bats contract + image-content checks
-.github/workflows/{build.yml,pr.yml,renovate.yml,clean.yml}
+.github/workflows/{build.yml,clean.yml,iso.yml}   # Renovate is the hosted app
 doc/product.md               # this file
 AGENTS.md, .agents/skills/   # rewritten for the new layout
 ```
@@ -131,10 +131,9 @@ flatpak 1.18.4, systemd 262) lints clean unmodified.
   fish, zsh, distrobox, NetworkManager-tui, greetd, gcr, the oo7 packages
   (through the gnome portal), gvfs, switcheroo-control
   (optional), iio-sensor-proxy (optional; no sensors on this laptop).
-- **Enabled by base presets but wrong for this hardware**, so they go in the
-  manifest's `disabled` list: thermald, intel_lpmd, mcelog,
-  qemu-guest-agent, vmtoolsd, vgauthd, vboxservice, ModemManager, mdmonitor,
-  lvm2-monitor, systemd-homed, sssd and its sockets,
+- **Enabled by base presets but not wanted on a desktop or laptop**, so they
+  go in the manifest's `disabled` list: qemu-guest-agent, vmtoolsd, vgauthd,
+  vboxservice, ModemManager, mdmonitor, lvm2-monitor, systemd-homed, sssd and its sockets,
   `flatpak-add-fedora-repos.service` (it adds Fedora's OCI Flatpak remote).
   We also drop `fedora-third-party-refresh`. Added 2026-11-14 for boot time and
   idle wakeups (section 17.3): `NetworkManager-wait-online.service`,
@@ -776,8 +775,11 @@ manifest, and `90-cleanup.sh` fails the build on anything else.
   and Nix jobs get `Nice=19`, `IOSchedulingClass=idle`, `CPUWeight=20`
   drop-ins.
 - **Not shipped, by decision:** TLP, auto-cpufreq, power-profiles-daemon,
-  ananicy-cpp, preload, irqbalance, thermald, intel_lpmd. `tuned` with
-  `tuned-ppd` is the only power policy daemon.
+  ananicy-cpp, preload, irqbalance. `tuned` with `tuned-ppd` is the only
+  power policy daemon. The image is general purpose for Intel and AMD (not
+  NVIDIA), so the base's Intel units stay enabled: thermald, intel_lpmd and
+  mcelog exit or skip themselves cleanly on AMD (checked on the laptop,
+  2026-11-15).
 
 First-boot setup is one small `neptuno-setup` script, about 30 lines and
 idempotent, version-stamped in `/var/lib/neptuno`. It replaces
@@ -814,9 +816,12 @@ The model doesn't change from today: keyless signing, enforced in CI.
   moves to an unsigned digest. This is stricter than today, where signing is
   `continue-on-error`.
 - **The gate:** before `build.yml` moves `:latest` and the dated tag, it runs
-  `cosign verify` on the digest with
-  `--certificate-identity-regexp '^https://github\.com/siddhj2206/neptuno(-testing)?/\.github/workflows/build\.yml@refs/heads/main$'`
+  `cosign verify` on the digest with the exact
+  `--certificate-identity https://github.com/${GITHUB_REPOSITORY}/.github/workflows/build.yml@refs/heads/main`
   and `--certificate-oidc-issuer https://token.actions.githubusercontent.com`.
+  The certificate keeps the owner's capitalisation (`Siddhj2206`), so
+  `neptuno verify`, which only has the lowercase image name, matches the same
+  identity case-insensitively.
   That pins the exact workflow file and branch, which is tighter than today's
   "any workflow in the repo" regexp. A tag only ever points at a digest that
   passed this.
@@ -838,8 +843,9 @@ The model doesn't change from today: keyless signing, enforced in CI.
   and switch the transport to `ostree-image-signed:`. Key-based signing was
   considered and rejected: the owner prefers zero key management over device
   enforcement.
-- **Provenance:** keep `cosign attest` with SLSA provenance on the same
-  digest. It's cheap and shares the same OIDC identity.
+- **Provenance:** not attached for now. `actions/attest` with
+  `push-to-registry` adds a second referrer that Aurora reports confuses
+  `cosign verify`; revisit once the cosign v3 flow has run in CI.
 - **Third-party repos:** Tailscale and the COPRs are installed with
   `gpgcheck=1`, and nothing anywhere sets `gpgcheck=0`.
 
@@ -850,39 +856,42 @@ The model doesn't change from today: keyless signing, enforced in CI.
 - `FROM base-atomic:45@sha256:…`, then one `RUN` per phase with dnf and
   rpm-ostree cache mounts.
 - It ends with `bootc container lint --fatal-warnings`.
-- The image is then rechunked with **chunkah** (`quay.io/coreos/chunkah`,
-  v0.7.1, `--max-layers 128`, `--prune /sysroot/`) for small update deltas.
-  `bootc-base-imagectl rechunk` only exists in fedora-bootc, and
-  hhd-dev/rechunk is end of life.
-- **Local builds today (2026-11-15):** `just rechunk` uses
-  `rpm-ostree compose build-chunked-oci --bootc --format-version=2
-  --max-layers=96`, run from the pinned `fedora-bootc:45` image in root's
-  storage. Verified: 266 layers became 97, the largest went from 2.04 GB to
-  0.51 GB, and `bootc container lint` passes. It is required in practice: the
-  ISO installer stages each layer in RAM, and an un-rechunked 2 GB layer
-  failed the install with ENOSPC. CI can use the same command or chunkah; pick
-  one when `build.yml` is written.
+- The image is then rechunked with **chunkah** (`quay.io/coreos/chunkah`
+  v0.7.1, pinned by digest) by `just rechunk`, locally and in CI alike:
+  `podman run --mount=type=image` over the built image, `--max-layers 96
+  --prune /sysroot/`, the ostree labels dropped, output as an OCI directory
+  and pulled back into the same rootless storage, then `bootc container lint
+  --fatal-warnings`. Verified 2026-11-15: 96 layers, largest 270 MB, lint
+  clean, no root storage or copy needed. chunkah replaced the earlier
+  `rpm-ostree compose build-chunked-oci` recipe (same result, but it needed
+  root storage and a 7 GB copy). Rechunking is required in practice: the ISO
+  installer stages each layer in RAM, and an un-rechunked 2 GB layer failed
+  the install with ENOSPC.
 - Rechunking is part of the pipeline from the **first** M1 build. It changes
   layers, xattrs and the digest, so lint, content tests, the boot test and
   signing all run on the post-chunkah digest. Nothing is validated before
   rechunking and then shipped after it.
 
-**Workflows:** plain GitHub Actions on `ubuntu-24.04`, with no `projectbluefin/actions`.
+**Workflows:** plain GitHub Actions on `ubuntu-26.04` (free and unlimited for
+public repositories; Podman 5.7, Skopeo and Docker preinstalled), with no
+`projectbluefin/actions`. Implemented 2026-11-15; `.agents/skills/ci` is the
+working reference.
 
 | Workflow | What it does |
 |---|---|
-| `build.yml` | Runs on push to `main`, a daily 05:00 UTC cron and manual dispatch. It frees disk, builds, rechunks and pushes by digest only. It then runs the content tests and the **boot smoke test** (section 13.3) against that digest. Only if they pass does it sign keyless, `cosign verify` against the pinned workflow identity (section 11), and tag `latest` and `45.YYYYMMDD`. A red run, or a failed sign or verify, never moves `:latest`. |
-| `pr.yml` | Builds without pushing. Runs shellcheck, hadolint, `just check`, bats, the image-content tests (section 13) and the Flathub ID check. |
-| `renovate.yml` | Uses the official Renovate action with `config:best-practices`: digest pins for the base image, image-builder, chunkah and actions. Base-image bumps automerge when green, but they're mostly redundant with the daily rebuild. Everything else is batched weekly to keep the log quiet. |
-| `clean.yml` | Keeps 30 dated tags and their cosign signature and attestation artifacts (referrers or `sha256-*` fallback tags, whichever cosign writes). Deletes untagged digests and orphaned signature artifacts older than 30 days. It must never delete a kept image's signature, because `neptuno verify` needs it. |
+| `build.yml` | Pull requests, pushes to `main`, a daily 05:17 UTC cron and dispatch, in one file. `static` (shellcheck, `just check`, bats, Flathub IDs, hadolint, actionlint, zizmor, the Renovate validator) runs in parallel with `build` (`just build`, `just rechunk`, `just test-image`, `just test-boot`). Docs-only pull requests skip the image build. On `main`, `build` pushes by digest to `:candidate`; `publish` signs keyless, `cosign verify`s against the exact workflow identity (section 11) and copies the digest to `:45.YYYYMMDD` and `:latest`; `release` writes a GitHub release with the package diff since the previous one. A red run, or a failed sign or verify, never moves `:latest`. A single `required` job is the status a ruleset requires. |
+| `clean.yml` | Weekly. `dataaxiom/ghcr-cleanup-action` keeps the newest 30 dated tags; deletes untagged digests older than 14 days and orphaned signature artifacts (GHCR has no referrers API, so cosign v3 stores them as `sha256-*` tags). `stable`/`stable-testing` are excluded until cutover. Releases are pruned to 30. Dispatch defaults to a dry run. |
+| `iso.yml` | Dispatch only. Builds the installer around a published tag (it never rebuilds the image) and uploads the ISO as a 7-day artifact; at about 4 GB it is over the 2 GiB release-asset limit. |
+| Renovate | The hosted Mend app, no workflow. `config:best-practices` plus semantic commits, weekly. Non-majors automerge through platform automerge behind `required`, which really builds and boots the image. Base-image digests skip the schedule; Fedora majors are disabled; actions wait 3 days and only `actions/*` and `sigstore/*` automerge. |
 
-KVM in CI is uncertain. The research found no KVM on free runners (tacklebox
-reports TCG only), but GitHub has announced hardware acceleration for
-standard Linux runners on public repos, enabled with a udev rule. Verify
-early in M2:
-- If KVM is available, the boot smoke test gates `:latest` in CI.
-- If not, a TCG boot (about 3 minutes) still runs in CI. It's slow, but it
-  still gates the tag.
+The daily cron is not skipped when nothing changed: Fedora updates land almost
+daily, so the check would rarely save a build.
+
+**Boot test in CI:** `bcvk ephemeral run-ssh` boots the image's own kernel
+over virtiofs with no disk image, and passes when `systemctl
+is-system-running --wait` reports `running`. Standard runners on public
+repositories expose `/dev/kvm` (enabled with a udev rule, as bcvk's own CI
+does); without it the step warns and runs under TCG.
 
 The full VM suite stays local (`just test-vm`).
 

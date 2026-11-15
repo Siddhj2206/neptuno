@@ -1,0 +1,378 @@
+name: Build
+
+# One workflow for pull requests and releases (doc/product.md 12).
+#
+#   pull_request  static checks + a full image build and test; nothing is pushed
+#   push to main  the same, then push by digest, sign, verify and tag
+#   schedule      the daily rebuild (Fedora updates), same as a push to main
+#
+# :latest only ever moves to a digest that was built, rechunked, content-tested,
+# boot-tested, signed and verified by this file on main. The `required` job is
+# the one status a ruleset needs to require; it is green when everything ran
+# and passed, or was skipped on purpose (a docs-only pull request).
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "doc/**"
+      - ".agents/**"
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+# Pull requests cancel their own stale runs. Main never cancels a publish
+# half-way; a newer push waits for the running one.
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # The testing repository publishes under its own name, so the image's update
+  # reference matches where it came from.
+  IMAGE_NAME: ${{ github.event.repository.name }}
+  IMAGE_VENDOR: ${{ github.repository_owner }}
+
+jobs:
+  changes:
+    name: Detect image changes
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      image: ${{ steps.diff.outputs.image }}
+      renovate: ${{ steps.diff.outputs.renovate }}
+    steps:
+      - name: Classify changed files
+        id: diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [[ "${EVENT}" != pull_request ]]; then
+            echo "image=true" >> "${GITHUB_OUTPUT}"
+            echo "renovate=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          files="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" --jq '.[].filename')"
+          printf '%s\n' "${files}"
+          # Documentation alone never changes the image.
+          if grep -qvE '(\.md$|^doc/|^\.agents/)' <<<"${files}"; then image=true; else image=false; fi
+          if grep -qE '^\.github/renovate\.json5?$' <<<"${files}"; then renovate=true; else renovate=false; fi
+          echo "image=${image}" >> "${GITHUB_OUTPUT}"
+          echo "renovate=${renovate}" >> "${GITHUB_OUTPUT}"
+
+  static:
+    name: Static checks
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    needs: changes
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up just
+        uses: ./.github/actions/setup-just
+
+      - name: Install bats
+        env:
+          # renovate: datasource=github-releases depName=bats-core/bats-core
+          BATS_VERSION: "v1.14.0"
+        run: |
+          set -euo pipefail
+          curl -sSfL --retry 5 --retry-all-errors \
+            "https://github.com/bats-core/bats-core/archive/refs/tags/${BATS_VERSION}.tar.gz" | tar xz -C "${RUNNER_TEMP}"
+          sudo "${RUNNER_TEMP}/bats-core-${BATS_VERSION#v}/install.sh" /usr/local >/dev/null
+          bats --version
+          shellcheck --version | head -n2
+
+      - name: Shellcheck
+        run: just lint
+
+      - name: Justfile format
+        run: just check
+
+      - name: Unit tests
+        run: just test-unit
+
+      - name: Flathub IDs
+        run: just validate-flatpaks
+
+      - name: Hadolint
+        run: |
+          docker run --rm -i -v "${PWD}/.github/hadolint.yaml:/.config/hadolint.yaml:ro" \
+            docker.io/hadolint/hadolint:v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d \
+            hadolint - < Containerfile
+
+      - name: Actionlint
+        run: |
+          docker run --rm -v "${PWD}:/repo:ro" -w /repo \
+            docker.io/rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
+
+      - name: Zizmor
+        uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
+        with:
+          advanced-security: false
+
+      - name: Renovate config
+        if: needs.changes.outputs.renovate == 'true'
+        env:
+          # renovate: datasource=npm depName=renovate
+          RENOVATE_VERSION: "44.239.1"
+        run: npx --yes --package "renovate@${RENOVATE_VERSION}" -- renovate-config-validator --strict
+
+  build:
+    name: Build and test image
+    runs-on: ubuntu-26.04
+    timeout-minutes: 90
+    needs: changes
+    if: needs.changes.outputs.image == 'true'
+    permissions:
+      contents: read
+      packages: write # push on main only; pull requests never log in
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Lowercase image names
+        run: |
+          echo "IMAGE_NAME=${IMAGE_NAME,,}" >> "${GITHUB_ENV}"
+          echo "IMAGE_VENDOR=${IMAGE_VENDOR,,}" >> "${GITHUB_ENV}"
+
+      # The build, chunkah's copy and the test VM need roughly 25 GB. Only
+      # delete preinstalled toolchains when the runner has less than that free.
+      - name: Ensure disk space
+        run: |
+          set -euo pipefail
+          df -h /
+          avail_gb=$(( $(df --output=avail -B1 / | tail -n1) / 1024 / 1024 / 1024 ))
+          if (( avail_gb < 40 )); then
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+            docker image prune --all --force >/dev/null
+            df -h /
+          fi
+
+      - name: Enable KVM
+        run: |
+          if [[ -c /dev/kvm ]]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' |
+              sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
+            echo "KVM available"
+          else
+            echo "::warning::No /dev/kvm; the boot test runs under TCG and is slow"
+          fi
+
+      - name: Set up just
+        uses: ./.github/actions/setup-just
+
+      - name: Build
+        run: just build
+
+      - name: Rechunk and lint
+        run: just rechunk
+
+      - name: Image metadata
+        id: meta
+        run: |
+          set -euo pipefail
+          image="localhost/${IMAGE_NAME}:latest"
+          version="$(podman image inspect "${image}" --format '{{ index .Config.Labels "org.opencontainers.image.version" }}')"
+          [[ "${version}" =~ ^[0-9]+\.[0-9]{8}$ ]] || { echo "::error::unexpected version label '${version}'"; exit 1; }
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          podman run --rm --network=none "${image}" \
+            rpm -qa --qf '%{NAME}.%{ARCH} %{EPOCHNUM}:%{VERSION}-%{RELEASE}\n' |
+              grep -v '^gpg-pubkey\.' | LC_ALL=C sort > packages.txt
+          {
+            echo "### ${IMAGE_NAME} ${version}"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Layers | $(podman image inspect "${image}" --format '{{ len .RootFS.Layers }}') |"
+            echo "| Size | $(podman image inspect "${image}" --format '{{ .Size }}' | numfmt --to=iec) |"
+            echo "| Packages | $(wc -l < packages.txt) |"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Content tests
+        run: just test-image
+
+      - name: Install bcvk
+        env:
+          # renovate: datasource=github-releases depName=bootc-dev/bcvk
+          BCVK_VERSION: "v0.22.0"
+        run: |
+          set -euo pipefail
+          # A slow Ubuntu mirror must fail fast rather than eat the job timeout.
+          apt_opts=(-qq -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::Retries=3)
+          sudo timeout 180 apt-get update "${apt_opts[@]}"
+          sudo timeout 300 apt-get install -y --no-install-recommends "${apt_opts[@]}" \
+            qemu-system-x86 qemu-utils virtiofsd >/dev/null
+          base="https://github.com/bootc-dev/bcvk/releases/download/${BCVK_VERSION}"
+          asset="bcvk-x86_64-unknown-linux-gnu.tar.gz"
+          cd "${RUNNER_TEMP}"
+          curl -sSfL --retry 5 --retry-all-errors -O "${base}/${asset}" -O "${base}/${asset}.sha256"
+          echo "$(cut -d' ' -f1 "${asset}.sha256")  ${asset}" | sha256sum -c -
+          tar xzf "${asset}"
+          sudo install -m 0755 bcvk-x86_64-unknown-linux-gnu /usr/local/bin/bcvk
+          bcvk --version
+
+      - name: Boot test
+        timeout-minutes: 15
+        run: just test-boot
+
+      - name: Push by digest
+        id: push
+        if: github.event_name != 'pull_request'
+        env:
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ref="ghcr.io/${IMAGE_VENDOR}/${IMAGE_NAME}"
+          podman login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin <<<"${REGISTRY_TOKEN}"
+          # :candidate is a staging tag; publish moves the real tags to this
+          # digest only after it is signed and verified.
+          podman push --retry 3 --digestfile digest.txt "localhost/${IMAGE_NAME}:latest" "docker://${ref}:candidate"
+          echo "digest=$(cat digest.txt)" >> "${GITHUB_OUTPUT}"
+          echo "Pushed ${ref}@$(cat digest.txt)" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload package list
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: packages
+          path: packages.txt
+          retention-days: 7
+
+  publish:
+    name: Sign, verify and tag
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    needs: [static, build]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    permissions:
+      packages: write
+      id-token: write # keyless cosign signing (Fulcio)
+    steps:
+      - name: Install cosign
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+        with:
+          cosign-release: v3.1.4
+
+      - name: Sign
+        env:
+          REGISTRY_TOKEN: ${{ github.token }}
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          ref="ghcr.io/${IMAGE_VENDOR,,}/${IMAGE_NAME,,}"
+          echo "REF=${ref}" >> "${GITHUB_ENV}"
+          cosign login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin <<<"${REGISTRY_TOKEN}"
+          skopeo login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin <<<"${REGISTRY_TOKEN}"
+          cosign sign --yes "${ref}@${DIGEST}"
+
+      # The gate (doc/product.md 11): only a digest signed by this exact
+      # workflow on main ever gets a real tag.
+      - name: Verify
+        env:
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: |
+          cosign verify "${REF}@${DIGEST}" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/build.yml@refs/heads/main" \
+            > /dev/null
+          echo "Verified ${REF}@${DIGEST}"
+
+      - name: Tag
+        env:
+          DIGEST: ${{ needs.build.outputs.digest }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          set -euo pipefail
+          for tag in "${VERSION}" latest; do
+            skopeo copy --retry-times 3 --preserve-digests \
+              "docker://${REF}@${DIGEST}" "docker://${REF}:${tag}"
+          done
+          echo "Tagged ${REF}@${DIGEST} as ${VERSION} and latest" >> "${GITHUB_STEP_SUMMARY}"
+
+  release:
+    name: Release notes
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    needs: [build, publish]
+    permissions:
+      contents: write
+    steps:
+      - name: Download package list
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: packages
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DIGEST: ${{ needs.build.outputs.digest }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          set -euo pipefail
+          ref="ghcr.io/${IMAGE_VENDOR,,}/${IMAGE_NAME,,}"
+          prev="$(gh release list -R "${GITHUB_REPOSITORY}" --exclude-drafts --json tagName --jq '.[].tagName' |
+            grep -vx "${VERSION}" | head -n1 || true)"
+          {
+            echo "\`${ref}:${VERSION}\` (\`${DIGEST}\`), built from ${GITHUB_SHA}."
+            echo
+            echo "Pin this build: \`sudo bootc switch ${ref}:${VERSION}\`"
+            echo
+            if [[ -n "${prev}" ]] && gh release download "${prev}" -R "${GITHUB_REPOSITORY}" -p packages.txt -O prev.txt 2>/dev/null; then
+              prev_sha="$(gh release view "${prev}" -R "${GITHUB_REPOSITORY}" --json targetCommitish --jq .targetCommitish)"
+              echo "## Changes since ${prev}"
+              echo
+              echo "Commits: https://github.com/${GITHUB_REPOSITORY}/compare/${prev_sha}...${GITHUB_SHA}"
+              echo
+              echo '```diff'
+              LC_ALL=C join -a1 -a2 -e '-' -o 0,1.2,2.2 prev.txt packages.txt | awk '
+                $2 == "-" { print "+ " $1 " " $3; next }
+                $3 == "-" { print "- " $1 " " $2; next }
+                $2 != $3  { print "  " $1 " " $2 " -> " $3 }'
+              echo '```'
+            fi
+          } > notes.md
+          # A second build on the same day replaces that day's release.
+          gh release delete "${VERSION}" -R "${GITHUB_REPOSITORY}" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "${VERSION}" packages.txt -R "${GITHUB_REPOSITORY}" \
+            --target "${GITHUB_SHA}" --title "${VERSION}" --notes-file notes.md --latest
+
+  required:
+    name: required
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    needs: [changes, static, build]
+    if: always()
+    permissions: {}
+    steps:
+      - name: Check results
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: ${RESULTS}"
+          for r in ${RESULTS}; do
+            [[ "${r}" == success || "${r}" == skipped ]] || exit 1
+          done

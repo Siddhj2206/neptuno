@@ -1,6 +1,6 @@
 # Offline installer ISO (doc/product.md): a small Anaconda environment built
 # from fedora-bootc, with Neptuno embedded once as the payload by
-#   image-builder --bootc-installer-payload-ref ghcr.io/siddhj2206/neptuno:latest generic-iso
+#   image-builder --bootc-installer-payload-ref <PAYLOAD> generic-iso
 # The ISO holds this installer's squashfs plus one copy of Neptuno in its
 # containers-storage; nothing is pulled at install time.
 #
@@ -47,7 +47,13 @@ RUN echo "tmpfs /var/tmp tmpfs mode=1777,size=100%,nr_inodes=1m 0 0" >> /etc/fst
 # it the installer is "ANACONDA bluesky" and opens with a pre-release warning.
 RUN printf '[Main]\nProduct=Neptuno\nVersion=45\nIsFinal=True\nBugURL=https://github.com/siddhj2206/neptuno/issues\n' > /.buildstamp
 
+# The image the ISO embeds and installs; it must match image-builder's
+# --bootc-installer-payload-ref. It keeps its registry name, so it is also the
+# ref `bootc upgrade` follows after install.
+ARG PAYLOAD=ghcr.io/siddhj2206/neptuno:latest
 COPY interactive-defaults.ks /usr/share/anaconda/interactive-defaults.ks
+RUN sed -i "s|@PAYLOAD@|${PAYLOAD}|g" /usr/share/anaconda/interactive-defaults.ks && \
+    ! grep -q '@PAYLOAD@' /usr/share/anaconda/interactive-defaults.ks
 
 # What lorax normally does so Anaconda runs: an `install` login that starts
 # Anaconda, an empty root password, the repo dir moved, and the Anaconda target.
