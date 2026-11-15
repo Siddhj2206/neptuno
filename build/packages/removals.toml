@@ -20,10 +20,7 @@ packages = [
 
 [services]
 disabled = [
-    # Enabled by base-atomic presets, wrong for an AMD laptop (section 4).
-    "thermald.service",
-    "intel_lpmd.service",
-    "mcelog.service",
+    # Enabled by base-atomic presets, not wanted on a desktop or laptop (section 4).
     "qemu-guest-agent.service",
     "vmtoolsd.service",
     "vgauthd.service",
