@@ -154,8 +154,12 @@ iso payload:
     sudo podman build --pull=newer --build-arg "PAYLOAD={{ payload }}" \
         --tag localhost/neptuno-installer:latest iso/installer
     sudo rm -rf output/iso && mkdir -p output/iso
+    # On AppArmor hosts (Ubuntu CI runners) podman's default profile blocks
+    # osbuild's mounts even with --privileged.
+    apparmor=()
+    [[ -d /sys/kernel/security/apparmor ]] && apparmor=(--security-opt apparmor=unconfined)
     sudo podman run --rm --privileged --net=host \
-        --security-opt label=type:unconfined_t \
+        --security-opt label=type:unconfined_t "${apparmor[@]}" \
         -v "${PWD}/output/iso:/output" \
         -v /var/lib/containers/storage:/var/lib/containers/storage \
         "${image_builder}" build --output-dir /output \
