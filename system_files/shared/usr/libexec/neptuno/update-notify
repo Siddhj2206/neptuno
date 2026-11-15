@@ -1,0 +1,33 @@
+#!/usr/bin/bash
+# Notify about system updates without nagging (doc/product.md section 10):
+#   - a staged deployment more than STAGED_DAYS newer than the booted one
+#   - nothing staged and the booted image older than STALE_DAYS, which means
+#     the daily build or the update timer has been failing
+# rpm-ostree reads deployment state over D-Bus, so this needs no root.
+set -euo pipefail
+
+STAGED_DAYS=7
+STALE_DAYS=14
+
+status="$(rpm-ostree status --json)"
+booted="$(jq '[.deployments[] | select(.booted)][0].timestamp // 0' <<<"${status}")"
+staged="$(jq '[.deployments[] | select(.staged)][0].timestamp // 0' <<<"${status}")"
+staged_id="$(jq -r '[.deployments[] | select(.staged)][0].checksum // ""' <<<"${status}")"
+# The last staged deployment we told the user about, so each one is announced once.
+seen_file="${XDG_STATE_HOME:-${HOME}/.local/state}/neptuno/update-notified"
+now="$(date +%s)"
+day=86400
+
+if ((staged > 0)); then
+	if (((staged - booted) / day >= STAGED_DAYS)) && [[ "$(cat "${seen_file}" 2>/dev/null)" != "${staged_id}" ]]; then
+		mkdir -p "$(dirname "${seen_file}")"
+		printf '%s\n' "${staged_id}" >"${seen_file}"
+		notify-send --app-name=Neptuno --icon=system-software-update \
+			"System update ready" \
+			"An update is staged. It is applied the next time you restart."
+	fi
+elif (((now - booted) / day >= STALE_DAYS)); then
+	notify-send --app-name=Neptuno --icon=dialog-warning --urgency=critical \
+		"System updates are stalled" \
+		"No update has been staged for $(((now - booted) / day)) days. Check 'systemctl status bootc-fetch-apply-updates'."
+fi

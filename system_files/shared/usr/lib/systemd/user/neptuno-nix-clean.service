@@ -1,0 +1,12 @@
+[Unit]
+Description=Remove old Nix profile generations and collect garbage
+# Not for system accounts such as the greeter, whose session also runs user units.
+ConditionUser=!@system
+ConditionACPower=true
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/nx clean
+Nice=19
+IOSchedulingClass=idle
+CPUWeight=20

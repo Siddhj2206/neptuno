@@ -1,0 +1,19 @@
+#!/usr/bin/bash
+# Install the Flatpaks named in /usr/share/flatpak/preinstall.d. A stamp keyed
+# on the lists' content is written only on success, so a failed run retries on
+# the next timer tick and a changed list applies on a later boot.
+set -euo pipefail
+
+STATE_DIR=/var/lib/neptuno
+STAMP="${STATE_DIR}/flatpak-preinstall.stamp"
+
+hash="$(cat /usr/share/flatpak/preinstall.d/*.preinstall 2>/dev/null | sha256sum | cut -d' ' -f1)"
+if [[ -f "${STAMP}" && "$(cat "${STAMP}")" == "${hash}" ]]; then
+	echo "Flatpak preinstall list unchanged; nothing to do."
+	exit 0
+fi
+
+flatpak preinstall --system -y --noninteractive
+
+install -d -m 0755 "${STATE_DIR}"
+printf '%s\n' "${hash}" >"${STAMP}"

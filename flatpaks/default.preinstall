@@ -1,0 +1,97 @@
+# Flatpaks installed by neptuno-flatpak-preinstall (doc/product.md 7.2).
+# Format: GKeyFile, one [Flatpak Preinstall <app-id>] section per app.
+# `just validate-flatpaks` checks every id and branch against Flathub.
+
+# --- GNOME apps (doc/product.md 5.5). Files, Text Editor and Disks are RPMs.
+[Flatpak Preinstall net.nokyan.Resources]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Loupe]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Papers]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Showtime]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Decibels]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Calculator]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.baobab]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.clocks]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Weather]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Characters]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.font-viewer]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Snapshot]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.FileRoller]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.NautilusPreviewer]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Calendar]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Contacts]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Logs]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Connections]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Boxes]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.SimpleScan]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Firmware]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.DejaDup]
+Branch=stable
+
+# --- Browser
+[Flatpak Preinstall app.zen_browser.zen]
+Branch=stable
+
+# --- Store and Flatpak tools
+[Flatpak Preinstall io.github.kolunmi.Bazaar]
+Branch=stable
+
+[Flatpak Preinstall com.github.tchx84.Flatseal]
+Branch=stable
+
+[Flatpak Preinstall io.github.flattool.Warehouse]
+Branch=stable
+
+# --- Kept from today's list, pending the D9 audit
+[Flatpak Preinstall io.podman_desktop.PodmanDesktop]
+Branch=stable
+
+[Flatpak Preinstall io.mpv.Mpv]
+Branch=stable
+
+[Flatpak Preinstall it.mijorus.gearlever]
+Branch=stable
+
+[Flatpak Preinstall it.mijorus.smile]
+Branch=stable

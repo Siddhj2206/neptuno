@@ -1,0 +1,14 @@
+# Creates missing home directories before anyone can log in. See
+# /usr/libexec/neptuno/ensure-homes for why an installed account can lack one.
+[Unit]
+Description=Create missing home directories from /etc/skel
+After=local-fs.target systemd-tmpfiles-setup.service
+Before=systemd-user-sessions.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/neptuno/ensure-homes
+TimeoutStartSec=60s
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,120 @@
+#!/usr/bin/bash
+# nx: an imperative front end to a Nix profile (doc/product.md 7.1).
+#
+# It keeps no state of its own. Everything lives in the user's Nix profile and
+# registry. One nixpkgs revision serves every package: the user registry pins
+# `nixpkgs`, `nx add` resolves against that pin, and only `nx upgrade` moves it.
+set -euo pipefail
+
+PROG="${0##*/}"
+NIXPKGS_SOURCE="github:NixOS/nixpkgs/nixpkgs-unstable"
+KEEP_HISTORY="14d"
+
+usage() {
+	cat <<USAGE
+Usage: ${PROG} <command> [args]
+
+  add <name>...         install packages from nixpkgs
+  remove <name>...      remove installed packages
+  list                  list installed packages
+  search <term>...      search nixpkgs
+  upgrade               move to the newest nixpkgs and upgrade everything
+  rollback              undo the last profile change
+  try <name> -- <cmd>   run a command with a package, without installing it
+  clean                 drop generations older than ${KEEP_HISTORY}, then collect garbage
+
+Names also accept common Homebrew spellings (yq, ykman, openjdk@17).
+USAGE
+}
+
+die() {
+	printf '%s: %s\n' "${PROG}" "$*" >&2
+	exit 1
+}
+
+# Homebrew names that differ from nixpkgs attribute names.
+map_name() {
+	case "$1" in
+	yq) echo yq-go ;;
+	ykman) echo yubikey-manager ;;
+	bats-core) echo bats ;;
+	openjdk@*) echo "openjdk${1#openjdk@}" ;;
+	node@*) echo "nodejs_${1#node@}" ;;
+	python@*) local v="${1#python@}"; echo "python${v//./}" ;;
+	*) echo "$1" ;;
+	esac
+}
+
+ensure_pin() {
+	if ! nix registry list 2>/dev/null | grep -q '^user[[:space:]]\+flake:nixpkgs[[:space:]]'; then
+		echo "Pinning nixpkgs for this user (first use)..."
+		nix registry pin nixpkgs "${NIXPKGS_SOURCE}"
+	fi
+}
+
+installables() {
+	local name
+	for name in "$@"; do
+		printf 'nixpkgs#%s\n' "$(map_name "${name}")"
+	done
+}
+
+[[ "$(id -u)" -ne 0 ]] || die "run as your user, not root; Nix profiles are per user"
+command -v nix >/dev/null || die "nix is not installed"
+
+cmd="${1:-}"
+[[ $# -gt 0 ]] && shift
+
+case "${cmd}" in
+add | install)
+	[[ $# -gt 0 ]] || die "add: name at least one package"
+	ensure_pin
+	mapfile -t targets < <(installables "$@")
+	nix profile add "${targets[@]}"
+	;;
+remove | rm | uninstall)
+	[[ $# -gt 0 ]] || die "remove: name at least one package"
+	mapfile -t names < <(for n in "$@"; do map_name "${n}"; done)
+	nix profile remove "${names[@]}"
+	;;
+list | ls)
+	nix profile list --json | jq -r '.elements | to_entries[] | "\(.key)\t\(.value.storePaths[0] | sub("^/nix/store/[a-z0-9]+-"; ""))"' |
+		column -t -s $'\t'
+	;;
+search)
+	[[ $# -gt 0 ]] || die "search: give a search term"
+	ensure_pin
+	nix search nixpkgs "$@"
+	;;
+upgrade | update)
+	nix registry pin nixpkgs "${NIXPKGS_SOURCE}"
+	nix profile upgrade --all
+	;;
+rollback)
+	nix profile rollback
+	;;
+try | shell)
+	[[ $# -gt 0 ]] || die "try: name a package"
+	ensure_pin
+	pkg="$(map_name "$1")"
+	shift
+	if [[ "${1:-}" == "--" ]]; then
+		shift
+	fi
+	if [[ $# -gt 0 ]]; then
+		exec nix shell "nixpkgs#${pkg}" --command "$@"
+	fi
+	exec nix shell "nixpkgs#${pkg}"
+	;;
+clean | gc)
+	nix profile wipe-history --older-than "${KEEP_HISTORY}"
+	nix store gc
+	;;
+"" | -h | --help | help)
+	usage
+	;;
+*)
+	usage >&2
+	exit 2
+	;;
+esac

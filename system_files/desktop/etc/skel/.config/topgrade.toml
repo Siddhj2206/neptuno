@@ -1,0 +1,14 @@
+# topgrade: one command for every updater (system image, Flatpaks, Nix,
+# firmware, containers). Full reference: `topgrade --edit-config` shows the
+# defaults, or https://github.com/topgrade-rs/topgrade/blob/main/config.example.toml
+#
+# `sudo bootc upgrade` runs without a password (/etc/sudoers.d/neptuno-bootc).
+# Nix: the `nix` step runs `nix profile upgrade --all`, the same as `nx upgrade`.
+
+[misc]
+# Steps to skip. Same names as `topgrade --disable`.
+disable = ["zed", "github_cli_skills", "tailscale"]
+
+[linux]
+# Update the system image with bootc instead of rpm-ostree.
+bootc = true

@@ -1,0 +1,6 @@
+# ghostty loads config-file entries after this file, in order: the image's
+# defaults first, then your overrides.conf, so your settings always win.
+# Personal settings go in ~/.config/ghostty/overrides.conf.
+theme = dankcolors
+config-file = ?/usr/share/neptuno/ghostty/base.conf
+config-file = ?overrides.conf

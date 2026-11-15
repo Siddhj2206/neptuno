@@ -1,0 +1,19 @@
+# Distribution defaults (XDG mime-apps spec). ~/.config/mimeapps.list wins.
+[Default Applications]
+inode/directory=org.gnome.Nautilus.desktop
+text/plain=org.gnome.TextEditor.desktop
+application/pdf=org.gnome.Papers.desktop
+image/png=org.gnome.Loupe.desktop
+image/jpeg=org.gnome.Loupe.desktop
+image/webp=org.gnome.Loupe.desktop
+image/gif=org.gnome.Loupe.desktop
+image/svg+xml=org.gnome.Loupe.desktop
+video/mp4=org.gnome.Showtime.desktop
+video/webm=org.gnome.Showtime.desktop
+video/x-matroska=org.gnome.Showtime.desktop
+audio/mpeg=org.gnome.Decibels.desktop
+audio/flac=org.gnome.Decibels.desktop
+audio/ogg=org.gnome.Decibels.desktop
+x-scheme-handler/http=app.zen_browser.zen.desktop
+x-scheme-handler/https=app.zen_browser.zen.desktop
+text/html=app.zen_browser.zen.desktop

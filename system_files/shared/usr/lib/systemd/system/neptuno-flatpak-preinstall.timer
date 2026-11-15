@@ -1,0 +1,11 @@
+# Two minutes after boot, then hourly until the stamp says the current list is
+# done; the script exits early once it is.
+[Unit]
+Description=Install Neptuno's default Flatpaks after boot
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=1h
+
+[Install]
+WantedBy=timers.target

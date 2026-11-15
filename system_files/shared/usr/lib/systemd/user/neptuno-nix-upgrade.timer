@@ -1,0 +1,12 @@
+[Unit]
+Description=Upgrade Nix profile packages weekly
+# Not for system accounts such as the greeter, whose session also runs user units.
+ConditionUser=!@system
+
+[Timer]
+OnCalendar=weekly
+RandomizedDelaySec=6h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

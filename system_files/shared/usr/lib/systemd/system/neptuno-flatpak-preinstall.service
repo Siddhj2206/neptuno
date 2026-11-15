@@ -1,0 +1,14 @@
+# Installs /usr/share/flatpak/preinstall.d lists from Flathub. Started by its
+# timer, never by multi-user.target, so it stays off the boot path (17.3).
+[Unit]
+Description=Install Neptuno's default Flatpaks
+Wants=network-online.target
+After=network-online.target
+ConditionACPower=true
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/neptuno/flatpak-preinstall
+Nice=19
+IOSchedulingClass=idle
+CPUWeight=20

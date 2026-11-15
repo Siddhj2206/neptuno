@@ -1,0 +1,21 @@
+# /nix from the image is read-only. Bind-mount writable state from /var over it
+# (doc/product.md 7.1, Plan A). The mount hides the nix-system payload, so
+# tmpfiles (nix-filesystem.conf, nix-daemon.conf, neptuno-nix.conf) recreate
+# the tree inside the mount; they run in systemd-tmpfiles-setup, after
+# local-fs.target.
+[Unit]
+Description=Nix store (bind mount of /var/lib/nix)
+Documentation=file:///usr/share/doc/nix-core/README.fedora.md
+Requires=neptuno-nix-directory.service
+After=neptuno-nix-directory.service
+RequiresMountsFor=/var/lib
+Before=local-fs.target nix-daemon.service
+
+[Mount]
+What=/var/lib/nix
+Where=/nix
+Type=none
+Options=bind
+
+[Install]
+WantedBy=local-fs.target

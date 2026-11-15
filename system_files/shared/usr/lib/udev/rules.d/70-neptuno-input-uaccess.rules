@@ -1,0 +1,21 @@
+# Neptuno: active-seat access to input event nodes.
+#
+# Niri has no org.freedesktop.portal.GlobalShortcuts backend, so evdev consumers
+# (DMS's evdev manager for modifier/Caps Lock state, HEX dictation) must read
+# /dev/input/event* directly. Upstream's answer is "join the input group", which
+# does not stick on this image: `input` is defined only in /usr/lib/group and
+# resolved through nss-altfiles, so `usermod -aG input` exits 0 without writing
+# a membership into /etc/group (the only file shadow-utils edits).
+#
+# TAG+="uaccess" makes systemd's uaccess builtin attach an ACL for the user of
+# the active seat session: effective at login with no re-login, revoked when the
+# session ends, and never inherited by remote SSH sessions.
+#
+# Security: read access to event* is keyboard-read capability, i.e. keylogger
+# equivalent for the logged-in user. Accepted deliberately for this image;
+# Fedora tags only joysticks with uaccess, not keyboards.
+#
+# The filename must sort before 73-seat-late.rules, which is what runs the
+# uaccess builtin; a 73+ number sets the tag too late for the ACL to be applied.
+# ACTION!="remove" keeps the tag applied on "change" events too (systemd >= 258).
+ACTION!="remove", SUBSYSTEM=="input", KERNEL=="event*", TAG+="uaccess"

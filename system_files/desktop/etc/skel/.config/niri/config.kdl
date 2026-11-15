@@ -1,0 +1,51 @@
+// Your niri config. The image's defaults come first, then your settings, then
+// DMS's files, then the window rules that must override DMS. Later wins.
+// `neptuno config-diff` shows how this file differs from a fresh one.
+include "/usr/share/neptuno/niri/base.kdl"
+
+// --- your settings ---------------------------------------------------------
+// Below is a commented-out copy of the image's defaults (base.kdl) as they
+// were when this account was created. To change one, uncomment it and edit
+// it; a setting here overrides the same setting in base.kdl, but the DMS
+// files below come later and win where they set the same thing (layout, input,
+// cursor, outputs: change those from DMS Settings). Window rules add to the
+// ones in base.kdl rather than replacing them.
+//
+// @NEPTUNO_NIRI_DEFAULTS@
+
+// --- DMS -----------------------------------------------------------------------
+// DMS edits these files from its Settings. They are seeded with the account
+// (DMS does not reliably create them itself), so keep both the lines and the
+// files. DMS also checks this file for the lines and appends duplicates if
+// they are missing.
+include optional=true "dms/colors.kdl"
+include optional=true "dms/layout.kdl"
+include optional=true "dms/alttab.kdl"
+include optional=true "dms/binds.kdl"
+include optional=true "dms/outputs.kdl"
+include optional=true "dms/cursor.kdl"
+include optional=true "dms/input.kdl"
+include optional=true "dms/windowrules.kdl"
+include optional=true "dms/wpblur.kdl"
+
+// --- window rules (keep after the DMS includes) ----------------------------
+// Here rather than in dms/windowrules.kdl, which a new DMS install rewrites.
+// They must come after dms/layout.kdl: that file rounds every window, and in
+// niri the later rule wins. Tiled windows end up square; floating windows
+// keep DMS's rounding. Being last, they also win over any rule for the same
+// property that you add in dms/windowrules.kdl (DMS's "Create window rule") or
+// above; change them here instead.
+
+// Tiled windows open maximized with square corners.
+window-rule {
+    match is-floating=false
+    open-maximized true
+    geometry-corner-radius 0
+}
+
+// DMS's own windows float and stay opaque.
+window-rule {
+    match app-id=r#"^(dev\.duxlabs\.shell|com\.danklinux\.dms)$"#
+    open-floating true
+    opacity 1.0
+}

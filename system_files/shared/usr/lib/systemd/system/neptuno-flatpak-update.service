@@ -1,0 +1,13 @@
+[Unit]
+Description=Update system Flatpaks
+Wants=network-online.target
+After=network-online.target
+ConditionACPower=true
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/flatpak update --system -y --noninteractive
+ExecStart=/usr/bin/flatpak uninstall --system -y --noninteractive --unused
+Nice=19
+IOSchedulingClass=idle
+CPUWeight=20

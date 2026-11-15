@@ -1,0 +1,8 @@
+[Unit]
+Description=Tell the user about a staged or overdue system update
+# Not for system accounts such as the greeter, whose session also runs user units.
+ConditionUser=!@system
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/neptuno/update-notify
