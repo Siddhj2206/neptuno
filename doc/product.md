@@ -677,11 +677,14 @@ Shared pieces either way:
 - `nix-shell` isn't in `nix-core`. The wrapper uses `nix shell`. Add
   `nix-legacy` only if `nix-shell -p` turns out to be missed.
 
-The wrapper is a bash script in `/usr/bin` with no state of its own. On a
-terminal, `nx upgrade` prints the nixpkgs move and one line per package that
-changed (`↑ neovim 0.12.5 → 0.12.6`, `+` added, `-` removed), and `nx list`
-prints name and version columns. Colour is off for pipes, the timer's journal
-and `NO_COLOR`.
+The wrapper is a bash script in `/usr/bin` with no state of its own. Every
+command prints in one style: two-space indent, `›` for a step that takes a
+while, `✓` done, `✗` error. `add`, `remove`, `upgrade` and `rollback` end with
+what changed, one line per package (`↑ neovim 0.12.5 → 0.12.6`, `+` added,
+`-` removed). `list` prints name and version columns; `search` puts an exact
+match first, marks installed packages and stops at 25 results; `clean` reports
+the space it freed. nix's progress bar still shows while something downloads.
+Colour is off for pipes, the timer's journal and `NO_COLOR`.
 
 ```
 nx add <name>...       -> nix profile add nixpkgs#<name>...

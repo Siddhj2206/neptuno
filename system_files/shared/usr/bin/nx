@@ -4,41 +4,68 @@
 # It keeps no state of its own. Everything lives in the user's Nix profile and
 # registry. One nixpkgs revision serves every package: the user registry pins
 # `nixpkgs`, `nx add` resolves against that pin, and only `nx upgrade` moves it.
+#
+# Output: two-space indent, one symbol per kind of line (› step, ↑ upgraded,
+# + added, - removed, ✓ done, ✗ error). nix's own progress bar still shows
+# while something downloads; its per-package chatter is --quiet.
 set -euo pipefail
 
 PROG="${0##*/}"
 NIXPKGS_SOURCE="github:NixOS/nixpkgs/nixpkgs-unstable"
 KEEP_HISTORY="14d"
+SEARCH_LIMIT=25
 
-usage() {
-	cat <<USAGE
-Usage: ${PROG} <command> [args]
-
-  add <name>...         install packages from nixpkgs
-  remove <name>...      remove installed packages
-  list                  list installed packages
-  search <term>...      search nixpkgs
-  upgrade               move to the newest nixpkgs and upgrade everything
-  rollback              undo the last profile change
-  try <name> -- <cmd>   run a command with a package, without installing it
-  clean                 drop generations older than ${KEEP_HISTORY}, then collect garbage
-
-Names also accept common Homebrew spellings (yq, ykman, openjdk@17).
-USAGE
+# Colour only for a terminal that wants it; the weekly timer's journal and
+# pipes get plain text. stderr is decided on its own.
+wants_colour() {
+	[[ -t $1 && -z ${NO_COLOR:-} && ${TERM:-dumb} != dumb ]]
 }
+BOLD='' DIM='' GREEN='' CYAN='' RED='' RESET='' E_RED='' E_RESET=''
+if wants_colour 1; then
+	BOLD=$'\e[1m' DIM=$'\e[2m' GREEN=$'\e[32m' CYAN=$'\e[36m' RED=$'\e[31m' RESET=$'\e[0m'
+fi
+if wants_colour 2; then
+	E_RED=$'\e[31m' E_RESET=$'\e[0m'
+fi
 
 die() {
-	printf '%s: %s\n' "${PROG}" "$*" >&2
+	printf '  %s✗%s %s\n' "${E_RED}" "${E_RESET}" "$*" >&2
 	exit 1
 }
 
-# Colour only for a terminal that wants it; the weekly timer's journal and
-# pipes get plain text.
-if [[ -t 1 && -z ${NO_COLOR:-} && ${TERM:-dumb} != dumb ]]; then
-	BOLD=$'\e[1m' DIM=$'\e[2m' GREEN=$'\e[32m' CYAN=$'\e[36m' RED=$'\e[31m' RESET=$'\e[0m'
-else
-	BOLD='' DIM='' GREEN='' CYAN='' RED='' RESET=''
-fi
+# A step about to take a while, on stderr so pipes see only results.
+step() {
+	printf '  %s›%s %s\n' "${CYAN}" "${RESET}" "$*" >&2
+}
+
+done_line() {
+	printf '  %s✓%s %s\n' "${GREEN}" "${RESET}" "$*"
+}
+
+usage() {
+	local b="${BOLD}" d="${DIM}" c="${CYAN}" z="${RESET}"
+	cat <<USAGE
+
+  ${b}nx${z} ${d}· packages from nixpkgs, one pinned revision for all of them${z}
+
+  ${b}Usage:${z} ${PROG} <command> [args]
+
+  ${d}Packages${z}
+    ${c}add${z} <name>...          install packages
+    ${c}remove${z} <name>...       remove packages
+    ${c}list${z}                   what is installed, with versions
+    ${c}search${z} <term>...       search nixpkgs (installed ones are marked)
+    ${c}try${z} <name> [-- cmd]    run a package without installing it
+
+  ${d}Maintenance${z}
+    ${c}upgrade${z}                move to the newest nixpkgs and upgrade everything
+    ${c}rollback${z}               undo the last change
+    ${c}clean${z}                  drop history older than ${KEEP_HISTORY}, then free disk space
+
+  ${d}Homebrew spellings work too: yq, ykman, openjdk@17, node@22, python@3.13.${z}
+
+USAGE
+}
 
 # name<TAB>version for each installed package, sorted by name. The version is
 # the store path's name with the package name and output suffix taken off.
@@ -57,12 +84,13 @@ pin_info() {
 		echo "unknown -"
 }
 
-# Compares two profile_versions listings and prints what changed.
+# Compares two profile_versions listings and prints what changed. $3 is the
+# line for "nothing changed", which reads differently per command.
 report_changes() {
 	awk -F'\t' -v b="${BOLD}" -v d="${DIM}" -v g="${GREEN}" -v c="${CYAN}" \
-		-v r="${RED}" -v z="${RESET}" '
-		FNR == NR { old[$1] = $2; next }
-		{
+		-v r="${RED}" -v z="${RESET}" -v none="$3" '
+		FNR == NR { if ($1 != "") old[$1] = $2; next }
+		$1 != "" {
 			seen[$1] = 1
 			if (!($1 in old)) { add[++na] = $1; ver[$1] = $2 }
 			else if (old[$1] != $2) { up[++nu] = $1; ver[$1] = $2 }
@@ -81,20 +109,31 @@ report_changes() {
 				printf "  %s-%s %-*s  %s%s%s\n", r, z, w, n, d, old[n], z }
 			print ""
 			if (nu + na + ng == 0) {
-				printf "  %s✓%s Everything is up to date %s(%d packages)%s\n", g, z, d, same, z
+				printf "  %s✓%s %s %s(%d packages)%s\n", g, z, none, d, same, z
 			} else {
-				msg = sprintf("%d upgraded", nu)
-				if (na) msg = msg sprintf(", %d added", na)
-				if (ng) msg = msg sprintf(", %d removed", ng)
+				msg = ""
+				if (nu) msg = msg sep nu " upgraded"; if (nu) sep = ", "
+				if (na) msg = msg sep na " added"; if (na) sep = ", "
+				if (ng) msg = msg sep ng " removed"
 				printf "  %s✓%s %s %s· %d unchanged%s\n", g, z, msg, d, same, z
 			}
 		}' <(printf '%s\n' "$1") <(printf '%s\n' "$2")
+}
+
+# Runs a profile command, then prints what it changed.
+with_report() {
+	local none="$1" before
+	shift
+	before="$(profile_versions)"
+	"$@"
+	report_changes "${before}" "$(profile_versions)" "${none}"
 }
 
 upgrade_all() {
 	local before after old_pin new_pin
 	before="$(profile_versions)"
 	old_pin="$(pin_info)"
+	step "Checking for a newer nixpkgs"
 	nix registry pin nixpkgs "${NIXPKGS_SOURCE}"
 	new_pin="$(pin_info)"
 	if [[ ${old_pin} == "${new_pin}" ]]; then
@@ -106,25 +145,82 @@ upgrade_all() {
 			"${BOLD}${GREEN}" "${new_pin%% *}" "${RESET}" "${DIM}" "${new_pin#* }" "${RESET}"
 	fi
 	# Still run when the pin did not move: it finishes an upgrade that a
-	# previous run left half done. --quiet drops nix's per-package lines.
+	# previous run left half done.
 	nix profile upgrade --all --quiet
 	after="$(profile_versions)"
-	report_changes "${before}" "${after}"
+	report_changes "${before}" "${after}" "Everything is up to date"
 }
 
 list_packages() {
 	local rows pin
 	rows="$(profile_versions)"
-	pin="$(pin_info)"
 	if [[ -z ${rows} ]]; then
 		printf '  No packages yet. Add one with %snx add <name>%s.\n' "${BOLD}" "${RESET}"
 		return
 	fi
+	pin="$(pin_info)"
 	awk -F'\t' -v b="${BOLD}" -v d="${DIM}" -v z="${RESET}" '
 		{ n[NR] = $1; v[NR] = $2; if (length($1) > w) w = length($1) }
 		END { for (i = 1; i <= NR; i++) printf "  %s%-*s%s  %s%s%s\n", b, w, n[i], z, d, v[i], z }' <<<"${rows}"
 	printf '\n  %s%d packages · nixpkgs %s (%s)%s\n' "${DIM}" "$(wc -l <<<"${rows}")" \
 		"${pin%% *}" "${pin#* }" "${RESET}"
+}
+
+# Results as name, version and a description cut to the terminal width. An
+# exact name match comes first; installed packages are marked.
+search_packages() {
+	local results installed cols
+	step "Searching nixpkgs"
+	results="$(nix search nixpkgs --json "$@" 2>/dev/null)" || die "search failed; try again, or check the network"
+	installed="$(profile_versions | cut -f1)"
+	cols="${COLUMNS:-$(tput cols 2>/dev/null || echo 100)}"
+	jq -r --arg term "$1" '
+		to_entries
+		| map(.value + {name: (.key | sub("^legacyPackages\\.[^.]+\\."; ""))})
+		| sort_by((if .name == $term or .pname == $term then 0
+			elif (.name | startswith($term)) then 1
+			elif (.name | contains($term)) then 2 else 3 end), .name)[]
+		| [.name, .version, (.description // "" | gsub("[\\t\\n]"; " "))] | @tsv' <<<"${results}" |
+		awk -F'\t' -v b="${BOLD}" -v d="${DIM}" -v g="${GREEN}" -v z="${RESET}" \
+			-v limit="${SEARCH_LIMIT}" -v cols="${cols}" -v installed="${installed}" '
+			BEGIN { split(installed, list, "\n"); for (i in list) have[list[i]] = 1 }
+			{ total++ }
+			total <= limit {
+				mark = ($1 in have) ? sprintf("  %s✓ installed%s", g, z) : ""
+				printf "  %s%s%s %s%s%s%s\n", b, $1, z, d, $2, z, mark
+				desc = $3; max = cols - 6
+				if (max > 10 && length(desc) > max) desc = substr(desc, 1, max - 1) "…"
+				if (desc != "") printf "    %s\n", desc
+			}
+			END {
+				if (total == 0) { printf "  No packages match.\n"; exit }
+				printf "\n  %s", d
+				if (total > limit) printf "%d of %d matches; add a word to narrow it", limit, total
+				else printf "%d %s", total, (total == 1 ? "match" : "matches")
+				printf " · install with nx add <name>%s\n", z
+			}'
+}
+
+clean_store() {
+	local wiped removed out freed paths
+	step "Dropping profile history older than ${KEEP_HISTORY}"
+	wiped="$(nix profile wipe-history --older-than "${KEEP_HISTORY}" 2>&1)" || { printf '%s\n' "${wiped}" >&2; exit 1; }
+	removed="$(grep -c 'removing profile version' <<<"${wiped}" || true)"
+	step "Collecting garbage"
+	out="$(nix store gc 2>&1)" || { printf '%s\n' "${out}" >&2; exit 1; }
+	paths="$(sed -n 's/^\([0-9]*\) store paths deleted.*/\1/p' <<<"${out}" | tail -n1)"
+	freed="$(sed -n 's/.*store paths deleted, \(.*\) freed.*/\1/p' <<<"${out}" | tail -n1)"
+	echo
+	if [[ ${removed} -gt 0 ]]; then
+		done_line "Removed ${removed} old $([[ ${removed} -eq 1 ]] && echo version || echo versions) of the profile"
+	else
+		done_line "No profile versions older than ${KEEP_HISTORY}"
+	fi
+	if [[ ${paths:-0} -gt 0 ]]; then
+		done_line "Freed ${BOLD}${freed}${RESET} ${DIM}(${paths} store paths)${RESET}"
+	else
+		done_line "Nothing to free"
+	fi
 }
 
 # Homebrew names that differ from nixpkgs attribute names.
@@ -142,7 +238,7 @@ map_name() {
 
 ensure_pin() {
 	if ! nix registry list 2>/dev/null | grep -q '^user[[:space:]]\+flake:nixpkgs[[:space:]]'; then
-		echo "Pinning nixpkgs for this user (first use)..."
+		step "Pinning nixpkgs for this user (first use)"
 		nix registry pin nixpkgs "${NIXPKGS_SOURCE}"
 	fi
 }
@@ -164,13 +260,34 @@ case "${cmd}" in
 add | install)
 	[[ $# -gt 0 ]] || die "add: name at least one package"
 	ensure_pin
-	mapfile -t targets < <(installables "$@")
-	nix profile add "${targets[@]}"
+	installed="$(profile_versions | cut -f1)"
+	wanted=()
+	for n in "$@"; do
+		attr="$(map_name "${n}")"
+		if grep -qxF -- "${attr}" <<<"${installed}"; then
+			done_line "${attr} is already installed"
+		else
+			wanted+=("${n}")
+		fi
+	done
+	[[ ${#wanted[@]} -gt 0 ]] || exit 0
+	mapfile -t targets < <(installables "${wanted[@]}")
+	with_report "Nothing added" nix profile add --quiet "${targets[@]}"
 	;;
 remove | rm | uninstall)
 	[[ $# -gt 0 ]] || die "remove: name at least one package"
 	mapfile -t names < <(for n in "$@"; do map_name "${n}"; done)
-	nix profile remove "${names[@]}"
+	installed="$(profile_versions | cut -f1)"
+	keep=()
+	for n in "${names[@]}"; do
+		if grep -qxF -- "${n}" <<<"${installed}"; then
+			keep+=("${n}")
+		else
+			printf '  %s✗%s %s is not installed\n' "${E_RED}" "${E_RESET}" "${n}" >&2
+		fi
+	done
+	[[ ${#keep[@]} -gt 0 ]] || exit 1
+	with_report "Nothing removed" nix profile remove --quiet --quiet "${keep[@]}"
 	;;
 list | ls)
 	list_packages
@@ -178,13 +295,13 @@ list | ls)
 search)
 	[[ $# -gt 0 ]] || die "search: give a search term"
 	ensure_pin
-	nix search nixpkgs "$@"
+	search_packages "$@"
 	;;
 upgrade | update)
 	upgrade_all
 	;;
 rollback)
-	nix profile rollback
+	with_report "Nothing to undo" nix profile rollback --quiet --quiet
 	;;
 try | shell)
 	[[ $# -gt 0 ]] || die "try: name a package"
@@ -195,19 +312,18 @@ try | shell)
 		shift
 	fi
 	if [[ $# -gt 0 ]]; then
-		exec nix shell "nixpkgs#${pkg}" --command "$@"
+		exec nix shell --quiet "nixpkgs#${pkg}" --command "$@"
 	fi
-	exec nix shell "nixpkgs#${pkg}"
+	step "A shell with ${pkg}; it is not installed, and goes away when you exit"
+	exec nix shell --quiet "nixpkgs#${pkg}"
 	;;
 clean | gc)
-	nix profile wipe-history --older-than "${KEEP_HISTORY}"
-	nix store gc
+	clean_store
 	;;
 "" | -h | --help | help)
 	usage
 	;;
 *)
-	usage >&2
-	exit 2
+	die "unknown command: ${cmd} (see nx help)"
 	;;
 esac
