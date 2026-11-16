@@ -68,6 +68,12 @@ Enable explicitly, never by applying presets, and never mask.
   `changelogs`.
 - **ujust**: recipes live in `custom/ujust/`; 10-overlay merges them into
   `60-custom.just` in sorted order.
+- **PAM and the keyring**: `pam_oo7` unlocks the oo7 login keyring only with
+  a typed password. authselect `with-fingerprint` puts `pam_fprintd` in
+  `system-auth` as `sufficient` ahead of `pam_unix`, so any service that
+  includes it can log in by finger and hand `pam_oo7` nothing; apps then
+  report their secrets as missing. `/etc/pam.d/greetd` takes auth from
+  `password-auth` for that reason; `30-desktop.sh` fails the build if it drifts.
 - **Cleanup**: Fedora 45 keeps repo files in `/usr/share/dnf5/repos.d` as well
   as `/etc/yum.repos.d`; sweep both or COPRs ship enabled.
 

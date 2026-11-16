@@ -42,8 +42,23 @@ glib-compile-schemas /usr/share/glib-2.0/schemas
 echo "::endgroup::"
 
 echo "::group:: Fingerprint login (D12)"
-# Puts pam_fprintd into system-auth, which greetd, the DMS lock screen, sudo
-# and run0 include. The password keeps working alongside it.
+# Puts pam_fprintd into system-auth, which the DMS lock screen, sudo and run0
+# include. The password keeps working alongside it.
 authselect enable-feature with-fingerprint
 authselect current | grep -q with-fingerprint
+# ...except at the greeter. /etc/pam.d/greetd (system_files/desktop) takes auth
+# from password-auth, so the first login always uses the password and pam_oo7
+# can unlock the login keyring with it. Fail if either side has drifted.
+grep -Eq '^auth +substack +password-auth' /etc/pam.d/greetd || {
+	echo "ERROR: /etc/pam.d/greetd must take auth from password-auth" >&2
+	exit 1
+}
+grep -Eq '^-?auth .*pam_oo7\.so' /etc/pam.d/greetd || {
+	echo "ERROR: /etc/pam.d/greetd lost its pam_oo7 auth line" >&2
+	exit 1
+}
+if grep -q pam_fprintd /etc/pam.d/password-auth; then
+	echo "ERROR: password-auth has pam_fprintd; greetd would skip the password" >&2
+	exit 1
+fi
 echo "::endgroup::"

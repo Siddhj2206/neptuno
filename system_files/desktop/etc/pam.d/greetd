@@ -1,0 +1,32 @@
+#%PAM-1.0
+# Neptuno: /usr/lib/pam.d/greetd from the greetd package, with auth taken from
+# password-auth instead of system-auth. system-auth carries pam_fprintd as
+# "sufficient" ahead of pam_unix (authselect with-fingerprint, D12). At the
+# greeter that blocks the typed password until a finger is scanned, and a
+# fingerprint login leaves pam_oo7 no password, so the login keyring stays
+# locked for the whole session. The lock screen, sudo and run0 keep
+# fingerprint through system-auth; the keyring is already unlocked by then.
+auth       substack    password-auth
+-auth       optional    pam_gnome_keyring.so
+-auth       optional    pam_kwallet5.so
+-auth       optional    pam_kwallet.so
+-auth       optional    pam_oo7.so
+auth       include     postlogin
+
+account    required    pam_sepermit.so
+account    required    pam_nologin.so
+account    include     system-auth
+
+password   include     system-auth
+
+session    required    pam_selinux.so close
+session    required    pam_loginuid.so
+session    required    pam_selinux.so open
+session    optional    pam_keyinit.so force revoke
+session    required    pam_namespace.so
+session    include     system-auth
+-session    optional    pam_gnome_keyring.so auto_start
+-session    optional    pam_kwallet5.so auto_start
+-session    optional    pam_kwallet.so auto_start
+-session    optional    pam_oo7.so auto_start
+session    include     postlogin

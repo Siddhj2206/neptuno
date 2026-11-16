@@ -113,3 +113,11 @@ PW
 	[ ! -e "${root}/opt/outside" ]
 	[ ! -e "${root}/var/home/svc" ]
 }
+
+@test "greetd authenticates with password-auth so pam_oo7 gets the password" {
+	local pam="${REPO}/system_files/desktop/etc/pam.d/greetd"
+	grep -Eq '^auth +substack +password-auth' "${pam}"
+	! grep -Eq '^auth .*system-auth' "${pam}"
+	grep -Eq '^-auth +optional +pam_oo7\.so' "${pam}"
+	grep -Eq '^-session +optional +pam_oo7\.so auto_start' "${pam}"
+}

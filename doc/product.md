@@ -251,7 +251,7 @@ Versions are the verified F45 builds.
 - **Networking:** tailscale 1.104.6-1 from the official Tailscale repo. **Verified: Fedora 45 does not package it**, so the third-party repo is needed. It is used only at build time and removed after install, as today.
 - **Kept from today (owner decision):** input-remapper 2.2.1-2, firewall-config, NetworkManager-openvpn, NetworkManager-openconnect, openvpn, fuse and fuse-libs (FUSE 2, for host AppImages). Their versions weren't re-checked in this revision.
 - **Zenbook extras:** zenity 4.2.2-5 and tcpdump 4.99.6-5, moved here from brew. Optional and only on demand: libratbag-ratbagd 0.18-6, ifuse 1.2.1-5, borgbackup 1.4.5-1.
-- **Fingerprint (D12, decided: yes):** fprintd 1.94.5-6 + fprintd-pam. `base-atomic`'s authselect profile is `local with-silent-lastlog with-mdns4`, without `with-fingerprint`, so the build runs `authselect enable-feature with-fingerprint`. That puts `pam_fprintd` in `system-auth`, which greetd, the DMS lock screen (through its PAM file) and `run0`/sudo all include. The password field keeps working alongside it. S2 checks that the greeter and the lock screen accept either, and that a missing finger doesn't stall a password login. **Unverified** how dux-greeter shows the fingerprint prompt.
+- **Fingerprint (D12, decided: yes):** fprintd 1.94.5-6 + fprintd-pam. `base-atomic`'s authselect profile is `local with-silent-lastlog with-mdns4`, without `with-fingerprint`, so the build runs `authselect enable-feature with-fingerprint`. That puts `pam_fprintd` in `system-auth`, which the DMS lock screen (through its PAM file) and `run0`/sudo include. **Not at the greeter:** `pam_fprintd` sits as `sufficient` ahead of `pam_unix`, so at greetd it swallowed the typed password and a fingerprint login left `pam_oo7` nothing to unlock the keyring with (found on the laptop, 2026-11-16). `/etc/pam.d/greetd` therefore takes auth from `password-auth`, which has no `pam_fprintd` (6.4). **Unverified** how dux-greeter shows the fingerprint prompt.
 - **ASUS (D5, decided: keep):** asusctl 6.3.8 from COPR `lukenukem/asus-linux` (the asus-linux project's own repo; Fedora doesn't package it). Runtime requires only glibc, libudev and friends. Ships `asusd.service`, `asus-shutdown.service`, `asusd-user`, a udev rule and a D-Bus system policy, so it must be an image RPM: a Nix profile can't install system units, udev rules or D-Bus policy (nixpkgs has `asusctl`, but only NixOS can wire the daemon). Replaces today's `/opt/ublue-asusctl` build. The COPR is enabled, installed from and disabled like the duxlabs ones. `asusctl-rog-gui` is not installed.
 - **Optional hardware:** switcheroo-control 3.0-9, iio-sensor-proxy 3.9-3.
 
@@ -498,7 +498,9 @@ What F45 actually ships, checked with `dnf5 repoquery` and on the laptop:
 - Fedora's PAM files already include `pam_oo7` next to the old modules, as
   optional lines with a leading `-` (skip if the module is missing). The
   `greetd` package's `/usr/lib/pam.d/greetd` has `-auth optional pam_oo7.so`
-  and `-session optional pam_oo7.so auto_start`. **No PAM edits are needed.**
+  and `-session optional pam_oo7.so auto_start`. The only PAM edit is the
+  greetd auth source (5.2, D12): with `system-auth` a fingerprint login
+  reaches `pam_oo7` with no password and the keyring stays locked.
   The pam_oo7 README says the auth stack captures the password and the session
   stack hands it to the daemon over `$XDG_RUNTIME_DIR/oo7/pam.sock` to unlock
   the default keyring.
@@ -540,7 +542,8 @@ What the image needs:
   always; `oo7-daemon.service` too unless S3 shows `pam_oo7`'s `auto_start`
   or D-Bus activation starts it reliably.
 - The portal override in 6.2.
-- Nothing in `/etc/pam.d`.
+- `/etc/pam.d/greetd`: the package file with `auth substack password-auth`, so
+  fingerprint never stands in for the password at login.
 
 S3 must show, on a fresh user and on the migrated laptop: one process owns
 `org.freedesktop.secrets` after a greetd login; the login keyring is unlocked
