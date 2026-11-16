@@ -1,10 +1,10 @@
 export IMAGE_NAME := env("IMAGE_NAME", "neptuno")
 export IMAGE_VENDOR := env("IMAGE_VENDOR", env("GITHUB_REPOSITORY_OWNER", "siddhj2206"))
 export PODMAN := env("PODMAN", "podman")
-export bib_image := env("BIB_IMAGE", "ghcr.io/osbuild/bootc-image-builder:latest@sha256:7b1587e85542b10e641bec8ca6b655f8c171f07cfa724505fbb40b6dd125e91c")
+export bib_image := env("BIB_IMAGE", "ghcr.io/osbuild/bootc-image-builder:latest@sha256:585b14a250e72bd82c50b0163cf864da38f9092b984d35ffa23a8b62576468eb")
 export chunkah := env("CHUNKAH", "quay.io/coreos/chunkah:v0.7.1@sha256:71e593421c5de7dcc7c8c5c50e98d3bac572055a76f399f61a491d123c20a523")
 export bcvk_version := env("BCVK_VERSION", "0.22.0")
-export image_builder := env("IMAGE_BUILDER", "ghcr.io/osbuild/image-builder-cli:latest@sha256:84da35257bdec0627c05cf305a9d698dbcc502b758fa1f7a6bd3afebab8436fe")
+export image_builder := env("IMAGE_BUILDER", "ghcr.io/osbuild/image-builder-cli:latest@sha256:f33fa06204ab382eed24979bc99e880b221fbded5a369a0f40ded881d649d392")
 export vm_ram := env("VM_RAM", "8192")
 export vm_cpus := env("VM_CPUS", "4")
 
