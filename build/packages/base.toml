@@ -104,6 +104,7 @@ system = [
     "fwupd-refresh.timer",
     "bootloader-update.service",     # keeps the Secure Boot shim current
     "tailscaled.service",
+    "input-remapper.service",        # the daemon its login autoload talks to
     # Nix (system_files/shared): the bind mount, then the daemon. The socket is
     # left off: rhbz#2525943 reports it failing under SELinux.
     "nix.mount",
