@@ -146,3 +146,13 @@ PW
 	grep -Eq '^disable = \[.*"nix"' "${conf}"
 	grep -Eq '^"[^"]+" = "nx upgrade"$' "${conf}"
 }
+
+@test "the initramfs is rebuilt without NVIDIA drivers after the firmware is removed" {
+	grep -Eq '^omit_drivers\+=".* nouveau .*"' \
+		"${REPO}/system_files/shared/usr/lib/dracut/dracut.conf.d/90-neptuno.conf"
+	grep -q '"nvidia-gpu-firmware"' "${REPO}/build/packages/removals.toml"
+	grep -q '/ctx/build/50-initramfs.sh' "${REPO}/Containerfile"
+	# After the overlay, so the dracut conf is in place.
+	[ "$(grep -n '50-initramfs.sh' "${REPO}/Containerfile" | cut -d: -f1)" -gt \
+		"$(grep -n '20-overlay.sh' "${REPO}/Containerfile" | cut -d: -f1)" ]
+}

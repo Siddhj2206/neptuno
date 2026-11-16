@@ -42,6 +42,10 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     /ctx/build/40-services.sh
 
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build/50-initramfs.sh
+
 # /run is not a tmpfs here on purpose: cleanup must remove image-layer files
 # such as /run/dnf for bootc lint's nonempty-run-tmp check.
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \

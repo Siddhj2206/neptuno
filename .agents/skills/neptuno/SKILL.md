@@ -93,6 +93,10 @@ Enable explicitly, never by applying presets, and never mask.
   `unconfined_t`, and the Fedora policy refuses `usermod` and `restorecon` as
   entrypoints for that domain, so the greeter sync dies with exit 203/EXEC.
   The AVC (`denied { entrypoint }`) is in the journal, not the DMS output.
+- **The initramfs is ours**: `50-initramfs.sh` rebuilds it, because the
+  base's was generated before our removals and without
+  `dracut.conf.d/90-neptuno.conf`. Anything that should change what boots
+  (drivers, firmware, dracut modules) goes in that conf, not a removal alone.
 - **Cleanup**: Fedora 45 keeps repo files in `/usr/share/dnf5/repos.d` as well
   as `/etc/yum.repos.d`; sweep both or COPRs ship enabled.
 
