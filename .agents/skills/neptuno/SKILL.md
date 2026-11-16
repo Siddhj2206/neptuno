@@ -78,6 +78,17 @@ Enable explicitly, never by applying presets, and never mask.
   only reach PATH in nix-core's `nix.fish`. Our defaults are
   `zz-neptuno.fish` so their `command -q` guards see them; a bats test pins
   the order. Brew's own hooks hid this on the pre-rebuild laptop.
+- **Rebasing a machine from the old ublue image** (the laptop, 2026-11-16):
+  ostree's /etc merge keeps any file the old system modified, so the old
+  image's state shadows ours. Found: `/etc/selinux` (a local semanage rule
+  kept the old compiled policy and dropped dms-greeter's file contexts, so the
+  greeter could not write its cache), an `fstab` line for `/` (composefs root
+  cannot be remounted, so `systemd-remount-fs` fails), old unit files in
+  `/etc/systemd/system` overriding image packages (asusd), and a stale
+  `/etc/pam.d/dankshell`. Dynamic system uids also moved between the images,
+  leaving `/var` files owned by the wrong account. A fresh `/etc` (ISO or
+  bcvk) never shows any of this; check `ostree admin config-diff` after a
+  rebase.
 - **Cleanup**: Fedora 45 keeps repo files in `/usr/share/dnf5/repos.d` as well
   as `/etc/yum.repos.d`; sweep both or COPRs ship enabled.
 
