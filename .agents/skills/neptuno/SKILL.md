@@ -74,6 +74,12 @@ Enable explicitly, never by applying presets, and never mask.
   includes it can log in by finger and hand `pam_oo7` nothing; apps then
   report their secrets as missing. `/etc/pam.d/greetd` takes auth from
   `password-auth` for that reason; `30-desktop.sh` fails the build if it drifts.
+- **nx lives in its own repo**: `/usr/bin/nx` is the Go release from
+  Siddhj2206/nx, installed by `20-overlay.sh` at `NX_VERSION` and checked
+  against that release's `SHA256SUMS` (Renovate can bump a version but not
+  recompute an asset hash). Change nx there, tag a release, and let Renovate
+  (or a manual `NX_VERSION` bump) bring it in; don't add a script back to
+  `system_files`.
 - **fish vendor_conf.d order**: fish sources it in name order, and nx tools
   only reach PATH in nix-core's `nix.fish`. Our defaults are
   `zz-neptuno.fish` so their `command -q` guards see them; a bats test pins

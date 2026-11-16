@@ -41,6 +41,16 @@
     },
     {
       "customType": "regex",
+      "description": "Versions pinned in build scripts: `# renovate: datasource=... depName=...` above VAR=value (nx)",
+      "managerFilePatterns": [
+        "/^build/.+\\.sh$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)\\n\\w+=(?<currentValue>[^\\s]+)"
+      ]
+    },
+    {
+      "customType": "regex",
       "description": "Tool versions annotated with `# renovate: datasource=... depName=...` above an env var",
       "managerFilePatterns": [
         "/^\\.github/(workflows|actions)/.+\\.ya?ml$/"

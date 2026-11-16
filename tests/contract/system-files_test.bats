@@ -157,19 +157,16 @@ PW
 		"$(grep -n '20-overlay.sh' "${REPO}/Containerfile" | cut -d: -f1)" ]
 }
 
-@test "nx shows one line per package from nix's internal-json log" {
-	run bash "${REPO}/system_files/shared/usr/bin/nx" __render-log \
-		<"${REPO}/tests/fixtures/nix-internal-log.jsonl"
-	[ "${status}" -eq 0 ]
-	[[ "${output}" == *"› Fetching 1 package (1.5 MiB download, 5.9 MiB unpacked)"* ]]
-	echo "${output}" | grep -Eq '↓ figlet +2\.2\.5 +5\.8 MiB$'
-	echo "${output}" | grep -Eq '⚙ lolcat +100\.0\.1 +building$'
-	[[ "${output}" == *"✗ builder for lolcat failed"* ]]
-	# A line nix printed without JSON still reaches the user.
-	[[ "${output}" == *"a plain line nix printed without JSON"* ]]
-	# nix's per-path listing and colour codes do not.
-	! echo "${output}" | grep -q '/nix/store/'
-	! echo "${output}" | grep -q $'\e'
+@test "nx is a pinned release that Renovate bumps and the build checks" {
+	overlay="${REPO}/build/20-overlay.sh"
+	# The bash nx is gone; the image's nx is the Go release.
+	[ ! -e "${REPO}/system_files/shared/usr/bin/nx" ]
+	grep -B1 -E '^NX_VERSION=v[0-9]+\.[0-9]+\.[0-9]+$' "${overlay}" |
+		grep -qx '# renovate: datasource=github-releases depName=Siddhj2206/nx'
+	grep -q 'sha256sum --check --strict' "${overlay}"
+	grep -q '"nx ${NX_VERSION}"' "${overlay}"
+	# Renovate has a manager that reads build scripts.
+	grep -qF '"/^build/.+\\.sh$/"' "${REPO}/.github/renovate.json"
 }
 
 @test "busybox is installed for nix's sandbox shell" {

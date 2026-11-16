@@ -671,8 +671,8 @@ Shared pieces either way:
 - **One nixpkgs revision for everything.** An unpinned `nixpkgs#` resolves a
   new revision on every `nx add` and duplicates dependency trees, so the
   user registry is pinned. `nx upgrade`, and the weekly timer that calls
-  it, runs `nix registry pin nixpkgs` (re-pinned to current
-  nixpkgs-unstable) and then `nix profile upgrade --all`. `nx add` uses
+  it, pins the current nixpkgs-unstable channel release (a revision Hydra
+  has built) and then runs `nix profile upgrade --all`. `nx add` uses
   the pinned revision. The timer has `ConditionACPower=true`.
 - **busybox is declared.** Fedora's nix sets `sandbox-paths =
   /bin/sh=/usr/bin/busybox`, and `nix-core` only Recommends busybox. The image
@@ -682,27 +682,37 @@ Shared pieces either way:
 - `nix-shell` isn't in `nix-core`. The wrapper uses `nix shell`. Add
   `nix-legacy` only if `nix-shell -p` turns out to be missed.
 
-The wrapper is a bash script in `/usr/bin` with no state of its own. Every
-command prints in one style: two-space indent, `›` for a step that takes a
-while, `✓` done, `✗` error. `add`, `remove`, `upgrade` and `rollback` end with
-what changed, one line per package (`↑ neovim 0.12.5 → 0.12.6`, `+` added,
-`-` removed). `list` prints name and version columns; `search` puts an exact
-match first, marks installed packages and stops at 25 results; `clean` reports
-the space it freed. While `add`, `upgrade` and `try` download or build, nx reads
-nix's `--log-format internal-json` and prints one line per package as it lands
-(`↓ ncurses 6.6 (dev) 383 KiB`, `⚙` for a local build), the way dnf does; lines
-that are not JSON pass through, so a format change degrades to nix's own text.
-Colour is off for pipes, the timer's journal and `NO_COLOR`.
+nx is a static Go binary from its own repository,
+[Siddhj2206/nx](https://github.com/Siddhj2206/nx), which has the full design
+(`docs/product.md` there). `20-overlay.sh` downloads a pinned release, checks
+it against the release's `SHA256SUMS` and installs it as `/usr/bin/nx`;
+Renovate bumps `NX_VERSION`. It replaced a bash script on 2026-11-16.
+
+Nix still makes every change to the store: nx runs `nix profile add`,
+`upgrade`, `remove` and `rollback` with `--log-format internal-json` and draws
+the log as one line per package as it lands (`↓ ncurses 6.6 (dev) 383 KiB`,
+`⚙` for a local build), with a live block of downloads and a total bar
+underneath. Everything that only reads skips nix: `list` and `history` read
+the profile manifest, `search` and `outdated` a local catalog built from the
+channel's `packages.json` (one per nixpkgs revision, in `~/.cache/nx`), and
+`info` the binary cache's narinfo files. Search takes about 90 ms against
+`nix search`'s seconds, and an `upgrade` with nothing new returns after one
+request. Every command prints in one style: two-space indent, `›` step, `✓`
+done, `✗` error, `↑ + -` for what changed. Colour is off for pipes, the
+timer's journal and `NO_COLOR`.
 
 ```
-nx add <name>...       -> nix profile add nixpkgs#<name>...
-nx remove <name>...    -> nix profile remove <name>...
-nx list                -> nix profile list (name and version columns)
-nx search <term>       -> nix search nixpkgs <term>
-nx upgrade             -> nix registry pin nixpkgs && nix profile upgrade --all
-nx rollback            -> nix profile rollback
-nx try <name> -- cmd   -> nix shell nixpkgs#<name> -c cmd
-nx clean               -> nix profile wipe-history --older-than 14d && nix store gc
+nx add <name>...       install (--unfree for unfree packages)
+nx remove <name>...    remove
+nx list                installed packages and versions
+nx search <term>...    the catalog; installed ones marked
+nx info <name>         description, license, size, dependencies
+nx try <name> -- cmd   run without installing (nix shell)
+nx upgrade             pin the newest nixpkgs-unstable release, upgrade all
+nx outdated            what the newest release would upgrade
+nx history             profile generations and what each changed
+nx rollback            back one generation
+nx clean               wipe history older than 14d, then nix store gc
 ```
 
 It refuses to run as root and maps common brew-style names to nixpkgs
