@@ -156,3 +156,22 @@ PW
 	[ "$(grep -n '50-initramfs.sh' "${REPO}/Containerfile" | cut -d: -f1)" -gt \
 		"$(grep -n '20-overlay.sh' "${REPO}/Containerfile" | cut -d: -f1)" ]
 }
+
+@test "nx shows one line per package from nix's internal-json log" {
+	run bash "${REPO}/system_files/shared/usr/bin/nx" __render-log \
+		<"${REPO}/tests/fixtures/nix-internal-log.jsonl"
+	[ "${status}" -eq 0 ]
+	[[ "${output}" == *"› Fetching 1 package (1.5 MiB download, 5.9 MiB unpacked)"* ]]
+	echo "${output}" | grep -Eq '↓ figlet +2\.2\.5 +5\.8 MiB$'
+	echo "${output}" | grep -Eq '⚙ lolcat +100\.0\.1 +building$'
+	[[ "${output}" == *"✗ builder for lolcat failed"* ]]
+	# A line nix printed without JSON still reaches the user.
+	[[ "${output}" == *"a plain line nix printed without JSON"* ]]
+	# nix's per-path listing and colour codes do not.
+	! echo "${output}" | grep -q '/nix/store/'
+	! echo "${output}" | grep -q $'\e'
+}
+
+@test "busybox is installed for nix's sandbox shell" {
+	grep -q '"busybox"' "${REPO}/build/packages/base.toml"
+}

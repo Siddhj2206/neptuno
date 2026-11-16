@@ -63,6 +63,7 @@ packages = [
     "nix-core",
     "nix-daemon",
     "nix-system",
+    "busybox",                       # nix's sandbox /bin/sh (sandbox-paths); nix-core only Recommends it, and weak deps are off
 ]
 
 # Official Tailscale repository. Fedora 45 does not package tailscale. The repo

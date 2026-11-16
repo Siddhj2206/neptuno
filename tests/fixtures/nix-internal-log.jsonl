@@ -1,0 +1,22 @@
+@nix {"action":"stop","id":62921270886400}
+@nix {"action":"stop","id":62921270886401}
+@nix {"action":"stop","id":62981400428545}
+@nix {"action":"stop","id":62981400428546}
+@nix {"action":"stop","id":62981400428544}
+@nix {"action":"msg","level":3,"msg":"this path will be fetched (1.5 MiB download, 5.9 MiB unpacked):"}
+@nix {"action":"msg","level":3,"msg":"  /nix/store/3z5bhp9psjrqsy7vwf1c61v26f83zmi7-figlet-2.2.5"}
+@nix {"action":"start","fields":["/nix/store/3z5bhp9psjrqsy7vwf1c61v26f83zmi7-figlet-2.2.5","https://cache.nixos.org"],"id":62981400428550,"level":0,"parent":0,"text":"","type":108}
+@nix {"action":"start","fields":["/nix/store/3z5bhp9psjrqsy7vwf1c61v26f83zmi7-figlet-2.2.5","https://cache.nixos.org","local"],"id":62981400428551,"level":3,"parent":62981400428550,"text":"copying path '/nix/store/3z5bhp9psjrqsy7vwf1c61v26f83zmi7-figlet-2.2.5' from 'https://cache.nixos.org'","type":100}
+@nix {"action":"result","fields":[6156320,6156320,0,0],"id":62981400428551,"type":105}
+@nix {"action":"stop","id":62981400428552}
+@nix {"action":"stop","id":62981400428551}
+@nix {"action":"stop","id":62981400428550}
+@nix {"action":"stop","id":62981400428549}
+@nix {"action":"stop","id":62981400428548}
+@nix {"action":"stop","id":62981400428547}
+@nix {"action":"result","fields":[6156320,6156320,0,0],"id":62981400428551,"type":105}
+@nix {"action":"msg","level":3,"msg":"this derivation will be built:"}
+@nix {"action":"msg","level":3,"msg":"  /nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-lolcat-100.0.1.drv"}
+@nix {"action":"start","fields":["/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-lolcat-100.0.1.drv","",1,1],"id":9001,"level":3,"parent":0,"text":"building","type":105}
+@nix {"action":"msg","level":0,"msg":"\u001b[31;1merror:\u001b[0m builder for lolcat failed"}
+a plain line nix printed without JSON

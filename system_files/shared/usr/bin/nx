@@ -6,8 +6,9 @@
 # `nixpkgs`, `nx add` resolves against that pin, and only `nx upgrade` moves it.
 #
 # Output: two-space indent, one symbol per kind of line (› step, ↑ upgraded,
-# + added, - removed, ✓ done, ✗ error). nix's own progress bar still shows
-# while something downloads; its per-package chatter is --quiet.
+# + added, - removed, ↓ fetched, ⚙ building, ✓ done, ✗ error). Commands that
+# download read nix's --log-format internal-json and print one line per
+# package as it lands, the way dnf does, instead of nix's progress bar.
 set -euo pipefail
 
 PROG="${0##*/}"
@@ -20,12 +21,13 @@ SEARCH_LIMIT=25
 wants_colour() {
 	[[ -t $1 && -z ${NO_COLOR:-} && ${TERM:-dumb} != dumb ]]
 }
-BOLD='' DIM='' GREEN='' CYAN='' RED='' RESET='' E_RED='' E_RESET=''
+BOLD='' DIM='' GREEN='' CYAN='' RED='' RESET=''
+E_DIM='' E_GREEN='' E_CYAN='' E_RED='' E_RESET=''
 if wants_colour 1; then
 	BOLD=$'\e[1m' DIM=$'\e[2m' GREEN=$'\e[32m' CYAN=$'\e[36m' RED=$'\e[31m' RESET=$'\e[0m'
 fi
 if wants_colour 2; then
-	E_RED=$'\e[31m' E_RESET=$'\e[0m'
+	E_DIM=$'\e[2m' E_GREEN=$'\e[32m' E_CYAN=$'\e[36m' E_RED=$'\e[31m' E_RESET=$'\e[0m'
 fi
 
 die() {
@@ -35,7 +37,100 @@ die() {
 
 # A step about to take a while, on stderr so pipes see only results.
 step() {
-	printf '  %s›%s %s\n' "${CYAN}" "${RESET}" "$*" >&2
+	printf '  %s›%s %s\n' "${E_CYAN}" "${E_RESET}" "$*" >&2
+}
+
+# Reads nix's internal-json log on stdin and prints, on stderr:
+#   › Fetching 4 packages (13.9 MiB download, 71.5 MiB unpacked)
+#       ↓ glibc               2.44-57  dev    12.1 MiB
+#       ⚙ mold-wrapper        2.40.1          building
+# Errors and warnings pass through; nix's progress and debug chatter do not.
+# Lines that are not JSON (a format change, a plain message) pass through as
+# they are, so a newer nix degrades to its own text instead of silence.
+render_nix_log() {
+	jq -nRr --unbuffered '
+		def split_name:
+			sub("^/nix/store/[a-z0-9]+-"; "") as $base
+			| ($base | capture("^(?<name>.+?)-(?<ver>[0-9].*?)(?:-(?<out>dev|bin|lib|man|doc|info|static|out))?$")
+				// {name: ($base | sub("-(dev|bin|lib|man|doc|info|static)$"; "")),
+				    ver: "", out: ($base | capture("-(?<o>dev|bin|lib|man|doc|info|static)$").o // "")})
+			| [.name, (.ver // ""), (.out // "")];
+		def human:
+			if . >= 1073741824 then "\(. / 107374182.4 | floor / 10) GiB"
+			elif . >= 1048576 then "\(. / 104857.6 | floor / 10) MiB"
+			elif . >= 1024 then "\(. / 1024 | floor) KiB"
+			elif . > 0 then "\(.) B" else "" end;
+		foreach inputs as $line ({sub: {}, copy: {}, size: {}};
+			.out = null
+			| if ($line | startswith("@nix ")) then
+				($line[5:] | try fromjson catch null) as $e
+				| if $e == null then .out = ["raw", $line]
+				elif $e.action == "start" and $e.type == 108 then .sub[$e.id | tostring] = $e.fields[0]
+				elif $e.action == "start" and $e.type == 100 then .copy[$e.id | tostring] = ($e.parent | tostring)
+				elif $e.action == "result" and $e.type == 105 and .copy[$e.id | tostring] != null then
+					.size[.copy[$e.id | tostring]] = ($e.fields[1] // 0)
+				elif $e.action == "stop" and .sub[$e.id | tostring] != null then
+					.out = ["fetched"] + (.sub[$e.id | tostring] | split_name) + [(.size[$e.id | tostring] // 0 | human)]
+				elif $e.action == "start" and $e.type == 105 then
+					.out = ["build"] + (($e.fields[0] // "") | sub("\\.drv$"; "") | split_name)
+				elif $e.action == "msg" and $e.level <= 3 then
+					.out = ["msg", ($e.level | tostring), ($e.msg | gsub("\u001b\\[[0-9;]*[A-Za-z]"; ""))]
+				else . end
+			else .out = ["raw", $line] end;
+			.out // empty | map(tostring | gsub("\n"; "\\n")) | join("\u001f"))' |
+		# \x1f, not a tab: read merges runs of whitespace separators, which
+		# would shift every field after an empty one.
+		while IFS=$'\x1f' read -r kind a b c d; do
+			case "${kind}" in
+			fetched | build)
+				local name="${a}" version="${b}${c:+ (${c})}" icon="${E_GREEN}↓" note="${d}"
+				[[ ${#name} -le 26 ]] || name="${name:0:25}…"
+				[[ ${kind} == fetched ]] || { icon="${E_CYAN}⚙"; note="building"; }
+				printf '      %s%s %-26s %s%-18s %s%s\n' "${icon}" "${E_RESET}" "${name}" \
+					"${E_DIM}" "${version}" "${note}" "${E_RESET}" >&2
+				;;
+			msg)
+				local text="${b//\\n/$'\n'}"
+				case "${a}:${text}" in
+				[23]:"  /nix/store/"*) ;;
+				[23]:these\ *paths\ will\ be\ fetched*|[23]:this\ path\ will\ be\ fetched*)
+					local count=1 sizes
+					[[ ${text} =~ ^these\ ([0-9]+) ]] && count="${BASH_REMATCH[1]}"
+					sizes="$(sed -n 's/.*fetched (\(.*\)).*/\1/p' <<<"${text}")"
+					step "Fetching ${count} $([[ ${count} -eq 1 ]] && echo package || echo packages)${sizes:+ ${E_DIM}(${sizes})${E_RESET}}"
+					;;
+				[23]:these\ *derivations\ will\ be\ built*|[23]:this\ derivation\ will\ be\ built*)
+					local count=1
+					[[ ${text} =~ ^these\ ([0-9]+) ]] && count="${BASH_REMATCH[1]}"
+					step "Building ${count} $([[ ${count} -eq 1 ]] && echo package || echo packages) from source"
+					;;
+				0:*)
+					text="${text#error: }"
+					text="${text#error:$'\n'}"
+					printf '  %s✗%s %s\n' "${E_RED}" "${E_RESET}" "${text//$'\n'/$'\n'    }" >&2
+					;;
+				1:*)
+					printf '  %s!%s %s\n' "${E_DIM}" "${E_RESET}" "${text#warning: }" >&2
+					;;
+				*) printf '  %s%s%s\n' "${E_DIM}" "${text}" "${E_RESET}" >&2 ;;
+				esac
+				;;
+			raw) printf '%s\n' "${a}" >&2 ;;
+			esac
+		done
+}
+
+# Runs a nix command that may download or build, through render_nix_log. The
+# command's own stdout is left alone; its exit status is nix's.
+nix_with_progress() {
+	local status
+	exec 3>&1
+	set +e
+	nix "$@" --log-format internal-json 2>&1 1>&3 3>&- | render_nix_log
+	status="${PIPESTATUS[0]}"
+	set -e
+	exec 3>&-
+	return "${status}"
 }
 
 done_line() {
@@ -146,7 +241,7 @@ upgrade_all() {
 	fi
 	# Still run when the pin did not move: it finishes an upgrade that a
 	# previous run left half done.
-	nix profile upgrade --all --quiet
+	nix_with_progress profile upgrade --all
 	after="$(profile_versions)"
 	report_changes "${before}" "${after}" "Everything is up to date"
 }
@@ -250,6 +345,12 @@ installables() {
 	done
 }
 
+# Test seam: render a recorded nix log (tests/fixtures/nix-internal-log.jsonl).
+if [[ ${1:-} == __render-log ]]; then
+	render_nix_log
+	exit 0
+fi
+
 [[ "$(id -u)" -ne 0 ]] || die "run as your user, not root; Nix profiles are per user"
 command -v nix >/dev/null || die "nix is not installed"
 
@@ -272,7 +373,7 @@ add | install)
 	done
 	[[ ${#wanted[@]} -gt 0 ]] || exit 0
 	mapfile -t targets < <(installables "${wanted[@]}")
-	with_report "Nothing added" nix profile add --quiet "${targets[@]}"
+	with_report "Nothing added" nix_with_progress profile add "${targets[@]}"
 	;;
 remove | rm | uninstall)
 	[[ $# -gt 0 ]] || die "remove: name at least one package"
@@ -311,6 +412,9 @@ try | shell)
 	if [[ "${1:-}" == "--" ]]; then
 		shift
 	fi
+	# Fetch with the package-by-package view first; the shell then starts from
+	# the local store.
+	nix_with_progress build --no-link "nixpkgs#${pkg}"
 	if [[ $# -gt 0 ]]; then
 		exec nix shell --quiet "nixpkgs#${pkg}" --command "$@"
 	fi

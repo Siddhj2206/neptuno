@@ -674,6 +674,11 @@ Shared pieces either way:
   it, runs `nix registry pin nixpkgs` (re-pinned to current
   nixpkgs-unstable) and then `nix profile upgrade --all`. `nx add` uses
   the pinned revision. The timer has `ConditionACPower=true`.
+- **busybox is declared.** Fedora's nix sets `sandbox-paths =
+  /bin/sh=/usr/bin/busybox`, and `nix-core` only Recommends busybox. The image
+  builds without weak deps, so every from-source build failed with `getting
+  attributes of path "/usr/bin/busybox"` until `base.toml` named it
+  (2026-11-16); cache downloads hid it.
 - `nix-shell` isn't in `nix-core`. The wrapper uses `nix shell`. Add
   `nix-legacy` only if `nix-shell -p` turns out to be missed.
 
@@ -683,7 +688,10 @@ while, `✓` done, `✗` error. `add`, `remove`, `upgrade` and `rollback` end wi
 what changed, one line per package (`↑ neovim 0.12.5 → 0.12.6`, `+` added,
 `-` removed). `list` prints name and version columns; `search` puts an exact
 match first, marks installed packages and stops at 25 results; `clean` reports
-the space it freed. nix's progress bar still shows while something downloads.
+the space it freed. While `add`, `upgrade` and `try` download or build, nx reads
+nix's `--log-format internal-json` and prints one line per package as it lands
+(`↓ ncurses 6.6 (dev) 383 KiB`, `⚙` for a local build), the way dnf does; lines
+that are not JSON pass through, so a format change degrades to nix's own text.
 Colour is off for pipes, the timer's journal and `NO_COLOR`.
 
 ```

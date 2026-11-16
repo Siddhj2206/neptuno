@@ -93,6 +93,9 @@ Enable explicitly, never by applying presets, and never mask.
   `unconfined_t`, and the Fedora policy refuses `usermod` and `restorecon` as
   entrypoints for that domain, so the greeter sync dies with exit 203/EXEC.
   The AVC (`denied { entrypoint }`) is in the journal, not the DMS output.
+- **Weak deps are off at build time** (`install_weak_deps=0`), so a
+  Recommends that a package needs at runtime must be named in a manifest.
+  Found: `nix-core` recommends busybox, its sandbox `/bin/sh`.
 - **The initramfs is ours**: `50-initramfs.sh` rebuilds it, because the
   base's was generated before our removals and without
   `dracut.conf.d/90-neptuno.conf`. Anything that should change what boots
