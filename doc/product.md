@@ -476,8 +476,11 @@ case. Consider reporting the stale line against Fedora's niri package.
 ### 6.3 Polkit, notifications, lock and idle
 
 DMS provides all four, so we install no separate polkit agent, mako or
-swaylock. Set `DMS_PRIVESC=run0` (the Zirconium pattern) so DMS privileged
-actions use systemd's run0, not sudo prompts in a terminal.
+swaylock. Set `DMS_PRIVESC=sudo`, so DMS privileged actions (the greeter
+sync) prompt for sudo in a terminal. Zirconium's `run0` failed on the laptop
+(2026-11-16): run0 execs the command directly as `unconfined_t`, and SELinux
+denies `usermod` (`useradd_exec_t`) and `restorecon` (`setfiles_exec_t`) as
+entrypoints for that domain, so the sync stopped with exit 203/EXEC.
 
 ### 6.4 Keyring and secrets (SPIKE S3)
 
@@ -978,7 +981,6 @@ The full VM suite stays local (`just test-vm`).
 From Zirconium, which independently arrived at niri + DMS on Fedora with no
 ublue runtime dependency, we take:
 - the greeter config shape,
-- `DMS_PRIVESC=run0`,
 - the preinstall unit pattern,
 - the idea of shipping the login-screen config in the image.
 

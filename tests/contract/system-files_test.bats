@@ -135,3 +135,8 @@ PW
 	grep -Eq '^shell-integration-features *=' "${conf}"
 	! grep -E '^shell-integration-features *=' "${conf}" | grep -qw sudo
 }
+
+@test "DMS escalates through sudo, since SELinux blocks run0 from running usermod and restorecon" {
+	local env="${REPO}/system_files/desktop/usr/lib/environment.d/90-neptuno-desktop.conf"
+	grep -Eq '^DMS_PRIVESC=sudo$' "${env}"
+}

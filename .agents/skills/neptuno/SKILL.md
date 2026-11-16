@@ -89,6 +89,10 @@ Enable explicitly, never by applying presets, and never mask.
   leaving `/var` files owned by the wrong account. A fresh `/etc` (ISO or
   bcvk) never shows any of this; check `ostree admin config-diff` after a
   rebase.
+- **DMS_PRIVESC is sudo, not run0**: run0 execs its command directly as
+  `unconfined_t`, and the Fedora policy refuses `usermod` and `restorecon` as
+  entrypoints for that domain, so the greeter sync dies with exit 203/EXEC.
+  The AVC (`denied { entrypoint }`) is in the journal, not the DMS output.
 - **Cleanup**: Fedora 45 keeps repo files in `/usr/share/dnf5/repos.d` as well
   as `/etc/yum.repos.d`; sweep both or COPRs ship enabled.
 
