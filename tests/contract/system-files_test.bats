@@ -157,6 +157,11 @@ PW
 		"$(grep -n '20-overlay.sh' "${REPO}/Containerfile" | cut -d: -f1)" ]
 }
 
+@test "compilers find libraries installed with nx" {
+	conf="${REPO}/system_files/shared/usr/lib/environment.d/60-nix.conf"
+	grep -qx 'LIBRARY_PATH=${HOME}/.nix-profile/lib${LIBRARY_PATH:+:${LIBRARY_PATH}}' "${conf}"
+}
+
 @test "nx is a pinned release that Renovate bumps and the build checks" {
 	overlay="${REPO}/build/20-overlay.sh"
 	# The bash nx is gone; the image's nx is the Go release.
