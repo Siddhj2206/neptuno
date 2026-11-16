@@ -121,3 +121,11 @@ PW
 	grep -Eq '^-auth +optional +pam_oo7\.so' "${pam}"
 	grep -Eq '^-session +optional +pam_oo7\.so auto_start' "${pam}"
 }
+
+@test "the fish defaults load after nix.fish so nx tools are on PATH" {
+	local dir="${REPO}/system_files/shared/usr/share/fish/vendor_conf.d"
+	local ours
+	ours="$(basename "$(ls "${dir}"/*neptuno*.fish)")"
+	# fish sources vendor_conf.d in name order (C collation); nix.fish comes from nix-core.
+	[ "$(printf '%s\n' nix.fish nix-daemon.fish "${ours}" | LC_ALL=C sort | tail -n1)" = "${ours}" ]
+}

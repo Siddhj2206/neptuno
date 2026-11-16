@@ -731,7 +731,7 @@ stubs that point at `/usr` (section 6.1), never full copies that go stale.
 |---|---|
 | niri | `~/.config/niri/config.kdl` starts with `include "/usr/share/neptuno/niri/base.kdl"`, then personal overrides, then DMS's `include optional=true "dms/*.kdl"` lines, always last. The DMS lines stay in the user file because DMS's repair greps it and otherwise appends duplicates. Includes are positional and supported since 25.11. The seeded file also carries a commented-out copy of `base.kdl` (rendered at build time by `build/scripts/render-niri-skel`, so it always matches), which the user uncomments to change a default. |
 | ghostty | `config-file = ?/usr/share/neptuno/ghostty/base.conf`, with overrides in a second, later `config-file`. An included file beats the including file's own keys. The matugen theme stays in `~/.config/ghostty/themes`. |
-| fish | `/usr/share/fish/vendor_conf.d/neptuno.fish` loads automatically. It sets up starship, zoxide, atuin and eza aliases, each guarded by `command -q`, which replaces "bling". |
+| fish | `/usr/share/fish/vendor_conf.d/zz-neptuno.fish` loads automatically, after `nix.fish` (the name orders it). It sets up starship, zoxide, atuin and eza aliases, each guarded by `command -q`, which replaces "bling". |
 | Session env | `/usr/lib/environment.d/90-neptuno.conf`. User files with the same name win. |
 | systemd user units | `/usr/lib/systemd/user/` |
 | mimeapps | `/usr/share/applications/mimeapps.list` (distro defaults per the XDG spec) |
