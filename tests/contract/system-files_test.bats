@@ -140,3 +140,9 @@ PW
 	local env="${REPO}/system_files/desktop/usr/lib/environment.d/90-neptuno-desktop.conf"
 	grep -Eq '^DMS_PRIVESC=sudo$' "${env}"
 }
+
+@test "topgrade upgrades Nix through nx, since its own step ignores the moved pin" {
+	local conf="${REPO}/system_files/desktop/etc/skel/.config/topgrade.toml"
+	grep -Eq '^disable = \[.*"nix"' "${conf}"
+	grep -Eq '^"[^"]+" = "nx upgrade"$' "${conf}"
+}

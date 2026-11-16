@@ -3,12 +3,18 @@
 # defaults, or https://github.com/topgrade-rs/topgrade/blob/main/config.example.toml
 #
 # `sudo bootc upgrade` runs without a password (/etc/sudoers.d/neptuno-bootc).
-# Nix: the `nix` step runs `nix profile upgrade --all`, the same as `nx upgrade`.
+# Nix: topgrade's own `nix` step is off. It runs `nix profile upgrade --all`
+# against nx's pinned nixpkgs, so nothing ever moves; `nx upgrade` moves the
+# pin first and then upgrades (below).
 
 [misc]
 # Steps to skip. Same names as `topgrade --disable`.
-disable = ["zed", "github_cli_skills", "tailscale"]
+disable = ["zed", "github_cli_skills", "tailscale", "nix"]
 
 [linux]
 # Update the system image with bootc instead of rpm-ostree.
 bootc = true
+
+[commands]
+# Runs after topgrade's built-in steps.
+"Nix packages" = "nx upgrade"

@@ -32,6 +32,101 @@ die() {
 	exit 1
 }
 
+# Colour only for a terminal that wants it; the weekly timer's journal and
+# pipes get plain text.
+if [[ -t 1 && -z ${NO_COLOR:-} && ${TERM:-dumb} != dumb ]]; then
+	BOLD=$'\e[1m' DIM=$'\e[2m' GREEN=$'\e[32m' CYAN=$'\e[36m' RED=$'\e[31m' RESET=$'\e[0m'
+else
+	BOLD='' DIM='' GREEN='' CYAN='' RED='' RESET=''
+fi
+
+# name<TAB>version for each installed package, sorted by name. The version is
+# the store path's name with the package name and output suffix taken off.
+profile_versions() {
+	nix profile list --json | jq -r '
+		.elements | to_entries[] | .key as $n
+		| (.value.storePaths[0] | sub("^/nix/store/[a-z0-9]+-"; "") | sub("-(bin|out|man|dev|lib)$"; "")) as $p
+		| "\($n)\t\(if ($p | startswith($n + "-")) then $p[($n | length) + 1:] else $p end)"' |
+		LC_ALL=C sort
+}
+
+# "<short rev> <date>" of the pinned nixpkgs, from the local cache.
+pin_info() {
+	nix flake metadata nixpkgs --json 2>/dev/null |
+		jq -r '"\(.locked.rev[:7] // "unknown") \(.lastModified // 0 | strftime("%b %d"))"' ||
+		echo "unknown -"
+}
+
+# Compares two profile_versions listings and prints what changed.
+report_changes() {
+	awk -F'\t' -v b="${BOLD}" -v d="${DIM}" -v g="${GREEN}" -v c="${CYAN}" \
+		-v r="${RED}" -v z="${RESET}" '
+		FNR == NR { old[$1] = $2; next }
+		{
+			seen[$1] = 1
+			if (!($1 in old)) { add[++na] = $1; ver[$1] = $2 }
+			else if (old[$1] != $2) { up[++nu] = $1; ver[$1] = $2 }
+			else same++
+			if (length($1) > w) w = length($1)
+		}
+		END {
+			for (n in old) if (!(n in seen)) { gone[++ng] = n; if (length(n) > w) w = length(n) }
+			for (i = 1; i <= nu; i++) if (length(old[up[i]]) > ow) ow = length(old[up[i]])
+			if (nu + na + ng > 0) print ""
+			for (i = 1; i <= nu; i++) { n = up[i]
+				printf "  %s↑%s %-*s  %s%-*s%s  %s→%s  %s%s%s\n", c, z, w, n, d, ow, old[n], z, c, z, b g, ver[n], z }
+			for (i = 1; i <= na; i++) { n = add[i]
+				printf "  %s+%s %-*s  %s%s%s\n", g, z, w, n, g, ver[n], z }
+			for (i = 1; i <= ng; i++) { n = gone[i]
+				printf "  %s-%s %-*s  %s%s%s\n", r, z, w, n, d, old[n], z }
+			print ""
+			if (nu + na + ng == 0) {
+				printf "  %s✓%s Everything is up to date %s(%d packages)%s\n", g, z, d, same, z
+			} else {
+				msg = sprintf("%d upgraded", nu)
+				if (na) msg = msg sprintf(", %d added", na)
+				if (ng) msg = msg sprintf(", %d removed", ng)
+				printf "  %s✓%s %s %s· %d unchanged%s\n", g, z, msg, d, same, z
+			}
+		}' <(printf '%s\n' "$1") <(printf '%s\n' "$2")
+}
+
+upgrade_all() {
+	local before after old_pin new_pin
+	before="$(profile_versions)"
+	old_pin="$(pin_info)"
+	nix registry pin nixpkgs "${NIXPKGS_SOURCE}"
+	new_pin="$(pin_info)"
+	if [[ ${old_pin} == "${new_pin}" ]]; then
+		printf '  %snixpkgs%s  %s %s(%s, already the newest)%s\n' "${BOLD}" "${RESET}" \
+			"${new_pin%% *}" "${DIM}" "${new_pin#* }" "${RESET}"
+	else
+		printf '  %snixpkgs%s  %s%s (%s)%s %s→%s %s%s%s %s(%s)%s\n' "${BOLD}" "${RESET}" \
+			"${DIM}" "${old_pin%% *}" "${old_pin#* }" "${RESET}" "${CYAN}" "${RESET}" \
+			"${BOLD}${GREEN}" "${new_pin%% *}" "${RESET}" "${DIM}" "${new_pin#* }" "${RESET}"
+	fi
+	# Still run when the pin did not move: it finishes an upgrade that a
+	# previous run left half done. --quiet drops nix's per-package lines.
+	nix profile upgrade --all --quiet
+	after="$(profile_versions)"
+	report_changes "${before}" "${after}"
+}
+
+list_packages() {
+	local rows pin
+	rows="$(profile_versions)"
+	pin="$(pin_info)"
+	if [[ -z ${rows} ]]; then
+		printf '  No packages yet. Add one with %snx add <name>%s.\n' "${BOLD}" "${RESET}"
+		return
+	fi
+	awk -F'\t' -v b="${BOLD}" -v d="${DIM}" -v z="${RESET}" '
+		{ n[NR] = $1; v[NR] = $2; if (length($1) > w) w = length($1) }
+		END { for (i = 1; i <= NR; i++) printf "  %s%-*s%s  %s%s%s\n", b, w, n[i], z, d, v[i], z }' <<<"${rows}"
+	printf '\n  %s%d packages · nixpkgs %s (%s)%s\n' "${DIM}" "$(wc -l <<<"${rows}")" \
+		"${pin%% *}" "${pin#* }" "${RESET}"
+}
+
 # Homebrew names that differ from nixpkgs attribute names.
 map_name() {
 	case "$1" in
@@ -78,8 +173,7 @@ remove | rm | uninstall)
 	nix profile remove "${names[@]}"
 	;;
 list | ls)
-	nix profile list --json | jq -r '.elements | to_entries[] | "\(.key)\t\(.value.storePaths[0] | sub("^/nix/store/[a-z0-9]+-"; ""))"' |
-		column -t -s $'\t'
+	list_packages
 	;;
 search)
 	[[ $# -gt 0 ]] || die "search: give a search term"
@@ -87,8 +181,7 @@ search)
 	nix search nixpkgs "$@"
 	;;
 upgrade | update)
-	nix registry pin nixpkgs "${NIXPKGS_SOURCE}"
-	nix profile upgrade --all
+	upgrade_all
 	;;
 rollback)
 	nix profile rollback

@@ -675,15 +675,18 @@ Shared pieces either way:
 - `nix-shell` isn't in `nix-core`. The wrapper uses `nix shell`. Add
   `nix-legacy` only if `nix-shell -p` turns out to be missed.
 
-The wrapper is a bash script in `/usr/bin`, about 60 lines, with no state of
-its own:
+The wrapper is a bash script in `/usr/bin` with no state of its own. On a
+terminal, `nx upgrade` prints the nixpkgs move and one line per package that
+changed (`↑ neovim 0.12.5 → 0.12.6`, `+` added, `-` removed), and `nx list`
+prints name and version columns. Colour is off for pipes, the timer's journal
+and `NO_COLOR`.
 
 ```
 nx add <name>...       -> nix profile add nixpkgs#<name>...
 nx remove <name>...    -> nix profile remove <name>...
-nx list                -> nix profile list (pretty-printed via jq)
+nx list                -> nix profile list (name and version columns)
 nx search <term>       -> nix search nixpkgs <term>
-nx upgrade             -> nix profile upgrade --all
+nx upgrade             -> nix registry pin nixpkgs && nix profile upgrade --all
 nx rollback            -> nix profile rollback
 nx try <name> -- cmd   -> nix shell nixpkgs#<name> -c cmd
 nx clean               -> nix profile wipe-history --older-than 14d && nix store gc
@@ -806,7 +809,7 @@ a sysusers `m` line instead.
 | Flatpaks | A system timer runs `flatpak update -y --noninteractive` daily with a randomized delay, only on AC power (`ConditionACPower=true`). |
 | Nix | A weekly user timer runs `nx upgrade`. A weekly clean timer drops generations older than 14 days and garbage-collects. |
 | mise, firmware | Manual (`mise up`, `fwupdmgr update`), plus `fwupd-refresh.timer` for metadata |
-| Everything at once, on demand | `topgrade` (from COPR `lilay/topgrade`), seeded with the owner's config in `/etc/skel/.config/topgrade.toml` (`[linux] bootc = true`). It runs `sudo /usr/bin/bootc upgrade`, which `/etc/sudoers.d/neptuno-bootc` allows for `%wheel` without a password (that exact command only; `switch` and `rollback` still ask). Its Nix step runs `nix profile upgrade --all`; its `nix upgrade-nix` sub-step skips itself because Fedora's `/usr/bin/nix` is not inside a Nix profile. Flatpak updates go through polkit. There is no `neptuno update`. |
+| Everything at once, on demand | `topgrade` (from COPR `lilay/topgrade`), seeded with the owner's config in `/etc/skel/.config/topgrade.toml` (`[linux] bootc = true`). It runs `sudo /usr/bin/bootc upgrade`, which `/etc/sudoers.d/neptuno-bootc` allows for `%wheel` without a password (that exact command only; `switch` and `rollback` still ask). Its built-in `nix` step is disabled: it runs `nix profile upgrade --all` against nx's pinned nixpkgs, so it never moves anything. A `[commands]` entry runs `nx upgrade` instead. Flatpak updates go through polkit. There is no `neptuno update`. |
 | Rollback | `bootc rollback`. Dated tags (`:45.YYYYMMDD`) let `bootc switch` reach any of the last 30 builds. `ostree admin pin` keeps a known-good deployment. |
 
 ## 11. Signing and trust
