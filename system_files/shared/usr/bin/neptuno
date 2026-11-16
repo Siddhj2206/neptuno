@@ -1,0 +1,3 @@
+#!/usr/bin/bash
+# Neptuno's system helpers. Recipes live in /usr/share/neptuno/justfile.
+exec just --justfile /usr/share/neptuno/justfile --working-directory "${HOME}" "$@"

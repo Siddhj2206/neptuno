@@ -68,6 +68,44 @@ Enable explicitly, never by applying presets, and never mask.
   `changelogs`.
 - **ujust**: recipes live in `custom/ujust/`; 10-overlay merges them into
   `60-custom.just` in sorted order.
+- **PAM and the keyring**: `pam_oo7` unlocks the oo7 login keyring only with
+  a typed password. authselect `with-fingerprint` puts `pam_fprintd` in
+  `system-auth` as `sufficient` ahead of `pam_unix`, so any service that
+  includes it can log in by finger and hand `pam_oo7` nothing; apps then
+  report their secrets as missing. `/etc/pam.d/greetd` takes auth from
+  `password-auth` for that reason; `30-desktop.sh` fails the build if it drifts.
+- **nx lives in its own repo**: `/usr/bin/nx` is the Go release from
+  Siddhj2206/nx, installed by `20-overlay.sh` at `NX_VERSION` and checked
+  against that release's `SHA256SUMS` (Renovate can bump a version but not
+  recompute an asset hash). Change nx there, tag a release, and let Renovate
+  (or a manual `NX_VERSION` bump) bring it in; don't add a script back to
+  `system_files`.
+- **fish vendor_conf.d order**: fish sources it in name order, and nx tools
+  only reach PATH in nix-core's `nix.fish`. Our defaults are
+  `zz-neptuno.fish` so their `command -q` guards see them; a bats test pins
+  the order. Brew's own hooks hid this on the pre-rebuild laptop.
+- **Rebasing a machine from the old ublue image** (the laptop, 2026-11-16):
+  ostree's /etc merge keeps any file the old system modified, so the old
+  image's state shadows ours. Found: `/etc/selinux` (a local semanage rule
+  kept the old compiled policy and dropped dms-greeter's file contexts, so the
+  greeter could not write its cache), an `fstab` line for `/` (composefs root
+  cannot be remounted, so `systemd-remount-fs` fails), old unit files in
+  `/etc/systemd/system` overriding image packages (asusd), and a stale
+  `/etc/pam.d/dankshell`. Dynamic system uids also moved between the images,
+  leaving `/var` files owned by the wrong account. A fresh `/etc` (ISO or
+  bcvk) never shows any of this; check `ostree admin config-diff` after a
+  rebase.
+- **DMS_PRIVESC is sudo, not run0**: run0 execs its command directly as
+  `unconfined_t`, and the Fedora policy refuses `usermod` and `restorecon` as
+  entrypoints for that domain, so the greeter sync dies with exit 203/EXEC.
+  The AVC (`denied { entrypoint }`) is in the journal, not the DMS output.
+- **Weak deps are off at build time** (`install_weak_deps=0`), so a
+  Recommends that a package needs at runtime must be named in a manifest.
+  Found: `nix-core` recommends busybox, its sandbox `/bin/sh`.
+- **The initramfs is ours**: `50-initramfs.sh` rebuilds it, because the
+  base's was generated before our removals and without
+  `dracut.conf.d/90-neptuno.conf`. Anything that should change what boots
+  (drivers, firmware, dracut modules) goes in that conf, not a removal alone.
 - **Cleanup**: Fedora 45 keeps repo files in `/usr/share/dnf5/repos.d` as well
   as `/etc/yum.repos.d`; sweep both or COPRs ship enabled.
 

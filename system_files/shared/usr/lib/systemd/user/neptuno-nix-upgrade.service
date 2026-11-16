@@ -1,0 +1,16 @@
+[Unit]
+Description=Upgrade Nix profile packages
+# Not for system accounts such as the greeter, whose session also runs user units.
+ConditionUser=!@system
+ConditionACPower=true
+
+[Service]
+Type=oneshot
+# A user manager has no network-online.target, and a missed weekly run fires
+# at login (Persistent=true), often before Wi-Fi is up. Wait for the network
+# here instead; give up quietly (the next run retries) if it never comes.
+ExecStartPre=/usr/bin/nm-online --quiet --timeout=120
+ExecStart=/usr/bin/nx upgrade
+Nice=19
+IOSchedulingClass=idle
+CPUWeight=20

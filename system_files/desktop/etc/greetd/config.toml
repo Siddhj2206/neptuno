@@ -1,0 +1,9 @@
+# greetd runs DMS's greeter in its own niri instance on VT1 (doc/product.md
+# 6.1). The user must exist in a sysusers.d file; 30-desktop.sh checks that.
+# bootc merges /etc, so a local edit here survives updates.
+[terminal]
+vt = 1
+
+[default_session]
+command = "dms-greeter --command niri"
+user = "greeter"

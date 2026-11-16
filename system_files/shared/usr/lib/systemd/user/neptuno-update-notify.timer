@@ -1,0 +1,13 @@
+# Daily check for the stale-update warning, which a path unit cannot see.
+[Unit]
+Description=Check daily for an overdue system update
+# Not for system accounts such as the greeter, whose session also runs user units.
+ConditionUser=!@system
+
+[Timer]
+OnStartupSec=10min
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target

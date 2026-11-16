@@ -1,0 +1,4 @@
+// DMS Window Rules - Managed by Dux Shell
+// Rules created from DMS's "Create window rule" land here. Neptuno's own rules
+// live at the end of ~/.config/niri/config.kdl, so a fresh DMS install that
+// rewrites this file cannot drop them.

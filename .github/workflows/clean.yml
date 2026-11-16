@@ -1,37 +1,65 @@
-name: Cleanup Old Images
+name: Clean
+
+# Weekly retention (doc/product.md 12): keep the newest 30 dated builds with
+# their cosign signatures, delete untagged digests and orphaned signature
+# artifacts, and prune GitHub releases to match.
 on:
   schedule:
-    - cron: "0 0 * * 0" # Weekly on Sunday at midnight UTC
+    - cron: "41 3 * * 0"
   workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Only report what would be deleted
+        type: boolean
+        default: true
 
-permissions:
-  contents: read
+permissions: {}
 
+# Shares build.yml's main group, so it never prunes while a build publishes.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  group: build-refs/heads/main
+  cancel-in-progress: false
 
 jobs:
-  delete-older-than-90:
-    runs-on: ubuntu-latest
+  images:
+    name: Prune image versions
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
     permissions:
-      contents: read
       packages: write
     steps:
-      - name: Resolve package name
-        id: package
-        shell: bash
-        run: |
-          # Derive the cleanup target from the repository name (lowercased),
-          # exactly as build-image.yml derives the publish target, so a renamed
-          # fork cleans the package it actually pushes.
-          name="${{ github.event.repository.name }}"
-          echo "name=${name,,}" >> "${GITHUB_OUTPUT}"
-
-      - name: Cleanup old images
-        uses: projectbluefin/actions/bootc-build/ghcr-cleanup@d1f65645c53d413462117fe1f05d00b9d9382f89 # v1
+      - name: Prune GHCR
+        uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
         with:
-          packages: ${{ steps.package.outputs.name }}
-          older-than: 90 days
-          keep-n-tagged: 7
-          keep-n-untagged: 7
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          package: ${{ github.event.repository.name }}
+          # The dated tags (45.YYYYMMDD) are the retention unit. `stable` and
+          # `stable-testing` belong to the pre-rebuild image the laptop still
+          # runs; drop them from this list after the cutover.
+          exclude-tags: latest,candidate,stable,stable-testing
+          keep-n-tagged: 30
+          delete-untagged: true
+          delete-orphaned-images: true
+          older-than: 14 days
+          validate: true
+          dry-run: ${{ inputs.dry-run || false }}
+          token: ${{ github.token }}
+
+  releases:
+    name: Prune releases
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Keep the newest 30 releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ inputs.dry-run || false }}
+        run: |
+          set -euo pipefail
+          gh release list -R "${GITHUB_REPOSITORY}" --limit 1000 --json tagName,createdAt \
+            --jq 'sort_by(.createdAt) | reverse | .[30:] | .[].tagName' |
+          while read -r tag; do
+            echo "Deleting release ${tag}"
+            [[ "${DRY_RUN}" == true ]] || gh release delete "${tag}" -R "${GITHUB_REPOSITORY}" --cleanup-tag --yes
+          done

@@ -1,122 +1,113 @@
 ---
 name: ci
 description: >-
-  GitHub Actions, Renovate, the two-branch release model, signing, and
-  promotion. Use when changing workflows, dependency policy, or releasing.
+  GitHub Actions, Renovate, signing, tags, releases and GHCR retention. Use when
+  changing a workflow, the dependency policy, or how an image is published.
 ---
 
 # CI
+
+Plain GitHub Actions on `ubuntu-26.04`; no `projectbluefin/actions`. Every
+step CI runs on the image is a `just` recipe, so a red CI run reproduces
+locally with the same command.
 
 ## Workflows
 
 | Workflow | Trigger | Does |
 |---|---|---|
-| `build-image.yml` | push to `main` or `stable`, dispatch | Builds, signs, and pushes the image. |
-| `execute-release.yml` | push to `stable` | Promotes the candidate digest. Does not rebuild. |
-| `promote-main-to-stable.yml` | daily schedule, dispatch | Opens the squash promotion PR and runs the release gate on it. |
-| `sync-stable-to-main.yml` | push to `stable` | Merges `stable` hotfixes back into `main`. |
-| `pr-validation.yml` | pull request | The `validate` check: shellcheck and hadolint. |
-| `validate-brewfiles.yml` | pull request | Brewfiles, without evaluating them. |
-| `validate-flatpaks.yml` | pull request | Flatpak preinstall files against Flathub. |
-| `validate-justfiles.yml` | pull request | `just check`. |
-| `validate-renovate.yml` | pull request | Renovate config. |
-| `unit-tests.yml` | push, pull request | The bats suite. |
-| `renovate.yml` | schedule, config change | Runs Renovate. |
-| `clean.yml` | schedule | Deletes images older than 90 days. |
+| `build.yml` | pull request, push to `main`, daily 05:17 UTC, dispatch | Static checks and a full image build + test on every run; on `main` also push, sign, verify, tag and write a release. |
+| `clean.yml` | weekly, dispatch (dry run by default) | GHCR retention and release pruning. |
 
-Most are thin callers of reusable workflows in `projectbluefin/actions`.
+Renovate is the hosted Mend app (no workflow, no token).
 
-## The release model
+### `build.yml` jobs
 
-`main` publishes `:stable-testing`. `stable` never rebuilds: promotion is a
-squash PR from `main` to `stable`, and `execute-release.yml` copies the digest
-`:testing` resolves to. The README owns the release table and the promotion
-gate's current limits.
+1. `changes`: on a pull request, classifies the changed files. Docs only
+   (`*.md`, `doc/`, `.agents/`) skips the image build.
+2. `static` (about 1 min, in parallel with `build`): `just lint`, `just check`,
+   `just test-unit`, `just validate-flatpaks`, hadolint, actionlint, zizmor,
+   and the Renovate validator when the config changed.
+3. `build`: `just build` → `just rechunk` (chunkah, then `bootc container lint
+   --fatal-warnings`) → `just test-image` (tests/image/check.sh) → `just
+   test-boot` (bcvk ephemeral VM, KVM) → on `main` only, push by digest to
+   `:candidate`.
+4. `publish` (`main` only): `cosign sign`, then `cosign verify` against this
+   exact workflow on `refs/heads/main`, then `skopeo copy --preserve-digests` to
+   `:45.YYYYMMDD` and `:latest`. A failure anywhere leaves `:latest` where it
+   was.
+5. `release`: a GitHub release named after the dated tag, with the package
+   diff against the previous release (`packages.txt` is attached to each).
+6. `required`: the only status a ruleset should require. Green when every job
+   above it passed or was skipped on purpose.
 
-The factory reusable puts its release gate and its auto-merge enrollment behind
-one input, `enqueue_promotion`. A personal repository cannot enroll — there is no
-merge queue, and `gh pr merge --auto` refuses without a merge method — so
-enrollment is off, and `promote-main-to-stable.yml` runs the gate itself in its
-own `gate` job to keep the pre-merge check. That gate resolves `:testing` when it
-runs, so it attests the current candidate. The binding comes from
-`execute-release.yml` passing `source_branch: main`, which makes the reusable
-refuse to promote at all once `main` has moved past the promotion commit; a
-manual dispatch is exempt, because that path is deliberate recovery.
+Concurrency: pull requests cancel their own stale runs; `main` never cancels a
+run in progress. `clean.yml` shares the `main` group so it never prunes while a
+publish is running.
 
-The same reusable builds the squash branch, and it stages deletions with
-`git diff --diff-filter=D`. Git reports a moved file as a rename, so a path `main`
-moved survives on its old path and the branch's tree stops matching `main`'s —
-the state the guard above refuses, but only after the PR is merged.
-`repair-promotion-branch` in `promote-main-to-stable.yml` rebuilds the branch from
-`main`'s tree when it has drifted, and the `validate` check fails a promotion PR
-whose tree does not match `main`. The sweep belongs to `projectbluefin/actions`;
-the one-line fix there is `--no-renames`.
+## Tags
+
+| Tag | Meaning |
+|---|---|
+| `:latest` | Newest build that passed everything. What installs follow. |
+| `:45.YYYYMMDD` | That day's build (a second build the same day replaces it). The retention unit: the newest 30 are kept. |
+| `:candidate` | Staging: the last pushed digest, possibly not yet signed. Never install it. |
+
+The testing repository (`neptuno-testing`) runs the same file and publishes
+`ghcr.io/siddhj2206/neptuno-testing`; `IMAGE_NAME` comes from the repository
+name.
 
 ## Signing
 
-Keyless OIDC via Cosign. There are no keys to generate or store; the workflow
-needs `id-token: write` and `packages: write`. Unsigned images fail the promotion
-gate. The README has the command to verify an image.
-
-The promotion gate is the *only* enforcement point. Nothing checks the signature
-on an installed system, so `00-image-info.sh` writes an unverified update
-transport (`ostree-unverified-image:docker://…`) and the README says so.
-`ostree-image-signed:` would send the client to `/etc/containers/policy.json`,
-which Common supplies with no scope for this namespace — it would verify against
-the `""` catch-all, `insecureAcceptAnything`, and report success having checked
-nothing. Adding a scope does not rescue it while signing stays keyless:
-containers/image matches a Fulcio certificate on `subjectEmail` alone
-(mandatory, exact, with a standing FIXME for URI SANs in
-`signature/fulcio_cert.go`), and a GitHub Actions certificate names its workflow
-in a URI SAN with no email to match. Device-side verification is a key-based
-signing change first, a policy change second.
-`tests/contract/image-signing_test.bats` fails if either side moves alone.
-
-The identity regexp the release workflows pass to the reusables is scoped with
-`github.repository`, not `github.repository_owner`. Matching the owner and then
-any repository accepts a signature minted by any repository in the org, and
-`github.repository` keeps the scope correct in a fork without hardcoding it.
+Keyless cosign (v3, GitHub OIDC). Only `publish` holds `id-token: write`. The
+identity is the workflow file and branch, matched exactly in CI. The owner's
+capitalisation is preserved in the certificate (`Siddhj2206`), so
+`neptuno verify` on a device matches case-insensitively. Devices pull over
+`ostree-unverified-image`; doc/product.md 11 explains why CI is the only
+enforcement point. Signing must stay in `build.yml` itself: moving it into a
+reusable workflow changes the certificate identity.
 
 ## Renovate
 
-Self-hosted through `projectbluefin/actions`, running every six hours. It pins
-GitHub Actions to SHAs and updates image digests. The policy lives in
-`.github/renovate.json`: updates below a major automerge once checks pass;
-majors wait for a pull request — except `quay.io/fedora-ostree-desktops/*`,
-where cross-major bumps do not open a PR at all (the rule is `enabled: false`).
-A Fedora major rebase for that namespace is a deliberate manual step: bump the
-tag in `Containerfile` by hand when the next major is released and validated.
+Policy in `.github/renovate.json` (`config:best-practices`, semantic commits,
+weekly schedule). Non-majors automerge through platform automerge, which is
+only safe because the `required` check builds, boots and tests the image on
+every pull request: keep that true. The base image's digest bumps skip the
+schedule. Fedora majors are disabled; rebase by hand. Actions are grouped,
+wait 3 days after release, and only `actions/*` and `sigstore/*` automerge.
 
-Renovate needs the `RENOVATE_TOKEN` secret and auto-merge enabled. Both are
-onboarding steps. The secret is optional: with it unset the workflow logs a skip
-and the run stays green, which is how upstream runs, where an org-wide app does
-the work instead. The check sits in its own `token` job because a job that calls
-a reusable workflow cannot hold steps, and `jobs.<job_id>.if` cannot read the
-secrets context — `secrets` in a job-level `if` is a parse error, not a skip.
+Pinned versions outside standard managers use:
+- `export x := env("X", "image:tag@sha256:…")` in the root Justfile,
+- `registry/image:tag@sha256:…` inline in workflows and the neptuno justfile,
+- `# renovate: datasource=… depName=…` above an env var in workflows.
 
-Automerge deliberately covers GitHub Actions SHA bumps, which reverses a guard
-upstream kept. Those SHAs run in jobs holding `packages: write`,
-`id-token: write`, and `secrets: inherit`, and PR builds are disabled, so a bump
-merges with only shellcheck, hadolint, and the test suite having run. Putting the
-guard back is one rule — `matchManagers: ["github-actions"]` with
-`automerge: false`.
+## Retention
 
-## Making a change
+`clean.yml` runs `dataaxiom/ghcr-cleanup-action`: newest 30 dated tags kept,
+untagged digests older than 14 days and orphaned signature artifacts (`sha256-*`
+tags; GHCR has no referrers API) deleted. `stable` and `stable-testing` are
+excluded until the laptop leaves the pre-rebuild image. Releases are pruned to
+the newest 30. A manual dispatch is a dry run unless unticked.
 
-1. Open a pull request against `main`.
-2. Wait for `validate` and the image build.
-3. Merge. `main` publishes `:stable-testing`.
-4. Review and merge the promotion PR to publish `:stable`.
+## Repository settings this relies on
 
-## Apt mirror resilience
+- A ruleset on `main` requiring the `required` status check, and "Allow
+  auto-merge" on (for Renovate's platform automerge).
+- Actions: "Read and write permissions" are not needed; jobs declare their own.
+- The GHCR package grants this repository's Actions write access (automatic
+  when the workflow created it).
 
-The `unit-tests.yml` `Install bats` step runs `apt-get` against the runner
-image's stock Ubuntu mirrors. A slow mirror can leave apt waiting past the
-10-minute job timeout, cancelling a run whose diff cannot have caused the
-stall (issue #497, observed on PR #492 head 5769c24, job 112944421448). The
-step fronts both `apt-get update` and `apt-get install` with `timeout 180`,
-passes `-o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o
-Acquire::Retries=2` to each so a stalled socket fails fast from either
-half, and `--no-install-recommends` to skip the `bats-doc` package the
-workflow never reads. The wall-clock cap is what catches a slow-but-alive
-mirror; the per-call timeouts only fire on inactivity.
+## Known gaps
+
+- Measured only locally: chunkah rootless (96 layers, largest 270 MB) and the
+  content tests. The bcvk boot test and the cosign v3 / GHCR referrer fallback
+  are first verified on the first CI run.
+- There is no ISO workflow yet; `just build-iso` is local only. A first
+  `iso.yml` (dispatch, `just iso` around the published tag) was dropped
+  until it can be finished. On `ubuntu-26.04` osbuild failed with
+  `mount: /run/osbuild/containers/storage: permission denied` and
+  `fchownat ... Operation not permitted`. Resetting root storage to overlay
+  (osbuild/bootc-image-builder#446) and setting
+  `kernel.apparmor_restrict_unprivileged_userns=0` did not fix it; `just iso`
+  now adds `--security-opt apparmor=unconfined` on AppArmor hosts, which was
+  never tested in CI. The ISO is also about 4 GB, over the 2 GiB
+  release-asset limit, so it needs a home besides a release.

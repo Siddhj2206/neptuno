@@ -9,11 +9,11 @@ assembled and says which skill covers what; the procedures live under
 These hold for every change:
 
 - **Conventional Commits** — `<type>[scope]: <description>`.
-- **Validate before committing.** `just lint` shellchecks every tracked shell
-  script, `just check` verifies Justfile syntax, and `just test-unit` runs the
-  suite. `just validate-brewfiles` and `just validate-flatpaks` cover those
-  files. The `validate` status check runs shellcheck and hadolint on a pull
-  request.
+- **Validate before committing.** `just lint` shellchecks every shell
+  script, `just check` verifies Justfile formatting, `just test-unit` runs the
+  bats suite, and `just validate-flatpaks` checks Flathub IDs. With a built
+  image, `just rechunk` and `just test-image` run what CI runs on it. The
+  `required` status check on a pull request covers all of it plus a boot test.
 - **Confirm before pushing** — show the diff and wait.
 - **Declare, then enable.** Packages and units belong in
   `build/packages/*.toml`. `just test-unit` includes the manifest contract; a
@@ -23,12 +23,10 @@ These hold for every change:
 
 ## Branches and releases
 
-`main` is the testing branch: pushes publish `:stable-testing`. `stable` is
-production, and it never rebuilds — `execute-release.yml` promotes the exact
-digest `main` already built. Promotion is `main` → `stable` through the
-auto-opened squash PR, and `stable` hotfixes sync back to `main`. `stable` takes
-no direct commits. The README owns the release table and the promotion gate's
-current limits.
+One branch. A pull request into `main` builds and tests the image without
+publishing; a merge to `main` (and the daily rebuild) publishes `:latest` and
+`:45.YYYYMMDD` once the digest is signed and verified. Renovate automerges
+behind the same `required` check. `.agents/skills/ci` has the details.
 
 ## Pull request comments
 

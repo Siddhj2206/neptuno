@@ -1,0 +1,12 @@
+# A mount unit cannot create its source; this does, before nix.mount.
+[Unit]
+Description=Create /var/lib/nix for the Nix store bind mount
+DefaultDependencies=no
+RequiresMountsFor=/var/lib
+Before=nix.mount
+ConditionPathIsDirectory=!/var/lib/nix
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/install -d -m 0755 /var/lib/nix
+RemainAfterExit=yes

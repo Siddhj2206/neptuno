@@ -21,7 +21,7 @@ install_fedora_section() {
 }
 
 # Remove packages from a manifest section. Only currently installed packages
-# enter the transaction, so a future Silverblue base that already drops an
+# enter the transaction, so a future base that already drops an
 # entry does not make the image build fail. Assert every requested package is
 # absent afterwards.
 remove_fedora_section() {
@@ -43,43 +43,49 @@ remove_fedora_section() {
 	assert_packages_absent "${label}" "${requested[@]}"
 }
 
-# Install every ["copr:<owner>/<project>"] section of a manifest. ALL COPRs
-# are enabled FIRST, then every section's packages install in ONE
-# transaction: the explicit args win candidate selection, so cross-COPR
-# dependencies resolve to the wanted build — e.g. dms's deps live in either
-# the dms or danklinux stash, and together quickshell-git replaces the plain
-# quickshell a coprdep would otherwise drag in. COPRs stay enabled through
-# the build; clean-stage.sh disables them in the final image (rule 3).
+# Install every ["copr:<owner>/<project>"] section of a manifest in ONE
+# transaction, then disable the COPRs again.
+#
+# Each COPR is limited (includepkgs) to the packages its section names plus the
+# section's optional `deps` list. COPRs such as duxlabs/dux-repo also rebuild
+# Fedora packages (greetd, cava, quickshell); without the limit a newer COPR
+# build would silently replace Fedora's. One transaction across every section
+# still lets cross-COPR dependencies resolve together, so quickshell-git
+# satisfies dms instead of the stable quickshell.
+#
 # Exits non-zero if any listed package did not install.
 install_copr_sections() {
 	local manifest="$1"
-	local copr_section copr_id
-	local -a copr_sections packages all_packages
+	local copr_section copr_id repo_id include
+	local -a copr_sections packages deps all_packages setopts
 	local missing=()
 	local pkg
 
-	# Phase 1 — enable every COPR section (repo files may also declare
-	# coprdeps on each other; all of it resolves together in phase 2).
 	mapfile -t copr_sections < <("${READ_PKGS}" "${manifest}" --sections copr:)
-	for copr_section in "${copr_sections[@]}"; do
-		copr_id="${copr_section#copr:}"
-		echo "Enabling COPR ${copr_id}"
-		dnf5 -y copr enable "${copr_id}"
-	done
-
-	# Phase 2 — one install transaction across every section.
-	for copr_section in "${copr_sections[@]}"; do
-		readarray -t packages < <("${READ_PKGS}" "${manifest}" "${copr_section}")
-		all_packages+=("${packages[@]}")
-	done
-	if [[ ${#all_packages[@]} -eq 0 ]]; then
-		echo "No COPR packages in ${manifest}."
+	if [[ ${#copr_sections[@]} -eq 0 ]]; then
+		echo "No COPR sections in ${manifest}."
 		return 0
 	fi
-	echo "Installing ${all_packages[*]} from COPRs"
-	dnf5 -y install "${all_packages[@]}"
 
-	# Phase 3 — assert gate.
+	for copr_section in "${copr_sections[@]}"; do
+		copr_id="${copr_section#copr:}"
+		repo_id="copr:copr.fedorainfracloud.org:${copr_id//\//:}"
+		readarray -t packages < <("${READ_PKGS}" "${manifest}" "${copr_section}")
+		readarray -t deps < <("${READ_PKGS}" "${manifest}" "${copr_section}" deps 2>/dev/null || true)
+		include="$(IFS=,; echo "${packages[*]}${deps[*]:+,${deps[*]}}")"
+		echo "Enabling COPR ${copr_id} (limited to: ${include})"
+		dnf5 -y copr enable "${copr_id}"
+		setopts+=("--setopt=${repo_id}.includepkgs=${include}")
+		all_packages+=("${packages[@]}")
+	done
+
+	echo "Installing ${all_packages[*]} from COPRs"
+	dnf5 -y install "${setopts[@]}" "${all_packages[@]}"
+
+	for copr_section in "${copr_sections[@]}"; do
+		dnf5 -y copr disable "${copr_section#copr:}"
+	done
+
 	for pkg in "${all_packages[@]}"; do
 		rpm -q "${pkg}" >/dev/null 2>&1 || missing+=("${pkg}")
 	done
@@ -226,14 +232,16 @@ enable_services_section() {
 	echo "${label}: enabled ${#system_units[@]} system and ${#user_units[@]} user units."
 }
 
-# Disable the [services].disabled units of a manifest. A package's preset may
-# enable a unit we do not want; naming it here keeps the choice explicit and
-# leaves the audit meaningful. Runs after enable_services_section.
+# Disable the [services].disabled units of a manifest. A base preset may enable
+# a unit we do not want; naming it here keeps the choice explicit and the audit
+# meaningful. A unit the base no longer ships is skipped with a warning rather
+# than failing the build: a daily rebuild must not break because Fedora dropped
+# a daemon we were turning off anyway. Runs after enable_services_section.
 disable_services_section() {
 	local manifest="$1"
 	local label="${2:-${manifest}}"
 	local -a units=()
-	local unit
+	local unit count=0
 
 	if ! "${READ_PKGS}" "${manifest}" --sections services >/dev/null 2>&1; then
 		echo "${label}: no [services] section."
@@ -243,10 +251,15 @@ disable_services_section() {
 	readarray -t units < <("${READ_PKGS}" "${manifest}" services disabled 2>/dev/null || true)
 	for unit in "${units[@]}"; do
 		[[ -n "${unit}" ]] || continue
+		if [[ ! -e "${UNIT_ROOT:-}/usr/lib/systemd/system/${unit}" && ! -e "${UNIT_ROOT:-}/etc/systemd/system/${unit}" ]]; then
+			echo "::warning::${label}: ${unit} does not exist; nothing to disable"
+			continue
+		fi
 		systemctl disable "${unit}"
+		count=$((count + 1))
 	done
 
-	echo "${label}: disabled ${#units[@]} units."
+	echo "${label}: disabled ${count} units."
 }
 
 # Link units into a target's .wants directory instead of enabling them for
@@ -284,6 +297,10 @@ link_wanted_units() {
 				return 1
 				;;
 		esac
+		if [[ ! -e "${UNIT_ROOT:-}/usr/lib/systemd/${scope}/${unit}" ]]; then
+			echo "ERROR: ${label}: ${scope} unit ${unit} is not installed; cannot link it into ${target}" >&2
+			return 1
+		fi
 		mkdir -p "${dir}"
 		ln -sfn "/usr/lib/systemd/${scope}/${unit}" "${dir}/${unit}"
 		count=$((count + 1))

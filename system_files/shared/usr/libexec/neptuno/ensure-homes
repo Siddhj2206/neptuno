@@ -1,0 +1,38 @@
+#!/usr/bin/bash
+# Create the home directory of any human account (UID 1000-59999 with a login
+# shell) that has none, seeded from /etc/skel.
+#
+# Anaconda's bootc payload creates the first user's home in the installer's
+# view of /var, which the deployed system never sees: the account exists but
+# its home does not, so nothing from /etc/skel reaches it. Runs before
+# systemd-user-sessions.service, so before any login.
+#
+# Runs as root before anyone can log in, so it is deliberately narrow: local
+# accounts only (/etc/passwd, never a directory service), homes only under
+# /home or /var/home, nothing that already exists (including a dangling
+# symlink), and one bad account never stops the others.
+set -uo pipefail
+
+create_home() {
+	local user="$1" uid="$2" gid="$3" home="$4"
+	install -d -m 0700 -o "${uid}" -g "${gid}" -- "${home}" || return 1
+	cp -a /etc/skel/. "${home}/" || return 1
+	chown -R --no-dereference "${uid}:${gid}" -- "${home}" || return 1
+	restorecon -R -- "$(realpath -- "${home}")" 2>/dev/null || true
+	echo "Created ${home} for ${user} from /etc/skel"
+}
+
+status=0
+while IFS=: read -r user _ uid gid _ home shell; do
+	[[ "${uid}" =~ ^[0-9]+$ && "${gid}" =~ ^[0-9]+$ ]] || continue
+	((uid >= 1000 && uid < 60000)) || continue
+	[[ "${shell}" == */nologin || "${shell}" == */false ]] && continue
+	# One path component under /home or /var/home, no traversal.
+	[[ "${home}" =~ ^/(var/)?home/[^/]+$ && "${home}" != */. && "${home}" != */.. ]] || continue
+	[[ -e "${home}" || -L "${home}" ]] && continue
+	create_home "${user}" "${uid}" "${gid}" "${home}" || {
+		echo "Could not create ${home} for ${user}" >&2
+		status=1
+	}
+done </etc/passwd
+exit "${status}"

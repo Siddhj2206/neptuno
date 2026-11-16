@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validate flatpak preinstall files under custom/flatpaks/ without mutating
+# Validate flatpak preinstall files under flatpaks/ without mutating
 # the host user flatpak installation (runs inside an isolated FLATPAK_USER_DIR).
 #
 # Contract enforced per app:
@@ -14,8 +14,8 @@
 #     branch fails instead of passing on the app-id alone)
 #
 # Single implementation of the flatpak validation contract; the CI workflow
-# (.github/workflows/validate-flatpaks.yml) and `just validate-flatpaks` are
-# thin callers. Mirrors the Brewfile contract in build/validate-brewfiles.sh.
+# (build.yml, static job) and `just validate-flatpaks` are
+# thin callers.
 
 main() (
     set -euo pipefail
@@ -23,7 +23,7 @@ main() (
         echo "Usage: $0 [flatpak-directory]" >&2
         exit 2
     fi
-    root="${1:-custom/flatpaks}"
+    root="${1:-flatpaks}"
     if [[ ! -d "${root}" ]]; then
         printf 'Flatpak directory does not exist: %s\n' "${root}" >&2
         exit 2

@@ -1,0 +1,5 @@
+# Lets wheel users run `bootc upgrade` (exactly these arguments) without a
+# password, so topgrade's system step and `sudo bootc upgrade` don't prompt.
+# upgrade only follows the booted image's own source; switch, rollback and
+# install still ask. bootc-fetch-apply-updates.timer does the same nightly.
+%wheel ALL=(root) NOPASSWD: /usr/bin/bootc upgrade, /usr/sbin/bootc upgrade

@@ -1,7 +1,13 @@
-# Partitioning for `just build-qcow2` and `just build-raw`. The root grows to
+# Partitioning for `just build-qcow2`. The root grows to
 # this size or twice the base container, whichever is larger. With a btrfs
 # rootfs only `/` and `/boot` are configurable.
 
 [[customizations.filesystem]]
 mountpoint = "/"
 minsize = "20 GiB"
+
+# Test VMs only: a login for the greeter, so a fresh boot reaches a desktop.
+[[customizations.user]]
+name = "neptuno"
+password = "neptuno"
+groups = ["wheel"]

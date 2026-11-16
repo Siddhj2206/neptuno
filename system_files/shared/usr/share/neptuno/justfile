@@ -1,0 +1,83 @@
+# Recipes behind the `neptuno` command.
+
+set shell := ["bash", "-euo", "pipefail", "-c"]
+
+[private]
+default:
+    @just --justfile {{ justfile() }} --list
+
+# Show the image, deployments, power profile and hibernate state
+info:
+    jq . /usr/share/neptuno/image-info.json
+    rpm-ostree status
+    powerprofilesctl get 2>/dev/null || true
+    echo "CanHibernate: $(busctl get-property org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager CanHibernate 2>/dev/null || echo unknown)"
+    echo "Lockdown: $(cat /sys/kernel/security/lockdown 2>/dev/null || echo unknown)"
+
+# Packages added or removed between the booted and the staged or previous deployment
+changelog:
+    rpm-ostree db diff
+
+# Create (or enter) a Fedora toolbox with the GUI and compositor -devel stacks
+devbox:
+    #!/usr/bin/bash
+    set -euo pipefail
+    if ! distrobox list | grep -qw devbox; then
+        distrobox create --yes --name devbox --image registry.fedoraproject.org/fedora-toolbox:45 \
+            --additional-packages "clang clang-devel gtk4-devel webkit2gtk4.1-devel libadwaita-devel wayland-devel libxkbcommon-devel libinput-devel libseat-devel libdrm-devel mesa-libgbm-devel"
+    fi
+    distrobox enter devbox
+
+# Compare your niri and ghostty configs with the image's reference stubs
+config-diff:
+    #!/usr/bin/bash
+    for pair in niri/config.kdl ghostty/config topgrade.toml; do
+        echo "== ${pair}"
+        diff -u "/etc/skel/.config/${pair}" "${HOME}/.config/${pair}" || true
+    done
+
+# Put the image's default config back for an app (niri, dms, ghostty, topgrade, or all); yours is kept as <name>.bak-<time>
+refresh-config app:
+    #!/usr/bin/bash
+    set -euo pipefail
+    skel=/etc/skel/.config
+    mapfile -t known < <(find "${skel}" -mindepth 1 -maxdepth 1 ! -type l -printf '%f\n' | sed 's/\.toml$//' | sort)
+    if [[ "{{ app }}" == all ]]; then
+        apps=("${known[@]}")
+    elif printf '%s\n' "${known[@]}" | grep -qx -- "{{ app }}"; then
+        apps=("{{ app }}")
+    else
+        echo "Unknown app '{{ app }}'. Choose one of: ${known[*]} all" >&2
+        exit 1
+    fi
+    stamp="$(date +%Y%m%d-%H%M%S)"
+    for app in "${apps[@]}"; do
+        name="${app}"; [[ -e "${skel}/${name}" ]] || name="${app}.toml"
+        target="${HOME}/.config/${name}"
+        if [[ -e "${target}" ]]; then
+            backup="${target}.bak-${stamp}"; n=1
+            while [[ -e "${backup}" ]]; do backup="${target}.bak-${stamp}-$((n++))"; done
+            mv "${target}" "${backup}"
+            echo "Saved your ${name} as ${backup}"
+        fi
+        cp -a "${skel}/${name}" "${target}"
+        echo "Restored ${name} from the image defaults"
+    done
+
+# Verify the booted image's signature against the CI workflow identity
+verify:
+    #!/usr/bin/bash
+    set -euo pipefail
+    ref="$(rpm-ostree status --json | jq -r '[.deployments[] | select(.booted)][0]["container-image-reference"]' | sed 's|.*docker://||')"
+    digest="$(rpm-ostree status --json | jq -r '[.deployments[] | select(.booted)][0]["container-image-reference-digest"]')"
+    name="${ref%%:*}"
+    repo="$(jq -r '."image-name"' /usr/share/neptuno/image-info.json)"
+    vendor="$(jq -r '."image-vendor"' /usr/share/neptuno/image-info.json)"
+    echo "Verifying ${name}@${digest}"
+    # GitHub keeps the owner's capitalisation in the certificate; image names
+    # are lowercase, so match case-insensitively.
+    podman run --rm ghcr.io/sigstore/cosign/cosign:v3.1.4@sha256:0f06154836d2de34f887a5c273506d52ca43edaa1d9e53e6510fa78a48f69c2d verify \
+        --certificate-identity-regexp "(?i)^https://github\\.com/${vendor}/${repo}/\\.github/workflows/build\\.yml@refs/heads/main\$" \
+        --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+        "${name}@${digest}" >/dev/null
+    echo "Signature OK"

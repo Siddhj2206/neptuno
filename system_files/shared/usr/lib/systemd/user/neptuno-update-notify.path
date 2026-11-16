@@ -1,0 +1,11 @@
+# bootc writes this file when it stages a deployment.
+[Unit]
+Description=Watch for a staged system update
+# Not for system accounts such as the greeter, whose session also runs user units.
+ConditionUser=!@system
+
+[Path]
+PathChanged=/run/ostree/staged-deployment
+
+[Install]
+WantedBy=default.target
