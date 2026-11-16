@@ -175,3 +175,9 @@ PW
 @test "busybox is installed for nix's sandbox shell" {
 	grep -q '"busybox"' "${REPO}/build/packages/base.toml"
 }
+
+@test "nix's download buffer is raised through an include, not a replaced nix.conf" {
+	grep -qx 'download-buffer-size = 67108864' "${REPO}/system_files/shared/usr/share/neptuno/nix/nix.conf"
+	grep -qF '!include /usr/share/neptuno/nix/nix.conf' "${REPO}/build/20-overlay.sh"
+	[ ! -e "${REPO}/system_files/shared/etc/nix/nix.conf" ]
+}

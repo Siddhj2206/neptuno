@@ -16,6 +16,14 @@ chmod 0440 /etc/sudoers.d/neptuno-*
 for f in /etc/sudoers.d/neptuno-*; do visudo -cf "${f}"; done
 echo "::endgroup::"
 
+echo "::group:: Nix settings"
+# Fedora's /etc/nix/nix.conf belongs to nix-core; include ours from it rather
+# than replacing it. The daemon and every client read the same file.
+nix_include='!include /usr/share/neptuno/nix/nix.conf'
+grep -qxF "${nix_include}" /etc/nix/nix.conf || printf '\n%s\n' "${nix_include}" >>/etc/nix/nix.conf
+nix config show download-buffer-size | grep -qx 67108864
+echo "::endgroup::"
+
 echo "::group:: Default login shell"
 # fish for every account useradd creates, including Anaconda's user screen.
 sed -i 's|^SHELL=.*|SHELL=/usr/bin/fish|' /etc/default/useradd
