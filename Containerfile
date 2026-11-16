@@ -11,8 +11,8 @@ COPY flatpaks /flatpaks
 # Renovate keeps the digest current; the major is bumped by hand.
 FROM quay.io/fedora-ostree-desktops/base-atomic:45@sha256:aa8a3c8accded1f18d0f190739a754ffb24f99c9e3e84cc922b833462b4ee4d8
 
-# Identity. CI passes IMAGE_NAME from the repository name, so the testing repo
-# publishes neptuno-testing with a matching update reference.
+# Identity. CI passes IMAGE_NAME from the repository name, so a copy of this
+# repository publishes under its own name with a matching update reference.
 ARG IMAGE_NAME="neptuno"
 ARG IMAGE_VENDOR="siddhj2206"
 ARG BASE_IMAGE_NAME="base-atomic"

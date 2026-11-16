@@ -1,54 +1,48 @@
 ---
 name: troubleshooting
 description: >-
-  Symptom to cause to fix for build, CI, and runtime failures, plus the
-  pre-commit checklist. Use when something is broken or before opening a
-  pull request.
+  Symptom to cause to fix for build, CI and runtime failures, plus the
+  pre-pull-request checklist. Use when something is broken or before opening
+  a pull request.
 ---
 
 # Troubleshooting
 
 ## Before a pull request
 
-- [ ] Conventional Commit message.
-- [ ] `just lint` — shellcheck on every tracked script.
-- [ ] `just check` — Justfile syntax.
-- [ ] `just test-unit` — the suite.
-- [ ] `just validate-brewfiles` / `just validate-flatpaks` if those changed.
-- [ ] `just build` if the image changed.
-
-CI runs the same checks; running them locally only makes the pull request quiet.
+- [ ] Conventional Commit message ending in the `Assisted-by:` line.
+- [ ] `just lint check test-unit`.
+- [ ] `just validate-flatpaks` if `flatpaks/` changed.
+- [ ] `just build rechunk test-image` if the image changed.
+- [ ] The owning skill updated if you learned something the hard way.
 
 ## Build
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `bootc container lint` fails on a nonempty `/run` | a script wrote to `/run` into an image layer | remove it in `90-cleanup.sh`; that phase deliberately does not mount `/run` as tmpfs |
-| a third-party repository is live in the final image | a script enabled it and did not disable it | use `copr_install_isolated`, or disable it explicitly |
-| the package layer rebuilds on every overlay edit | packages drifted into the overlay phase | keep packages in `20-packages-and-services.sh` |
+| `bootc container lint` fails on a nonempty `/run` | a phase left files in `/run`, or a host `NOTIFY_SOCKET` was bind-mounted in | remove them in `90-cleanup.sh`; build through `just build`, which unsets the socket |
+| the build fails in `90-cleanup.sh` naming a unit | something enabled a unit no manifest declares (often an RPM scriptlet) | declare it in `[services]`, or disable it in `[services].disabled` |
+| a package is "not installed" after the transaction | a typo, or a runtime Recommends that weak deps (off) skipped | fix the name, or list the dependency explicitly |
+| a COPR replaced a Fedora package | the COPR section did not limit what it may supply | list allowed extras under that section's `.deps` only |
+| a COPR repo is live in the final image | Fedora 45 keeps repo files in `/usr/share/dnf5/repos.d` too | cleanup sweeps both directories; keep it that way |
+| the package layer rebuilds on every overlay edit | a phase before `20-overlay.sh` reads `system_files/` | keep overlay work in `20-overlay.sh` or later |
 | hadolint flags the Containerfile | a rule in `.github/hadolint.yaml` | fix it, or add a suppression with a reason |
 
 ## CI
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `validate` never runs | branch protection names a check no workflow produces | the context must be exactly `validate` |
-| Renovate logs a skip and opens nothing | `RENOVATE_TOKEN` is not set | expected; set the secret to turn Renovate on |
-| Renovate fails on `Validate RENOVATE_TOKEN` | the token is expired or lacks the `workflow` scope | recreate the token |
-| the promotion PR never opens | `stable` does not exist | create the branch |
-| the promotion PR will not merge | `stable` requires an approval | set required approvals to 0 |
-| a Renovate PR waits forever | auto-merge is off | enable it in Settings |
+| a pull request never becomes mergeable | branch protection requires a check no workflow reports | require exactly `required` |
+| `:latest` did not move after a green build | `publish` failed to sign or verify, by design | read the `publish` job; the digest stays on `:candidate` |
+| a Renovate PR waits forever | auto-merge is off, or the update type is excluded | "Allow auto-merge" in settings; see the `ci` skill for which updates automerge |
+| the boot test runs very slowly | the runner exposed no `/dev/kvm`, so it fell back to TCG | rerun; the step warns when this happens |
 
 ## Runtime
 
-The two most common first-boot surprises — no Flatpaks, and no `brew` — are in
-the README's Troubleshooting section.
-
 | Symptom | Cause | Fix |
 |---|---|---|
-| `ujust` shows no custom commands | `60-custom.just` was not written or imported | check that `10-overlay.sh` copied the recipes |
-
-## Capturing what you learned
-
-When a fix here was non-obvious, put it in the skill that owns the area, in the
-same pull request. That is the only home for durable learning.
+| no Flatpaks yet after first boot | the preinstall runs 2 minutes after boot, only on AC power, and retries hourly until it succeeds | plug in, or `sudo systemctl start neptuno-flatpak-preinstall` |
+| an app reports its saved secrets missing | the keyring was unlocked by fingerprint, so `pam_oo7` got no password | log in with the password; see PAM in the `neptuno` skill |
+| a system file shows the old image's version after `bootc switch` | ostree kept a locally modified `/etc` file | `sudo ostree admin config-diff`, then restore the file from `/usr/etc` |
+| a Nix-built binary stops starting after `nx clean` | it was linked by Nix's toolchain against a store glibc that was collected | rebuild it |
+| `nx` itself misbehaves | nx is a separate project | fix it in Siddhj2206/nx and bump `NX_VERSION` |

@@ -33,8 +33,8 @@ jobs:
         with:
           package: ${{ github.event.repository.name }}
           # The dated tags (45.YYYYMMDD) are the retention unit. `stable` and
-          # `stable-testing` belong to the pre-rebuild image the laptop still
-          # runs; drop them from this list after the cutover.
+          # `stable-testing` are the Bluefin-era image's; drop them from this
+          # list a month after the cutover (doc/product.md 16.8).
           exclude-tags: latest,candidate,stable,stable-testing
           keep-n-tagged: 30
           delete-untagged: true

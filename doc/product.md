@@ -1,18 +1,12 @@
-# Neptuno: product plan for the ground-up rebuild
+# Neptuno: product record
 
-Status: **plan, not implemented**. Written 2026-11-11 on branch `rebuild`,
-then reviewed once by Fable 5.2. The review's findings are folded into the
-sections below. **Revised 2026-11-11:** packages, portals and keyring were
-re-researched against live Fedora 45 repos and the running laptop; sections
-2, 4, 5, 6.2, 6.4, 7.2, 9, 15 to 18 and 20 changed.
-**Revised 2026-11-14:** a new section 17 (power, boot and responsiveness,
-with a measured baseline and a Pond comparison) was added before Risks, so
-Risks, Spikes, Milestones and Decisions are now 18 to 21. Sections 4, 7.2, 9,
-13, 18, 19 and 21 gained matching items.
-Evidence for every claim below lives in the research notes that produced
-this document (decision tree plus research packages RP-A to RP-I). Anything
-marked **SPIKE** is unproven and must pass a VM test before it is built for
-real.
+Status: **built and in use.** Planned 2026-11-11 to 11-14, built on the
+`rebuild` branch, proven in `Siddhj2206/neptuno-testing`, and merged into
+`main` on 2026-11-16 (#457). The laptop has run it since 2026-11-16 (section
+16). Much of it is still worded as the plan it was. Where a section and the
+code disagree, the code and the skills win, and the section should be fixed.
+The evidence came from research notes RP-A to RP-I and live checks on Fedora
+45 repos and the laptop; **SPIKE** marks a question that needed a VM test.
 
 ## 1. What Neptuno is
 
@@ -70,22 +64,23 @@ something unambiguous such as `neptuno-common`. If we ever need our own RPMs
 (see risk R1), that is a separate `neptuno-rpms` COPR, not a shared image
 layer.
 
-**Flow.** Work happens on `rebuild`. It is pushed to `Siddhj2206/neptuno-testing`
-as that repo's `main`, which publishes `ghcr.io/siddhj2206/neptuno-testing`.
-Once proven, it is pushed to `Siddhj2206/neptuno` as `next` and merged into
-`main` by PR.
+**Flow.** One branch: pull requests into `main` (AGENTS.md). The rebuild was
+proven as `main` of `Siddhj2206/neptuno-testing`, which published
+`ghcr.io/siddhj2206/neptuno-testing`, then merged here in #457.
 
-Proposed layout:
+Layout as built (the plan had a separate Nix phase and the overlay before the
+packages; both changed):
 
 ```
 Containerfile
 Justfile                     # build, lint, test, vm, iso — no Bluefin recipes
 build/
   00-image-info.sh           # os-release, image-info.json
-  10-overlay.sh              # system_files/ + unit snapshot
-  20-packages.sh             # all manifests, one script
-  30-desktop.sh              # greeter, session wiring, schema compile
-  40-nix.sh                  # /nix mount, nix units
+  10-packages.sh             # unit snapshot, then all manifests
+  20-overlay.sh              # system_files/, nx, Flathub descriptor
+  30-desktop.sh              # greeter checks, schemas, fingerprint PAM
+  40-services.sh             # the one enablement pass, plus presets
+  50-initramfs.sh            # rebuilt after removals
   90-cleanup.sh              # disable repos, audit units, lint prep
   packages/{base,desktop,devlibs,hardware,removals}.toml
   scripts/{package-lib.sh,read-packages,systemd-units}   # kept from today
@@ -912,7 +907,7 @@ working reference.
 | Workflow | What it does |
 |---|---|
 | `build.yml` | Pull requests, pushes to `main`, a daily 05:17 UTC cron and dispatch, in one file. `static` (shellcheck, `just check`, bats, Flathub IDs, hadolint, actionlint, zizmor, the Renovate validator) runs in parallel with `build` (`just build`, `just rechunk`, `just test-image`, `just test-boot`). Docs-only pull requests skip the image build. On `main`, `build` pushes by digest to `:candidate`; `publish` signs keyless, `cosign verify`s against the exact workflow identity (section 11) and copies the digest to `:45.YYYYMMDD` and `:latest`; `release` writes a GitHub release with the package diff since the previous one. A red run, or a failed sign or verify, never moves `:latest`. A single `required` job is the status a ruleset requires. |
-| `clean.yml` | Weekly. `dataaxiom/ghcr-cleanup-action` keeps the newest 30 dated tags; deletes untagged digests older than 14 days and orphaned signature artifacts (GHCR has no referrers API, so cosign v3 stores them as `sha256-*` tags). `stable`/`stable-testing` are excluded until cutover. Releases are pruned to 30. Dispatch defaults to a dry run. |
+| `clean.yml` | Weekly. `dataaxiom/ghcr-cleanup-action` keeps the newest 30 dated tags; deletes untagged digests older than 14 days and orphaned signature artifacts (GHCR has no referrers API, so cosign v3 stores them as `sha256-*` tags). `stable`/`stable-testing` (the Bluefin-era image) are excluded until a month after cutover (16.8). Releases are pruned to 30. Dispatch defaults to a dry run. |
 | ISO | Not in CI yet (owner decision, 2026-11-15): `just build-iso` is local. osbuild's mounts failed inside podman on the Ubuntu runner; the attempts are in `.agents/skills/ci`. |
 | Renovate | The hosted Mend app, no workflow. `config:best-practices` plus semantic commits, weekly. Non-majors automerge through platform automerge behind `required`, which really builds and boots the image. Base-image digests skip the schedule; Fedora majors are disabled; actions wait 3 days and only `actions/*` and `sigstore/*` automerge. |
 
@@ -986,9 +981,9 @@ The full VM suite stays local (`just test-vm`).
   Cloudflare R2 is the option if hosting is ever wanted. **SPIKE S5:** a
   generic-iso install including first-user creation, since there is no
   gnome-initial-setup.
-- **Retire** the stale `feat/live-iso` and `wip/live-iso` branches. The first
-  has unrelated history and points at a non-existent `:stable-daily` tag; the
-  second is a separate tacklebox pipeline.
+- **Retire** the stale live-ISO branches. `feat/live-iso` (unrelated history,
+  pointing at a non-existent `:stable-daily` tag) is gone; `wip/live-iso`, a
+  separate tacklebox pipeline, is still on GitHub.
 
 ## 15. What we take from Bluefin and Universal Blue
 
@@ -1017,6 +1012,13 @@ Fedora. For portals we take only the xdg-desktop-portal-gnome + gtk pairing,
 which both images share.
 
 ## 16. Migrating the laptop
+
+**Done 2026-11-16** through step 7: the laptop runs
+`neptuno-testing:latest`, Homebrew and `/home/linuxbrew` are gone, and the old
+deployment (`neptuno:testing`) is pinned. What the rebase turned up is in the
+`neptuno` skill ("Rebasing a machine from the Bluefin-era image"). Step 8's
+merge landed as #457; the `bootc switch` to `neptuno:latest` and the unpin
+are what remain.
 
 1. **Before switching:**
    - Back up with Déjà Dup.
@@ -1515,7 +1517,9 @@ informally in M2.
    runs on the laptop in the first days of that week and must pass before M4.
 5. **M4, merge home:** `rebuild` becomes `neptuno:next`, then a PR into
    `main`, then the switch to `neptuno:latest`. AGENTS.md, skills
-   and README are rewritten in the same PR.
+   and README are rewritten in the same PR. **Done 2026-11-16** as #457,
+   without the `next` branch; the docs and skills were refreshed in the
+   pull request after it. The laptop's switch is pending.
 6. **M5, later:** generic-iso (S5), CI boot test on a larger runner, an
    optional `neptuno-rpms` COPR.
 

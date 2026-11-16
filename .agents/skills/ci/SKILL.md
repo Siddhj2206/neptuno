@@ -52,9 +52,9 @@ publish is running.
 | `:45.YYYYMMDD` | That day's build (a second build the same day replaces it). The retention unit: the newest 30 are kept. |
 | `:candidate` | Staging: the last pushed digest, possibly not yet signed. Never install it. |
 
-The testing repository (`neptuno-testing`) runs the same file and publishes
-`ghcr.io/siddhj2206/neptuno-testing`; `IMAGE_NAME` comes from the repository
-name.
+`IMAGE_NAME` comes from the repository name, so a fork or a scratch copy of
+this repository publishes under its own name with no edits. The rebuild was
+proven that way in `Siddhj2206/neptuno-testing` before it merged here (#457).
 
 ## Signing
 
@@ -84,23 +84,23 @@ Pinned versions outside standard managers use:
 
 `clean.yml` runs `dataaxiom/ghcr-cleanup-action`: newest 30 dated tags kept,
 untagged digests older than 14 days and orphaned signature artifacts (`sha256-*`
-tags; GHCR has no referrers API) deleted. `stable` and `stable-testing` are
-excluded until the laptop leaves the pre-rebuild image. Releases are pruned to
-the newest 30. A manual dispatch is a dry run unless unticked.
+tags; GHCR has no referrers API) deleted. `stable` and `stable-testing` are the
+Bluefin-era image's tags, kept until a month after the cutover
+(doc/product.md 16.8); then drop them from `exclude-tags`. Releases are pruned
+to the newest 30. A manual dispatch is a dry run unless unticked.
 
 ## Repository settings this relies on
 
-- A ruleset on `main` requiring the `required` status check, and "Allow
-  auto-merge" on (for Renovate's platform automerge).
+- Branch protection on `main` requiring the `required` status check (strict),
+  and "Allow auto-merge" on, for Renovate's platform automerge. A required
+  check that no workflow reports blocks every pull request forever; the
+  pre-rebuild protection named `validate` and had to be changed at the merge.
 - Actions: "Read and write permissions" are not needed; jobs declare their own.
 - The GHCR package grants this repository's Actions write access (automatic
   when the workflow created it).
 
 ## Known gaps
 
-- Measured only locally: chunkah rootless (96 layers, largest 270 MB) and the
-  content tests. The bcvk boot test and the cosign v3 / GHCR referrer fallback
-  are first verified on the first CI run.
 - There is no ISO workflow yet; `just build-iso` is local only. A first
   `iso.yml` (dispatch, `just iso` around the published tag) was dropped
   until it can be finished. On `ubuntu-26.04` osbuild failed with

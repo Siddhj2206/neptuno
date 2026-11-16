@@ -1,8 +1,8 @@
 # AGENTS.md
 
-Working notes for agents in this repository. `overview` maps how the image is
-assembled and says which skill covers what; the procedures live under
-`.agents/skills/`. Neptuno's delta is in `.agents/skills/neptuno`.
+Working notes for agents in this repository. The procedures live under
+`.agents/skills/`; start with `overview`, which maps the repository and says
+which skill owns what. `doc/product.md` records every design decision and why.
 
 ## Gates
 
@@ -19,7 +19,7 @@ These hold for every change:
   `build/packages/*.toml`. `just test-unit` includes the manifest contract; a
   unit enabled outside a manifest fails the image build in `90-cleanup.sh`.
 - **Never reintroduce** a build-time `flatpak remote-add`, `systemctl
-  preset-all`, or a `/dev/null` unit mask. See `.agents/skills/neptuno`.
+  preset-all`, or a `/dev/null` unit mask. The `neptuno` skill says why.
 
 ## Branches and releases
 
@@ -50,7 +50,5 @@ the next agent needs it.
 
 ## Ownership
 
-Humans triage and approve; agents work only on assigned or `3-clanker-queue`
-issues. Keep changes to this repository: `ublue-os/*` is read-only. The shared
-lifecycle and labels are in
-[projectbluefin/common's label workflow](https://github.com/projectbluefin/common/blob/main/docs/skills/label-workflow.md).
+A personal image with one owner, who triages and approves. Changes stay in
+this repository; nx changes go to Siddhj2206/nx (see the `neptuno` skill).

@@ -1,73 +1,72 @@
+---
+name: neptuno
+description: >-
+  Neptuno's rules: manifests, unit enablement, the overlay, PAM, Nix and nx,
+  and the pitfalls already paid for. Use when changing a package, a unit, a
+  file under system_files/, or anything on the desktop or Nix path.
+---
+
 # neptuno
 
-This repository's delta on top of finpilot. Read `overview` first for how the
-image is assembled; this skill covers only what Neptuno changes and the rules
-that keep it from drifting back into stale patterns.
-
-## Base and desktop
-
-Fedora Silverblue 45 (GNOME/GDM) plus Niri with DankMaterialShell as a second
-session. GDM stays the display manager. The base pin is the `FROM` line in
-`Containerfile`; Renovate holds the major, so bump it deliberately.
-
-ghostty is not in Fedora and the upstream `scottames/ghostty` COPR stops at
-fedora-44, so the terminal installs from `duxlabs/dux-repo` in `niri.toml`
-(the COPR that carries the DMS dependencies; formerly `avengemedia/danklinux`). Moving it back to `base.toml` means a COPR section that
-only ever resolves the stale Fedora 45 build, or a second COPR with no Fedora 45
-build at all.
+The rules that keep the image from drifting back into patterns that broke.
+`overview` says where a change goes; this skill says how to make it safely.
 
 ## Manifests are the declaration of record
 
-`build/packages/*.toml` carries packages, removals, repositories, and systemd
-enablement. No layer may install or enable anything that is not declared there.
+`build/packages/*.toml` carries packages, removals, repositories and systemd
+enablement. Nothing installs or enables anything that is not declared there.
 
-| File | Applied by | Contents |
-|---|---|---|
-| `overlay.toml` | `10-overlay.sh` | services whose units arrive with the overlays |
-| `base.toml` | `25-neptuno-packages.sh` | removals, base RPMs, Tailscale, the uupd COPR, base services |
-| `multimedia.toml` | `25-neptuno-packages.sh` | negativo17 codec stack and Mesa/VA overrides |
-| `niri.toml` | `40-niri.sh` | niri, DMS and ghostty COPRs, compositor services |
+| File | Contents |
+|---|---|
+| `base.toml` | shells, CLI glue, power, containers, networking, Nix, Tailscale, topgrade |
+| `desktop.toml` | niri, DMS, greetd, portals, keyring, theming, input; the `duxlabs` COPRs |
+| `hardware.toml` | the Zenbook: asusctl, fingerprint |
+| `devlibs.toml` | `-devel` packages so a plain `cargo build` works on the host |
+| `removals.toml` | packages removed from the base, and base units disabled |
 
-Schema: `[remove].packages`, `[fedora].packages`,
-`["copr:<owner>/<project>"].packages`, `["third-party:<id>"]` with
-`repo_url`/`repo_id`/`repo_file`/`packager`, and `[services].system` / `[services].user` / `[services].disabled`, plus
-`[[wants]]` for units linked into
-a named target (`scope`, `target`, `units`) instead of enabled globally. A
-layer supplies the units before its own enablement runs.
+`10-packages.sh` applies every package section; `40-services.sh` applies
+every `[services]` and `[[wants]]`. Schema: `[remove].packages`,
+`[fedora].packages`, `["copr:<owner>/<project>"].packages` (plus `.deps`, the
+only other names that COPR may supply), `["third-party:<id>"]` with
+`repo_url`/`repo_id`/`repo_file`/`packager`, `[services].system` / `.user` /
+`.disabled`, and `[[wants]]` (`scope`, `target`, `units`) for a unit linked
+into one target instead of enabled globally. `build/scripts/read-packages` is
+the reader and `build/scripts/package-lib.sh` holds the `install_*`,
+`remove_*`, `assert_*` and `enable_*` helpers.
 
-`build/scripts/read-packages` is the reader; `build/scripts/package-lib.sh`
-holds `install_*`, `remove_*`, `assert_*`, and `enable_services_section`.
+Versions float: COPRs prune old builds within weeks, so a pin would break the
+daily build. The CI boot test is the gate (doc/product.md R1).
 
 ## Enablement policy
 
 Enable explicitly, never by applying presets, and never mask.
 
-- `10-overlay.sh` snapshots the enabled set to `/var/tmp/neptuno-units.before`
-  before any overlay lands.
-- `90-cleanup.sh` runs `build/scripts/systemd-units check` against every manifest and fails if a
-  unit is enabled that the snapshot and manifests do not name. That catches RPM
-  scriptlets and inherited `.wants` symlinks.
-- Do not reintroduce `systemctl preset-all`, a `/dev/null` mask, or a
-  build-time `systemctl enable` outside a manifest.
+- `10-packages.sh` snapshots the base's enabled set to
+  `/var/tmp/neptuno-units.before` before any package installs.
+- `40-services.sh` is the only enablement pass, and writes a preset file with
+  the same choices so a machine's first-boot preset run agrees with it.
+- `90-cleanup.sh` runs `build/scripts/systemd-units check` against every
+  manifest and fails if a unit is enabled that the snapshot and manifests do
+  not name. That catches RPM scriptlets and overlay `.wants` symlinks.
+- `systemctl preset-all`, a `/dev/null` mask and a build-time `systemctl
+  enable` outside a manifest each bypass that audit; disable through
+  `[services].disabled` instead.
 
 ## Consumption rules that are easy to get wrong
 
 - **Flathub**: ship the pinned `/etc/flatpak/remotes.d/flathub.flatpakrepo`
-  descriptor (10-overlay fetches and hashes it). A build-time
-  `flatpak remote-add` writes to `/var` and is deleted by cleanup, so the image
+  descriptor (`20-overlay.sh` fetches and hashes it). A build-time
+  `flatpak remote-add` writes to `/var`, which cleanup deletes, so the image
   would ship with no remote.
-- **Homebrew**: Neptuno auto-installs its Brewfiles on first login, so they go
-  to `/usr/share/ublue-os/homebrew/preinstall.d/`. A Brewfile in the parent
-  `homebrew/` directory is declaration-only and will not install.
-  `brew-preinstall.service` must be enabled with `systemctl --global enable`:
-  user-scope presets are inert in a Containerfile build (systemd applies
-  presets only for the system manager on a machine's first boot).
-- **common**: overlay `common/shared/` only. `common/bluefin/` is product
-  opinion and is cherry-picked by path with an assert per path. Never overlay
-  `bluefin/` wholesale, and do not import its `just/` directory: Neptuno owns
-  `changelogs`.
-- **ujust**: recipes live in `custom/ujust/`; 10-overlay merges them into
-  `60-custom.just` in sorted order.
+- **ghostty comes from `duxlabs/dux-repo`**: Fedora doesn't package it and
+  the `scottames/ghostty` COPR stops at Fedora 44. dux-repo also rebuilds
+  Fedora packages (greetd, cava, quickshell, xwayland-satellite), which is
+  why each COPR section is limited to the names it lists plus `.deps`.
+- **Linking against nx libraries**: `60-nix.conf` puts `~/.nix-profile/lib`
+  on `LIBRARY_PATH`, which compilers search after `/usr/lib64`, so a system
+  library still wins and `nx add <lib>` fills gaps without a `-devel` RPM or a
+  toolbox. nx installs only a package's `out` output, so there are no `.pc`
+  files; pkg-config based builds still need `devlibs.toml` or the devbox.
 - **PAM and the keyring**: `pam_oo7` unlocks the oo7 login keyring only with
   a typed password. authselect `with-fingerprint` puts `pam_fprintd` in
   `system-auth` as `sufficient` ahead of `pam_unix`, so any service that
@@ -83,8 +82,8 @@ Enable explicitly, never by applying presets, and never mask.
 - **fish vendor_conf.d order**: fish sources it in name order, and nx tools
   only reach PATH in nix-core's `nix.fish`. Our defaults are
   `zz-neptuno.fish` so their `command -q` guards see them; a bats test pins
-  the order. Brew's own hooks hid this on the pre-rebuild laptop.
-- **Rebasing a machine from the old ublue image** (the laptop, 2026-11-16):
+  the order.
+- **Rebasing a machine from the Bluefin-era image** (the laptop, 2026-11-16):
   ostree's /etc merge keeps any file the old system modified, so the old
   image's state shadows ours. Found: `/etc/selinux` (a local semanage rule
   kept the old compiled policy and dropped dms-greeter's file contexts, so the
@@ -111,9 +110,9 @@ Enable explicitly, never by applying presets, and never mask.
 
 ## Validation
 
-`just test-unit` (contract + template suites), `just lint`, `just check`, then
-`just build`. The overlay suite sandboxes paths through `CHERRY_PICK_ROOT`;
-an assert that reads an absolute host path will pass on a Neptuno host and fail
-on CI, so give every new path assert a sandbox root. The manifest contract tests live in
-`tests/contract/manifests_test.bats`; the overlay and cleanup suites cover the
-enablement wiring.
+`just lint check test-unit`, then `just build rechunk test-image` for
+anything that changes the image. Contract tests that read a path take a
+sandbox root (`CLEAN_ROOT`, `UNIT_ROOT`, a temporary `TEST_ROOT`): an assert
+on an absolute host path passes on a Neptuno host and fails in CI. The
+manifest contract is `tests/contract/manifests_test.bats`; overlay
+promises (nx, fish order, PAM, env) are in `tests/contract/system-files_test.bats`.

@@ -1,77 +1,57 @@
 ---
 name: build
 description: >-
-  The Containerfile, Justfile, build phases, image pinning, and the example
-  scripts. Use when changing how the image is assembled or activating an
-  example.
+  The Containerfile, Justfile, build phases and pins. Use when changing how
+  the image is assembled, adding a phase, or bumping the base.
 ---
 
 # Build
 
 ## The Containerfile
 
-It is the source of truth for image assembly, and it is written to be read. Its
-structure, in order:
+Structure, in order:
 
-1. **Identity** — `ARG IMAGE_NAME`, `IMAGE_VENDOR`, `UBLUE_IMAGE_TAG`, and the
-   `# Name:` comment. The name actually published is the repository name; these
-   are the local fallback and the image metadata.
-2. **Context stage** — `COPY build /build`, `COPY custom /custom`, then the two
-   OCI images into `/oci/common` and `/oci/brew`.
-3. **Base** — the `FROM` line. The only place the base is chosen; the Fedora
-   major, the image name, and the digest all follow from it.
-4. **Phases** — one `RUN` block per script, in the order they are named.
-   [build/README.md](../../../build/README.md) lists them.
-5. **Metadata** — the `LABEL` block, fed by ARGs declared late so a new version
-   or commit only invalidates the label layer.
+1. **Context** — `ctx` copies `build/`, `system_files/` and `flatpaks/`.
+2. **Base** — the `FROM` line, pinned by digest.
+3. **Identity** — `IMAGE_NAME`, `IMAGE_VENDOR`, `BASE_IMAGE_NAME`, `VERSION`.
+   CI passes `IMAGE_NAME` from the repository name.
+4. **Phases** — one `RUN` per script. Packages come before the overlay, so an
+   edit under `system_files/` (the common change) reuses the package layer.
+5. **Metadata** — `IMAGE_CREATED` and `SHA_HEAD_SHORT` are declared late so a
+   new commit only rebuilds the label layer.
 
-Order matters for cache: volatile values go after the expensive layers.
+`90-cleanup.sh` runs without a tmpfs on `/run` on purpose: it must delete
+image-layer files there (`/run/dnf`) or lint's nonempty-run check fails.
 
 ## The Justfile
 
-```bash
-just build            # build the image
-just build-qcow2      # build a QCOW2 disk image
-just build-iso        # build an installer ISO
-just run-vm-qcow2     # boot the image in a VM
-just test-unit        # run the suite
-just lint             # shellcheck every tracked script
-just check            # verify Justfile syntax
-```
+Every step CI runs is a recipe, so a red run reproduces locally with the same
+command; `just --list` is the index. Build through `just build`: it derives
+`VERSION` (`45.YYYYMMDD`) from the `FROM` tag and unsets an inherited
+`NOTIFY_SOCKET`, which would otherwise land in `/run` and fail lint. `just
+rechunk` runs chunkah rootless over the built image and lints the result;
+`build-qcow2` and `build-iso` need root storage and copy the image there with
+`root-copy`.
 
-`just --list` has the rest. `IMAGE_NAME` defaults to the value in the Justfile
-and is overridable by the `IMAGE_NAME` environment variable; CI sets that from
-the repository name.
+## Pins
 
-## Pinning
+Renovate pins every image and action by digest; let it propose digest bumps.
+The Fedora major is the exception: `.github/renovate.json` disables majors for
+`quay.io/fedora-ostree-desktops/*` because that namespace tags unreleased
+branches. Bump `base-atomic:N` by hand once the release is out, and in the
+same PR re-check `doc/product.md` section 4 (what the base ships).
 
-Every OCI reference is pinned by digest and updated by Renovate: the base image,
-`projectbluefin/common`, `ublue-os/brew`, `bootc-image-builder`, and the GitHub
-Actions. Do not hand-edit a digest; let Renovate propose it.
+Versions Renovate tracks outside standard managers use the regex managers in
+`.github/renovate.json`: Justfile `env()` defaults, inline image refs in
+workflows and the neptuno justfile, and a `# renovate: datasource=… depName=…`
+comment above a variable in workflows and `build/*.sh`. An asset fetched
+at build time is verified against a checksum file published with it, never a
+hash in this repo, because Renovate can bump a version but not recompute a
+hash (`NX_VERSION` in `20-overlay.sh` is the pattern).
 
-Exception: the base image's Fedora major (the final `FROM
-quay.io/fedora-ostree-desktops/silverblue:N` in `Containerfile`) is *not*
-updated by Renovate. The `packageRules` entry in `.github/renovate.json` that
-matches `matchDepNames: ["quay.io/fedora-ostree-desktops/*"]` with
-`matchUpdateTypes: ["major"]` sets `enabled: false`, so *no* major update is
-proposed for that namespace — including an already-released one such as
-44 -> 45. That is deliberate: the namespace also tags unreleased branches, and
-every major rebase is a manual step tied to a known-good validation. Bump the
-tag in `Containerfile` by hand when the next major is released and validated.
+## Adding a phase
 
-The base image's `FROM` line is the only place the base is chosen, so the Fedora
-major cannot desync the way a hand-maintained `FEDORA_MAJOR_VERSION` ARG could.
-Two readers derive it from that base: `just build` parses the tag for the version
-string, and `00-image-info.sh` reads the base's `os-release` for the image
-metadata.
-
-`BASE_IMAGE_NAME` has no default in the Containerfile on purpose: a stale default
-like `silverblue` would silently mislabel a CentOS or Hummingbird fork. `just
-build` fills it from the `FROM` line and `00-image-info.sh` hard-fails on an empty
-value, so build through `just`; a bare `podman build .` is unsupported.
-
-## Optional layers
-
-This fork deliberately carries no `.example` scripts. When a layer is needed,
-take the current `build/*.sh.example` from projectbluefin/finpilot, activate it,
-and give it a `RUN` block between the package phases and cleanup.
+Give it a number that says where it sits, a header comment saying what it
+owns, and a `RUN` block with the `ctx` bind mount. Packages still go through
+manifests and `10-packages.sh`, and enablement through `40-services.sh`; a new
+phase that installs or enables directly bypasses the unit audit.

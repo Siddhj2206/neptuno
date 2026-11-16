@@ -7,7 +7,7 @@ updates as one signed image.
 
 > Be the one who moves, not the one who is moved.
 
-The plan of record, including every package decision, is
+The record of every design and package decision, with the reasoning, is
 [doc/product.md](doc/product.md).
 
 ## Install
