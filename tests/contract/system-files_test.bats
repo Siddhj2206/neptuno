@@ -129,3 +129,9 @@ PW
 	# fish sources vendor_conf.d in name order (C collation); nix.fish comes from nix-core.
 	[ "$(printf '%s\n' nix.fish nix-daemon.fish "${ours}" | LC_ALL=C sort | tail -n1)" = "${ours}" ]
 }
+
+@test "ghostty's sudo integration stays off so passwordless bootc upgrade works" {
+	local conf="${REPO}/system_files/desktop/usr/share/neptuno/ghostty/base.conf"
+	grep -Eq '^shell-integration-features *=' "${conf}"
+	! grep -E '^shell-integration-features *=' "${conf}" | grep -qw sudo
+}
