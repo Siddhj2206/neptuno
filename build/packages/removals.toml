@@ -22,6 +22,9 @@ packages = [
     # NVIDIA GSP firmware for nouveau, 100 MB. Neptuno has no NVIDIA support;
     # 50-initramfs.sh also keeps the driver out of the initramfs.
     "nvidia-gpu-firmware",
+    # AirPlay speaker discovery (PipeWire's raop-discover): unused, and it
+    # logged thousands of raop-sink warnings a day. Only links 50-raop.conf.
+    "pipewire-config-raop",
 ]
 
 [services]

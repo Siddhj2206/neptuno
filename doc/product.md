@@ -280,6 +280,7 @@ section 4.)
 | `ibus-anthy`, `ibus-chewing`, `ibus-hangul`, `ibus-libpinyin`, `ibus-m17n`, `ibus-typing-booster` | In `base-atomic`, unused now that Japanese input is mozc. Removing them also keeps the ibus engine list to one entry. |
 | `firefox`, `firefox-langpacks` | In `base-atomic`. Zen (Flatpak) is the browser, and the RPM went unused. |
 | `nvidia-gpu-firmware` | In `base-atomic`: 100 MB of nouveau GSP firmware, which `base-atomic`'s initramfs also carried (236 MB in all, read by GRUB on every boot). Neptuno has no NVIDIA support. `build/50-initramfs.sh` rebuilds the initramfs with `/usr/lib/dracut/dracut.conf.d/90-neptuno.conf`, which omits nouveau and nova. |
+| `pipewire-config-raop` | In `base-atomic`: links `50-raop.conf` into `pipewire.conf.d`, which loads raop-discover so AirPlay speakers appear as outputs. Unused, and it logged about 3,800 raop-sink warnings in a day on the laptop (2026-11-17). Re-adding the package, or linking `/usr/share/pipewire/pipewire.conf.avail/50-raop.conf` into `~/.config/pipewire/pipewire.conf.d/`, turns it back on. |
 
 **Removed relative to today's Silverblue-based image.** The GNOME stack, gdm,
 ptyxis, gnome-software, firefox RPM, negativo17 ffmpeg and
