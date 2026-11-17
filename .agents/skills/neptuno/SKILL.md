@@ -62,11 +62,14 @@ Enable explicitly, never by applying presets, and never mask.
   the `scottames/ghostty` COPR stops at Fedora 44. dux-repo also rebuilds
   Fedora packages (greetd, cava, quickshell, xwayland-satellite), which is
   why each COPR section is limited to the names it lists plus `.deps`.
-- **Linking against nx libraries**: `60-nix.conf` puts `~/.nix-profile/lib`
-  on `LIBRARY_PATH`, which compilers search after `/usr/lib64`, so a system
-  library still wins and `nx add <lib>` fills gaps without a `-devel` RPM or a
-  toolbox. nx installs only a package's `out` output, so there are no `.pc`
-  files; pkg-config based builds still need `devlibs.toml` or the devbox.
+- **The system comes first on PATH**: nix-core's `nix-daemon.sh` and
+  `nix.fish` prepend the Nix profiles; `60-nix.conf` appends them instead, and
+  `/etc/profile.d/zz-neptuno-nix.sh` and `zz-neptuno.fish` move them back
+  after `/usr/bin`. Otherwise `nx add clang` replaces `/usr/bin/cc` and `ld`,
+  binaries link against Nix's glibc, and anything that loads the host's Mesa
+  (Bevy, wgpu) finds no Vulkan driver. Compilers belong in `devlibs.toml`, and
+  nothing links against `~/.nix-profile/lib`: build against `-devel` RPMs or
+  the devbox.
 - **PAM and the keyring**: `pam_oo7` unlocks the oo7 login keyring only with
   a typed password. authselect `with-fingerprint` puts `pam_fprintd` in
   `system-auth` as `sufficient` ahead of `pam_unix`, so any service that
@@ -81,8 +84,10 @@ Enable explicitly, never by applying presets, and never mask.
   `system_files`.
 - **fish vendor_conf.d order**: fish sources it in name order, and nx tools
   only reach PATH in nix-core's `nix.fish`. Our defaults are
-  `zz-neptuno.fish` so their `command -q` guards see them; a bats test pins
-  the order.
+  `zz-neptuno.fish` so their `command -q` guards see them and the PATH move
+  runs after nix.fish; a bats test pins the order. Fish sources vendor dirs
+  one directory at a time, so testing a copy through `XDG_DATA_DIRS` runs it
+  before `/usr/share`'s nix.fish unless nix.fish is copied alongside it.
 - **Rebasing a machine from the Bluefin-era image** (the laptop, 2026-11-16):
   ostree's /etc merge keeps any file the old system modified, so the old
   image's state shadows ours. Found: `/etc/selinux` (a local semanage rule

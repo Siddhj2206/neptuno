@@ -91,6 +91,20 @@ else
 	fail "/etc/default/useradd does not default to fish"
 fi
 
+# Login shells find the system's commands before the Nix profile's, so a Nix
+# compiler never replaces /usr/bin/cc (doc/product.md 7.1).
+first_of() {
+	tr ':' '\n' <<<"$1" | grep -m1 -xE '/usr/bin|.*/\.nix-profile/bin'
+}
+for cmd in "bash -l -c 'echo \$PATH'" "fish -l -c 'string join : \$PATH'"; do
+	path="$(eval "${cmd}" 2>/dev/null </dev/null)"
+	if [[ "$(first_of "${path}")" == /usr/bin ]] && grep -q '\.nix-profile/bin' <<<"${path}"; then
+		pass "${cmd%% *} login PATH: /usr/bin before the Nix profile"
+	else
+		fail "${cmd%% *} login PATH: ${path}"
+	fi
+done
+
 echo
 if ((failures > 0)); then
 	echo "${failures} check(s) failed" >&2

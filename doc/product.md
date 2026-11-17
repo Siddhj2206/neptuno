@@ -41,7 +41,7 @@ out-of-tree kernel modules, ARM.
 | Portals | xdg-desktop-portal-gnome + gtk, plus `gnome-control-center` installed now for niri global shortcuts, which turn on by themselves once Fedora ships a niri release with them. See 6.2. |
 | CLI tools | Nix (Fedora's RPMs) through a thin imperative wrapper |
 | Toolchains | mise (rust, go, python, bun, java, uv), unchanged |
-| Host builds | Curated `-devel` libraries in the image. GUI-stack devel goes in a distrobox. |
+| Host builds | gcc, clang and curated `-devel` libraries in the image. GUI-stack devel goes in a distrobox. |
 | Edge cases | distrobox |
 | Multimedia | Stock Fedora. negativo17 and its Mesa overrides are dropped. |
 | Updates | bootc timer stages only and never reboots by itself. Flatpak and Nix get their own timers. |
@@ -257,7 +257,7 @@ It also replaces the old `~/.local/share/brew-pkgconfig` workaround. (Names
 here were not re-verified in this revision; the 2026-11-11 check covered
 sections 5.1, 5.2 and 5.5 only.)
 
-- **Core, in the image** (about 320 MiB installed, mostly the C++ toolchain): gcc, gcc-c++, make,
+- **Core, in the image** (about 500 MiB installed, mostly the C and C++ toolchains): gcc, gcc-c++, clang, make,
   pkgconf-pkg-config, openssl-devel, sqlite-devel, zlib-ng-compat-devel,
   fontconfig-devel, freetype-devel, alsa-lib-devel, systemd-devel (it provides
   `libudev.pc`, since `libudev-devel` doesn't exist), dbus-devel, libgit2-devel,
@@ -663,6 +663,19 @@ Shared pieces either way:
   `XDG_DATA_DIRS` and its `bin` dir to `PATH`. That way Nix-installed
   `.desktop` files show in the DMS launcher, and keybinds or user units can
   run Nix tools. The shell scripts alone don't reach the compositor.
+- **The system comes first on PATH** (amended 2026-11-17). nix-core's shell
+  scripts prepend the Nix profiles, so `nx add clang` replaced `/usr/bin/cc`
+  and `ld`. cargo then linked against Nix's glibc, and a Bevy build could not
+  load the host's Mesa: Nix's loader doesn't read `/etc/ld.so.cache`, so the
+  radeon driver's own libraries (libLLVM, libdrm) were never found. The
+  session appends the Nix profiles after `PATH`, and
+  `/etc/profile.d/zz-neptuno-nix.sh` and `zz-neptuno.fish` move them to the
+  end after nix-core's scripts run. The cost is that a command both the image
+  and Nix provide runs the image's copy; `nx add` says so when it happens.
+  clang joins gcc in the image (5.3), so every compiler `cc` might mean is
+  Fedora's. The `LIBRARY_PATH` entry for `~/.nix-profile/lib` (2026-11-16) is
+  gone for the same reason: it linked against Nix's libxkbcommon 1.13.2
+  and ran against the host's older 1.13.1.
 - **One nixpkgs revision for everything.** An unpinned `nixpkgs#` resolves a
   new revision on every `nx add` and duplicates dependency trees, so the
   user registry is pinned. `nx upgrade`, and the weekly timer that calls

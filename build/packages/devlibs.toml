@@ -1,12 +1,15 @@
 # Host development libraries (doc/product.md 5.3): a plain `cargo build` works
-# on the host. GUI and compositor stacks go in the `neptuno devbox` distrobox
-# (D6). libgit2-devel is left out: Fedora 45 only ships the versioned
-# libgit2_1.9-devel, and git2-rs vendors libgit2 by default.
+# on the host. The compilers live here too, gcc and clang, so the host's cc is
+# never Nix's: a binary linked by Nix's toolchain runs on Nix's glibc and can't
+# load the host's Mesa. GUI and compositor stacks go in the `neptuno devbox`
+# distrobox (D6). libgit2-devel is left out: Fedora 45 only ships the
+# versioned libgit2_1.9-devel, and git2-rs vendors libgit2 by default.
 
 [fedora]
 packages = [
     "gcc",
     "gcc-c++",
+    "clang",                         # llvm-libs is already here for Mesa
     "make",
     "pkgconf-pkg-config",
     "openssl-devel",

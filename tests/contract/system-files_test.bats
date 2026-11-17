@@ -157,9 +157,32 @@ PW
 		"$(grep -n '20-overlay.sh' "${REPO}/Containerfile" | cut -d: -f1)" ]
 }
 
-@test "compilers find libraries installed with nx" {
+@test "the session puts Nix profiles after the system on PATH and doesn't link against them" {
 	conf="${REPO}/system_files/shared/usr/lib/environment.d/60-nix.conf"
-	grep -qx 'LIBRARY_PATH=${HOME}/.nix-profile/lib${LIBRARY_PATH:+:${LIBRARY_PATH}}' "${conf}"
+	grep -qx 'PATH=${PATH}:${HOME}/.nix-profile/bin:/nix/var/nix/profiles/default/bin' "${conf}"
+	! grep -q 'LIBRARY_PATH' "${conf}"
+}
+
+@test "login shells move nix-daemon.sh's Nix profiles after the system, once" {
+	local script="${REPO}/system_files/shared/etc/profile.d/zz-neptuno-nix.sh"
+	# /etc/profile sources profile.d in glob order; nix-daemon.sh comes from nix-core.
+	[ "$(printf '%s
+' nix-daemon.sh nix.sh zz-neptuno-nix.sh | LC_ALL=C sort | tail -n1)" = zz-neptuno-nix.sh ]
+	run env -i HOME=/h PATH=/h/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/a:/usr/bin:/h/.nix-profile/bin \
+		sh -c ". '${script}'; . '${script}'; echo \"\${PATH}\""
+	[ "$output" = /a:/usr/bin:/h/.nix-profile/bin:/nix/var/nix/profiles/default/bin ]
+}
+
+@test "fish moves nix.fish's Nix profiles after the system" {
+	command -v fish >/dev/null || skip "fish not installed"
+	local ours="${REPO}/system_files/shared/usr/share/fish/vendor_conf.d/zz-neptuno.fish"
+	run env -i HOME=/h PATH=/a:/usr/bin fish --no-config -c "
+		set -g fish_user_paths /h/.nix-profile/bin
+		set -gx PATH /h/.nix-profile/bin /nix/var/nix/profiles/default/bin \$PATH
+		source '${ours}'
+		string join : \$PATH; count \$fish_user_paths"
+	[ "${lines[0]}" = /a:/usr/bin:/h/.nix-profile/bin:/nix/var/nix/profiles/default/bin ]
+	[ "${lines[1]}" = 0 ]  # nothing left to re-prepend
 }
 
 @test "nx is a pinned release that Renovate bumps and the build checks" {
