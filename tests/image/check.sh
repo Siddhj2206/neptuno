@@ -92,12 +92,15 @@ else
 fi
 
 # Login shells find the system's commands before the Nix profile's, so a Nix
-# compiler never replaces /usr/bin/cc (doc/product.md 7.1).
+# compiler never replaces /usr/bin/cc (doc/product.md 7.1). nix.fish adds the
+# profile only if it exists, so a throwaway HOME gets one first.
 first_of() {
 	tr ':' '\n' <<<"$1" | grep -m1 -xE '/usr/bin|.*/\.nix-profile/bin'
 }
+path_home="$(mktemp -d)"
+mkdir -p "${path_home}/.nix-profile/bin"
 for cmd in "bash -l -c 'echo \$PATH'" "fish -l -c 'string join : \$PATH'"; do
-	path="$(eval "${cmd}" 2>/dev/null </dev/null)"
+	path="$(HOME="${path_home}" eval "${cmd}" 2>/dev/null </dev/null)"
 	if [[ "$(first_of "${path}")" == /usr/bin ]] && grep -q '\.nix-profile/bin' <<<"${path}"; then
 		pass "${cmd%% *} login PATH: /usr/bin before the Nix profile"
 	else
