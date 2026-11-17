@@ -30,7 +30,7 @@ echo "::group:: nx"
 # It cannot recompute an asset's hash, so the tarball is checked against the
 # SHA256SUMS published with the same release.
 # renovate: datasource=github-releases depName=Siddhj2206/nx
-NX_VERSION=v0.1.0
+NX_VERSION=v0.2.0
 case "$(uname -m)" in
 x86_64) nx_arch=amd64 ;;
 aarch64) nx_arch=arm64 ;;
