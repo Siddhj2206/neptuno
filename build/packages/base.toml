@@ -43,9 +43,8 @@ packages = [
     "pamu2fcfg",
     "yubikey-manager",
 
-    # --- containers (D4: rootless podman behind the docker CLI) ---------------
-    "podman-docker",
-    "docker-compose",
+    # --- containers (D4: podman compose) ---------------
+    "podman-compose",
 
     # --- kept from today's image (D16) ----------------------------------------
     "input-remapper",
