@@ -36,7 +36,7 @@ The `Containerfile` is the source of truth and is written to be read:
 | A systemd unit to enable or disable | `[services]` / `[[wants]]` in the same manifest | build time, by `40-services.sh` |
 | A file under `/usr` or `/etc`, or a seeded user config | `system_files/shared/` (any image) or `system_files/desktop/` (niri, DMS, greeter) | build time, by `20-overlay.sh` |
 | A GUI application | `flatpaks/default.preinstall` | first boot |
-| A user's CLI tool | nothing in the image: the user runs `nx add` (Nix) | on demand |
+| A user's CLI tool or `-devel` package | nothing in the image: the user runs `nx add` | on demand |
 | A `neptuno <recipe>` command | `system_files/shared/usr/share/neptuno/justfile` | build time |
 
 The line is who decides: the image ships what every boot needs; the user adds

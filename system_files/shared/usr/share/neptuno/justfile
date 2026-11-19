@@ -18,16 +18,6 @@ info:
 changelog:
     rpm-ostree db diff
 
-# Create (or enter) a Fedora toolbox with the GUI and compositor -devel stacks
-devbox:
-    #!/usr/bin/bash
-    set -euo pipefail
-    if ! distrobox list | grep -qw devbox; then
-        distrobox create --yes --name devbox --image registry.fedoraproject.org/fedora-toolbox:45 \
-            --additional-packages "clang clang-devel gtk4-devel webkit2gtk4.1-devel libadwaita-devel wayland-devel libxkbcommon-devel libinput-devel libseat-devel libdrm-devel mesa-libgbm-devel"
-    fi
-    distrobox enter devbox
-
 # Compare your niri and ghostty configs with the image's reference stubs
 config-diff:
     #!/usr/bin/bash

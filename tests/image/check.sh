@@ -91,18 +91,31 @@ else
 	fail "/etc/default/useradd does not default to fish"
 fi
 
-# Login shells find the system's commands before the Nix profile's, so a Nix
-# compiler never replaces /usr/bin/cc (doc/product.md 7.1). nix.fish adds the
-# profile only if it exists, so a throwaway HOME gets one first.
+# nx runs against this image's libsolv and librpm, and its root pieces are
+# where systemd, sysusers and polkit look.
+if nx_version="$(nx --version 2>&1)"; then
+	pass "${nx_version}"
+else
+	fail "nx --version: ${nx_version}"
+fi
+for f in /usr/bin/nxd /usr/libexec/nx/nx-shim /usr/lib/sysusers.d/nx.conf /usr/lib/tmpfiles.d/nx.conf \
+	/usr/share/polkit-1/actions/org.nx.policy /usr/share/polkit-1/rules.d/50-nx.rules; do
+	[[ -e "${f}" ]] || fail "nx: ${f} is missing"
+done
+for unit in nxd.socket nx-select.service nx-sync.service nx-refresh.timer nx-upgrade.timer; do
+	[[ "$(systemctl is-enabled "${unit}" 2>/dev/null)" == enabled ]] || fail "nx: ${unit} is not enabled"
+done
+pass "nx: binaries, units, sysusers, tmpfiles and polkit in place"
+
+# Login shells find the system's commands before nx's tools, so a tool never
+# replaces an image command such as /usr/bin/cc (doc/product.md 7.1).
 first_of() {
-	tr ':' '\n' <<<"$1" | grep -m1 -xE '/usr/bin|.*/\.nix-profile/bin'
+	tr ':' '\n' <<<"$1" | grep -m1 -xE '/usr/bin|/var/lib/nx/current/bin'
 }
-path_home="$(mktemp -d)"
-mkdir -p "${path_home}/.nix-profile/bin"
 for cmd in "bash -l -c 'echo \$PATH'" "fish -l -c 'string join : \$PATH'"; do
-	path="$(HOME="${path_home}" eval "${cmd}" 2>/dev/null </dev/null)"
-	if [[ "$(first_of "${path}")" == /usr/bin ]] && grep -q '\.nix-profile/bin' <<<"${path}"; then
-		pass "${cmd%% *} login PATH: /usr/bin before the Nix profile"
+	path="$(eval "${cmd}" 2>/dev/null </dev/null)"
+	if [[ "$(first_of "${path}")" == /usr/bin ]] && grep -q '/var/lib/nx/current/bin' <<<"${path}"; then
+		pass "${cmd%% *} login PATH: /usr/bin before nx's tools"
 	else
 		fail "${cmd%% *} login PATH: ${path}"
 	fi

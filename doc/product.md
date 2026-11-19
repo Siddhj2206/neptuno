@@ -257,16 +257,16 @@ It also replaces the old `~/.local/share/brew-pkgconfig` workaround. (Names
 here were not re-verified in this revision; the 2026-11-11 check covered
 sections 5.1, 5.2 and 5.5 only.)
 
-- **Core, in the image** (about 500 MiB installed, mostly the C and C++ toolchains): gcc, gcc-c++, clang, make,
-  pkgconf-pkg-config, openssl-devel, sqlite-devel, zlib-ng-compat-devel,
-  fontconfig-devel, freetype-devel, alsa-lib-devel, systemd-devel (it provides
-  `libudev.pc`, since `libudev-devel` doesn't exist), dbus-devel, libgit2-devel,
-  libssh2-devel, libcurl-devel.
-- **Not in the image:** clang-devel/bindgen (about 1 GiB), gtk4-devel, webkit2gtk4.1-devel, tauri
-  and bevy stacks. These go in a `fedora-toolbox:45` distrobox. A `neptuno`
-  recipe creates a ready-made "devbox" with them.
-- **Optional compositor tier** (about 300 MiB; Decision D6): wayland-devel, libxkbcommon-devel,
-  libinput-devel, libseat-devel, libdrm-devel, mesa-libgbm-devel.
+- **In the image:** the compilers only: gcc, gcc-c++, clang, make,
+  pkgconf-pkg-config.
+- **Everything else, live from nx** (amended for nx 1.0): `nx add
+  openssl-devel wayland-devel` overlays Fedora's `-devel` packages on `/usr`
+  with no reboot, each matched to the exact build of its library in the image,
+  and re-resolved for every new image. That replaces the `-devel` list that
+  used to be here (openssl, sqlite, zlib-ng, fontconfig, freetype, alsa-lib,
+  systemd, dbus, libssh2, libcurl) and the `neptuno devbox` distrobox for GUI
+  and compositor stacks (D6). A new machine gets the same set from its nx
+  manifest (`nx apply`).
 
 ### 5.4 Removed relative to the base and to today
 
@@ -617,9 +617,9 @@ A future shell spike would check that table row by row.
 |---|---|---|
 | System, desktop, drivers, dev libs | The image | Edit a manifest, then PR |
 | GUI apps | Flathub | `flatpak install`, or Bazaar if wanted |
-| CLI tools | Nix | `nx add ripgrep` (name TBD, D8) |
+| CLI tools, `-devel` packages, Fedora RPMs | nx | `nx add ripgrep wayland-devel` |
 | Language toolchains | mise | `mise use -g rust@latest` |
-| Anything needing dnf, GUI dev stacks | distrobox | `neptuno devbox`, then `distrobox-export` |
+| Anything else needing dnf | distrobox | `distrobox create` |
 
 ### 7.1 Nix (SPIKE S1, highest risk)
 
@@ -660,11 +660,18 @@ in `~/.local/share/nix/root`. It needs `HOME` to be the resolved
 container. It is simpler, but per-user only and slightly slower.
 
 Shared pieces either way:
-- `/usr/lib/environment.d/60-nix.conf` adds the profile's `share` dir to
-  `XDG_DATA_DIRS` and its `bin` dir to `PATH`. That way Nix-installed
-  `.desktop` files show in the DMS launcher, and keybinds or user units can
-  run Nix tools. The shell scripts alone don't reach the compositor.
-- **The system comes first on PATH** (amended 2026-11-17). nix-core's shell
+- **nx 1.0 replaces the Nix profile** (amended for nx 1.0). nx's tool tier
+  realises nixpkgs packages through the daemon and exposes only their
+  commands, as shims in `/var/lib/nx/current/bin`, which nx's own
+  `/etc/profile.d/nx.sh`, `nx.fish` and `/usr/lib/environment.d/60-nx.conf`
+  put at the end of `PATH`. Nothing from `/nix` reaches `PATH`,
+  `XDG_DATA_DIRS` or a library path, so the reordering below
+  (`zz-neptuno-nix.sh`, the block in `zz-neptuno.fish`, `60-nix.conf`) is
+  gone. nix-core's scripts still add `~/.nix-profile/bin`; after `nx migrate`
+  the profile is empty, and `nx doctor` says when it isn't. GUI apps stay
+  Flatpak's: the tool tier exposes no `.desktop` files.
+- **The system comes first on PATH** (amended 2026-11-17; history, kept for
+  why nx 1.0 is built the way it is). nix-core's shell
   scripts prepend the Nix profiles, so `nx add clang` replaced `/usr/bin/cc`
   and `ld`. cargo then linked against Nix's glibc, and a Bevy build could not
   load the host's Mesa: Nix's loader doesn't read `/etc/ld.so.cache`, so the
@@ -691,11 +698,24 @@ Shared pieces either way:
 - `nix-shell` isn't in `nix-core`. The wrapper uses `nix shell`. Add
   `nix-legacy` only if `nix-shell -p` turns out to be missed.
 
-nx is a static Go binary from its own repository,
+nx comes from its own repository,
 [Siddhj2206/nx](https://github.com/Siddhj2206/nx), which has the full design
-(`docs/product.md` there). `20-overlay.sh` downloads a pinned release, checks
-it against the release's `SHA256SUMS` and installs it as `/usr/bin/nx`;
-Renovate bumps `NX_VERSION`. It replaced a bash script on 2026-11-16.
+(`docs/design.md` there). nx 1.0 is a Rust rebuild with two tiers: Fedora RPMs
+overlaid live on `/usr` through one systemd-sysext extension, and sealed
+nixpkgs tools. It links the image's libsolv and librpm, so each release has
+one tarball per Fedora release and architecture, laid out as the tree to
+unpack at `/`. `20-overlay.sh` downloads the pinned release, checks it against
+the release's `SHA256SUMS` and unpacks it; Renovate bumps `NX_VERSION`.
+`base.toml` enables its units: `nxd.socket` (the root daemon that makes a
+generation live), `nx-select` and `nx-settle` (the boot-time choice),
+`nx-sync` (bootc's staged-update hook), `nx-refresh.timer` (daily metadata),
+`nx-upgrade.timer` (weekly tool upgrade, which replaces the
+`neptuno-nix-upgrade` and `neptuno-nix-clean` user timers: nx collects its
+own garbage), and the user units `nx-notify.path` and `.service` that turn
+the root services' failures into notifications.
+
+The rest of this section describes nx 0.x, the Go front end to a Nix profile
+that Neptuno shipped until nx 1.0 (2026-11-16 to 1.0).
 
 Nix still makes every change to the store: nx runs `nix profile add`,
 `upgrade`, `remove` and `rollback` with `--log-format internal-json` and draws
@@ -807,8 +827,7 @@ manifest, and `90-cleanup.sh` fails the build on anything else.
   - oo7-daemon.service (pending S3; see 6.4)
   - udiskie
   - neptuno-update-notify.path
-  - neptuno-nix-upgrade.timer (weekly)
-  - neptuno-nix-clean.timer (weekly)
+  - nx-notify.path and nx-notify.service (7.1)
 - **Wanted by niri.service:** dms.service, dsearch.service.
 - **Disable:** see section 4 and 17.3. sshd stays disabled by default (D2).
 - **Timers added by section 17:** `neptuno-flatpak-preinstall.timer` (2 minutes
@@ -839,7 +858,7 @@ a sysusers `m` line instead.
 | Reboot prompt | A user `.path` unit watches `/run/ostree/staged-deployment`. `bootc status` needs root, so the user session can't poll it. To avoid a daily nag from daily builds, it notifies only when the booted image is more than 7 days older than the staged one, or when the staged build lists a security update. |
 | Stale-update warning | If no update has been staged successfully for 14 days, which happens when the daily build has been red, a notification says so. The laptop must never go stale silently. |
 | Flatpaks | A system timer runs `flatpak update -y --noninteractive` daily with a randomized delay, only on AC power (`ConditionACPower=true`). |
-| Nix | A weekly user timer runs `nx upgrade`. A weekly clean timer drops generations older than 14 days and garbage-collects. |
+| nx | Host-tier packages follow the image: `nx-sync` re-resolves them when bootc stages an update, and `nx-refresh.timer` refreshes metadata daily. `nx-upgrade.timer` moves the tool tier to the current nixpkgs release weekly. `nx gc` (run by every sync) keeps what deployed images and rollback need. |
 | mise, firmware | Manual (`mise up`, `fwupdmgr update`), plus `fwupd-refresh.timer` for metadata |
 | Everything at once, on demand | `topgrade` (from COPR `lilay/topgrade`), seeded with the owner's config in `/etc/skel/.config/topgrade.toml` (`[linux] bootc = true`). It runs `sudo /usr/bin/bootc upgrade`, which `/etc/sudoers.d/neptuno-bootc` allows for `%wheel` without a password (that exact command only; `switch` and `rollback` still ask). Its built-in `nix` step is disabled: it runs `nix profile upgrade --all` against nx's pinned nixpkgs, so it never moves anything. A `[commands]` entry runs `nx upgrade` instead. Flatpak updates go through polkit. There is no `neptuno update`. |
 | Rollback | `bootc rollback`. Dated tags (`:45.YYYYMMDD`) let `bootc switch` reach any of the last 30 builds. `ostree admin pin` keeps a known-good deployment. |
@@ -1244,7 +1263,7 @@ account for most of the 29.3 s.
 | Do not enable `flatpak-appstream-refresh.service` at boot | disabled; a weekly timer `neptuno-appstream-refresh.timer` (AC only, `Nice=19`) | 16.5 s on the critical chain. Appstream metadata only matters when the owner opens an app store; Bazaar is optional and refreshes itself. |
 | Disable `dnf-makecache.timer`, `raid-check.timer`, `rpm-ostree-countme.timer`, `unbound-anchor.timer`, `mdmonitor`, `lvm2-monitor` (already in 4), `fedora-third-party-refresh` (already in 4) | manifest `disabled` list | No dnf on the host, no RAID, no countme; each is wakeups or work with no benefit on this laptop. |
 | Keep `auditd`, `chronyd`, `systemd-oomd`, `uresourced`, `bluetooth`, `rtkit-daemon` | unchanged | Fedora defaults with a purpose. `uresourced` and `systemd-oomd` are the responsiveness mechanism (below). **Unverified:** that `uresourced` earns its 3.1 s; measure with it masked off the path in S6 (as a test only, no mask ships). |
-| Background jobs run low priority | drop-ins on `bootc-fetch-apply-updates.service`, `neptuno-flatpak-update.service`, `neptuno-nix-upgrade.service`, `neptuno-backup.service` | `Nice=19`, `IOSchedulingClass=idle`, `CPUWeight=20`. Flatpak, Nix and backup keep `ConditionACPower=true`; bootc's download does not, because a stale laptop is worse (section 10). |
+| Background jobs run low priority | drop-ins on `bootc-fetch-apply-updates.service`, `neptuno-flatpak-update.service`, `nx-upgrade.service` (its own unit), `neptuno-backup.service` | `Nice=19`, `IOSchedulingClass=idle`, `CPUWeight=20`. Flatpak, Nix and backup keep `ConditionACPower=true`; bootc's download does not, because a stale laptop is worse (section 10). |
 
 **Plymouth.** Keep it (D18). `base-atomic` ships it, the firmware logo then
 carries through to the greeter, and it costs under a second. The risk is
@@ -1546,7 +1565,7 @@ informally in M2.
 | D3 | Japanese input and CJK fonts | **Decided:** switch to `ibus-mozc` and remove `ibus-anthy`; keep the Noto Sans CJK fonts (5.1, 5.4). |
 | D4 | Docker | **Decided:** rootless podman, `podman-docker` and `docker-compose`. Not moby-engine. |
 | D5 | asusctl on the Zenbook | **Decided:** keep, from COPR `lukenukem/asus-linux` as an image RPM (5.2). Nix can't provide the system daemon. |
-| D6 | Compositor-tier devel libs in the image (about 300 MiB) | **Decided:** not in the image; use the devbox distrobox. |
+| D6 | Compositor-tier devel libs in the image (about 300 MiB) | **Decided:** not in the image. Amended for nx 1.0: no `-devel` packages in the image at all; `nx add` overlays them live, and the devbox distrobox is gone. |
 | D7 | Nix Plan A (daemon) or B (rootless) | **Decided:** Plan A. Fedora 44 added Nix officially ([Changes/Nix_package_tool](https://fedoraproject.org/wiki/Changes/Nix_package_tool), FESCo-approved): F45 ships `nix`, `nix-core`, `nix-daemon`, `nix-system` and `nix-filesystem` 2.35.4, with `nix-daemon.service`/`.socket`, sysusers and tmpfiles. The change page calls `/nix` incompatible with rpm-ostree and says bootc bind-mount support is still being worked on; no `.mount` unit ships, so our `/var/lib/nix` bind mount (7.x) is still ours to write. S1 still runs; Plan B stays the documented fallback if S1 fails. |
 | D8 | Wrapper name | **Decided:** `nx`. |
 | D9 | Flatpak app list | Re-audit the 26 listed today against the 52 apps installed, starting from the GNOME set in 5.5. **Decided:** Resources (Flatpak) instead of System Monitor; Text Editor stays an RPM. |

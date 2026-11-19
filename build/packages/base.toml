@@ -109,6 +109,14 @@ system = [
     # left off: rhbz#2525943 reports it failing under SELinux.
     "nix.mount",
     "nix-daemon.service",
+    # nx (20-overlay.sh): nxd on demand, the boot-time generation choice, the
+    # bootc hook and the daily metadata refresh, and the weekly tool upgrade.
+    "nxd.socket",
+    "nx-select.service",
+    "nx-settle.service",
+    "nx-sync.service",
+    "nx-refresh.timer",
+    "nx-upgrade.timer",
     # Updates (section 10) and Flatpak (7.2, 17.3), all from system_files/shared.
     "neptuno-ensure-homes.service",   # homes Anaconda's bootc install leaves missing
     "bootc-fetch-apply-updates.timer",
@@ -124,6 +132,6 @@ user = [
     "podman.socket",                 # rootless docker-compose (DOCKER_HOST)
     "neptuno-update-notify.path",
     "neptuno-update-notify.timer",
-    "neptuno-nix-upgrade.timer",
-    "neptuno-nix-clean.timer",
+    "nx-notify.path",                # what nx's root services couldn't do
+    "nx-notify.service",             # the same, once at login
 ]

@@ -34,7 +34,7 @@ from USB.
   [release](https://github.com/Siddhj2206/neptuno/releases) lists the packages
   that changed.
 - `neptuno` (a `just` front end) has `info`, `changelog`, `verify`,
-  `config-diff`, `refresh-config` and `devbox`.
+  `config-diff` and `refresh-config`.
 
 ## How it is built and released
 
