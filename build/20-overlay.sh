@@ -34,7 +34,7 @@ echo "::group:: nx"
 # but can't recompute a hash, so the tarball is checked against the
 # SHA256SUMS published with the same release.
 # renovate: datasource=github-releases depName=Siddhj2206/nx
-NX_VERSION=v1.0.0
+NX_VERSION=v1.0.1
 # shellcheck source=/dev/null
 nx_fedora="$(. /etc/os-release && echo "${VERSION_ID}")"
 nx_tgz="nx-${NX_VERSION}-fc${nx_fedora}-$(uname -m).tar.gz"
