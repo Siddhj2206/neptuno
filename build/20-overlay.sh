@@ -25,29 +25,29 @@ nix config show download-buffer-size | grep -qx 67108864
 echo "::endgroup::"
 
 echo "::group:: nx"
-# nx, the Nix package front end, is a static Go binary released from
-# github.com/Siddhj2206/nx (doc/product.md 7.1). Renovate bumps the version.
-# It cannot recompute an asset's hash, so the tarball is checked against the
+# nx 1.0, from github.com/Siddhj2206/nx (doc/product.md 7.1): Fedora RPMs live
+# on /usr (the host tier) and sealed nixpkgs tools beside it. It links the
+# image's libsolv and librpm, so a release has one tarball per Fedora release
+# and architecture: the tree to unpack at / (nx, nxd, units and presets,
+# sysusers, tmpfiles, polkit, PATH snippets, completions, man pages). Its
+# units are enabled by base.toml like every other. Renovate bumps the version
+# but can't recompute a hash, so the tarball is checked against the
 # SHA256SUMS published with the same release.
 # renovate: datasource=github-releases depName=Siddhj2206/nx
-NX_VERSION=v0.2.0
-case "$(uname -m)" in
-x86_64) nx_arch=amd64 ;;
-aarch64) nx_arch=arm64 ;;
-*) echo "nx: no release for $(uname -m)" >&2; exit 1 ;;
-esac
-nx_tgz="nx-${NX_VERSION}-linux-${nx_arch}.tar.gz"
+NX_VERSION=v1.0.0
+# shellcheck source=/dev/null
+nx_fedora="$(. /etc/os-release && echo "${VERSION_ID}")"
+nx_tgz="nx-${NX_VERSION}-fc${nx_fedora}-$(uname -m).tar.gz"
 nx_tmp="$(mktemp -d)"
 nx_base="https://github.com/Siddhj2206/nx/releases/download/${NX_VERSION}"
 curl --fail --location --retry 3 --silent --show-error \
 	--output "${nx_tmp}/${nx_tgz}" "${nx_base}/${nx_tgz}" \
 	--output "${nx_tmp}/SHA256SUMS" "${nx_base}/SHA256SUMS"
 (cd "${nx_tmp}" && grep -F "  ${nx_tgz}" SHA256SUMS | sha256sum --check --strict)
-tar -xzf "${nx_tmp}/${nx_tgz}" -C "${nx_tmp}" nx LICENSE
-install -Dm0755 "${nx_tmp}/nx" /usr/bin/nx
-install -Dm0644 "${nx_tmp}/LICENSE" /usr/share/licenses/nx/LICENSE
+# --no-overwrite-dir: /usr, /etc and the rest keep their own modes and times.
+tar -xzf "${nx_tmp}/${nx_tgz}" -C / --no-same-owner --no-overwrite-dir
 rm -rf "${nx_tmp}"
-[ "$(/usr/bin/nx --version)" = "nx ${NX_VERSION}" ]
+[ "$(/usr/bin/nx --version)" = "nx ${NX_VERSION#v}" ]
 echo "::endgroup::"
 
 echo "::group:: Default login shell"

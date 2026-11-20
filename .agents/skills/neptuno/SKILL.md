@@ -21,7 +21,7 @@ enablement. Nothing installs or enables anything that is not declared there.
 | `base.toml` | shells, CLI glue, power, containers, networking, Nix, Tailscale, topgrade |
 | `desktop.toml` | niri, DMS, greetd, portals, keyring, theming, input; the `duxlabs` COPRs |
 | `hardware.toml` | the Zenbook: asusctl, fingerprint |
-| `devlibs.toml` | `-devel` packages so a plain `cargo build` works on the host |
+| `devlibs.toml` | the host compilers (gcc, clang, make, pkgconf); `-devel` packages come from `nx add` |
 | `removals.toml` | packages removed from the base, and base units disabled |
 
 `10-packages.sh` applies every package section; `40-services.sh` applies
@@ -62,32 +62,31 @@ Enable explicitly, never by applying presets, and never mask.
   the `scottames/ghostty` COPR stops at Fedora 44. dux-repo also rebuilds
   Fedora packages (greetd, cava, quickshell, xwayland-satellite), which is
   why each COPR section is limited to the names it lists plus `.deps`.
-- **The system comes first on PATH**: nix-core's `nix-daemon.sh` and
-  `nix.fish` prepend the Nix profiles; `60-nix.conf` appends them instead, and
-  `/etc/profile.d/zz-neptuno-nix.sh` and `zz-neptuno.fish` move them back
-  after `/usr/bin`. Otherwise `nx add clang` replaces `/usr/bin/cc` and `ld`,
-  binaries link against Nix's glibc, and anything that loads the host's Mesa
-  (Bevy, wgpu) finds no Vulkan driver. Compilers belong in `devlibs.toml`, and
-  nothing links against `~/.nix-profile/lib`: build against `-devel` RPMs or
-  the devbox.
+- **Nothing from `/nix` on PATH but nx's shims**: nx 1.0's tool tier exposes
+  commands as shims in `/var/lib/nx/current/bin`, appended after `/usr/bin`
+  by nx's own `profile.d`, `vendor_conf.d` and `environment.d` files, so an
+  image command always wins and nothing links against Nix's libraries. Don't
+  bring back a Nix profile on PATH or `LIBRARY_PATH` (nx 0.x's `nx add clang`
+  replaced `/usr/bin/cc`, and Bevy then found no Vulkan driver; doc/product.md
+  7.1). Compilers belong in `devlibs.toml`; `-devel` packages come from `nx
+  add`, which matches them to the image's libraries.
 - **PAM and the keyring**: `pam_oo7` unlocks the oo7 login keyring only with
   a typed password. authselect `with-fingerprint` puts `pam_fprintd` in
   `system-auth` as `sufficient` ahead of `pam_unix`, so any service that
   includes it can log in by finger and hand `pam_oo7` nothing; apps then
   report their secrets as missing. `/etc/pam.d/greetd` takes auth from
   `password-auth` for that reason; `30-desktop.sh` fails the build if it drifts.
-- **nx lives in its own repo**: `/usr/bin/nx` is the Go release from
-  Siddhj2206/nx, installed by `20-overlay.sh` at `NX_VERSION` and checked
-  against that release's `SHA256SUMS` (Renovate can bump a version but not
-  recompute an asset hash). Change nx there, tag a release, and let Renovate
-  (or a manual `NX_VERSION` bump) bring it in; don't add a script back to
-  `system_files`.
-- **fish vendor_conf.d order**: fish sources it in name order, and nx tools
-  only reach PATH in nix-core's `nix.fish`. Our defaults are
-  `zz-neptuno.fish` so their `command -q` guards see them and the PATH move
-  runs after nix.fish; a bats test pins the order. Fish sources vendor dirs
-  one directory at a time, so testing a copy through `XDG_DATA_DIRS` runs it
-  before `/usr/share`'s nix.fish unless nix.fish is copied alongside it.
+- **nx lives in its own repo**: nx 1.0 is a tarball per Fedora release and
+  architecture from Siddhj2206/nx, unpacked at `/` by `20-overlay.sh` at
+  `NX_VERSION` (with `--no-overwrite-dir`) and checked against that
+  release's `SHA256SUMS` (Renovate can bump a version but not recompute an
+  asset hash). Its units are declared in `base.toml`. A Fedora rebase needs
+  an nx release for the new Fedora first: nx links the image's libsolv and
+  librpm. Change nx there, tag a release, and let Renovate (or a manual
+  `NX_VERSION` bump) bring it in.
+- **fish vendor_conf.d order**: fish sources it in name order, and nx's
+  tools reach PATH in nx's `nx.fish`. Our defaults are `zz-neptuno.fish`, so
+  their `command -q` guards see them; a bats test pins the order.
 - **Rebasing a machine from the Bluefin-era image** (the laptop, 2026-11-16):
   ostree's /etc merge keeps any file the old system modified, so the old
   image's state shadows ours. Found: `/etc/selinux` (a local semanage rule
