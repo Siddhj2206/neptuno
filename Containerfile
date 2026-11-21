@@ -9,7 +9,7 @@ COPY system_files /system_files
 COPY flatpaks /flatpaks
 
 # Renovate keeps the digest current; the major is bumped by hand.
-FROM quay.io/fedora-ostree-desktops/base-atomic:45@sha256:76d6fbb3b011fb57595933ab08985248b4658857f45ccdbe5b7ebf6f22af483f
+FROM quay.io/fedora-ostree-desktops/base-atomic:45@sha256:ec86944e5b331b58d48b8375f678e4e30e95ad55db79304462391569c012c6df
 
 # Identity. CI passes IMAGE_NAME from the repository name, so a copy of this
 # repository publishes under its own name with a matching update reference.
