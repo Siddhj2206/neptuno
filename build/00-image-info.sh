@@ -67,6 +67,9 @@ if [[ -f "${OS_RELEASE}" ]]; then
 	set_os_release_value PRETTY_NAME "Neptuno ${VERSION}"
 	set_os_release_value VARIANT "Neptuno"
 	set_os_release_value VARIANT_ID "${IMAGE_NAME}"
+	# GNOME/DMS shell branding: icon lookup name used by About,
+	# app launchers and shell greeters (bluefin convention).
+	set_os_release_value LOGO "distributor-logo"
 	set_os_release_value VERSION "${VERSION} (${BASE_IMAGE_NAME})"
 	set_os_release_value OSTREE_VERSION "${VERSION}"
 	set_os_release_value IMAGE_ID "${IMAGE_NAME}"
