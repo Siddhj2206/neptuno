@@ -6,7 +6,7 @@
 #
 # Adapted from osbuild's "Example Anaconda Installer Containerfile"
 # (osbuild.org/docs/developer-guide/projects/image-builder/advanced/bootc/isos).
-FROM quay.io/fedora/fedora-bootc:45@sha256:d70fb477a35612f651fcfa397f41e2945514374d3fdaaa64b0e75a3ca1da2bbc
+FROM quay.io/fedora/fedora-bootc:45@sha256:f387c5f622d2f095e23b1587c97a4d4659231df6c8a649329839a9336a99c5e4
 
 RUN dnf install -qy \
         anaconda \
