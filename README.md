@@ -1,3 +1,9 @@
+<p align="center"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/logo/neptuno-wordmark-on-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/logo/neptuno-wordmark-on-light.svg">
+  <img src="assets/logo/neptuno-wordmark.svg" alt="neptuno" width="480">
+</picture></p>
+
 # neptuno
 
 A personal Fedora bootc desktop image: Fedora `base-atomic` 45 with the niri

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 -12 184 184" width="256" height="256" role="img"><title>neptuno logo, one colour</title><defs><mask id="mm" maskUnits="userSpaceOnUse" x="-12" y="-12" width="184" height="184"><rect x="-12" y="-12" width="184" height="184" fill="#000"/><defs>
+<clipPath id="mkd"><circle cx="80" cy="80" r="54.5"/></clipPath>
+<clipPath id="mkp"><circle cx="80" cy="196" r="88.5"/></clipPath>
+<clipPath id="mkf"><circle cx="80" cy="80" r="62.5"/></clipPath>
+</defs>
+<g transform="rotate(-22 80 80)" fill="none"><ellipse cx="80" cy="80" rx="92" ry="22" stroke="#000" stroke-width="9"/><ellipse cx="80" cy="80" rx="92" ry="22" stroke="#fff" stroke-width="5"/></g>
+<circle cx="80" cy="80" r="61" fill="#000" stroke="#fff" stroke-width="3"/>
+<circle cx="80" cy="80" r="56" fill="#000" stroke="#000" stroke-width="3"/>
+<g clip-path="url(#mkd)">
+<circle cx="52" cy="40" r="1.6" fill="#fff"/><circle cx="98" cy="34" r="1.2" fill="#fff"/><circle cx="70" cy="60" r="1" fill="#fff"/><circle cx="114" cy="62" r="1.4" fill="#fff"/><circle cx="38" cy="74" r="1.1" fill="#fff"/><circle cx="86" cy="48" r="0.9" fill="#fff"/><circle cx="44" cy="92" r="1" fill="#fff"/>
+<polygon points="60.50,44.00 62.03,48.39 66.69,48.48 62.97,51.31 64.32,55.77 60.50,53.10 56.68,55.77 58.03,51.31 54.31,48.48 58.97,48.39" fill="#fff"/><polygon points="106.00,42.00 106.94,44.70 109.81,44.76 107.52,46.50 108.35,49.24 106.00,47.60 103.65,49.24 104.48,46.50 102.19,44.76 105.06,44.70" fill="#fff"/>
+<circle cx="80" cy="196" r="90" fill="#fff" stroke="#000" stroke-width="3"/>
+<g clip-path="url(#mkp)" fill="none"><path d="M0 118 Q80 104 160 118" stroke="#fff" stroke-width="5"/><path d="M0 130 Q80 118 160 130" stroke="#000" stroke-width="5"/></g>
+</g>
+<g clip-path="url(#mkf)"><path d="M-12 80 A92 22 0 0 0 172 80" transform="rotate(-22 80 80)" fill="none" stroke="#000" stroke-width="9"/></g>
+<path d="M-12 80 A92 22 0 0 0 172 80" transform="rotate(-22 80 80)" fill="none" stroke="#fff" stroke-width="5"/>
+<circle cx="117" cy="87.4" r="11" fill="#fff" stroke="#000" stroke-width="2.5"/>
+<circle cx="113.5" cy="83.5" r="3.8" fill="#fff"/>
+<circle cx="121" cy="91.5" r="1.8" fill="#000"/></mask></defs><rect x="-12" y="-12" width="184" height="184" fill="#000000" mask="url(#mm)"/></svg>
